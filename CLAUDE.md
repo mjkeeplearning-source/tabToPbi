@@ -52,7 +52,8 @@ This MVP is intentionally constrained. The goal is to produce a valid PBIR outpu
 - Planning: complete
 - T1: complete — uv project initialised, folder structure created, stubs for all modules, CLI smoke-tested end to end
 - T2: complete — `input/simple.twb` added (Tableau Superstore sample, Excel connection, single Orders table, one sheet "Sheet 1", no calculated fields, no joins)
-- T3: not started — next step: parse `simple.twb` and return populated workbook dict
+- T3: complete — `parser.py` implemented; parses datasource (connection type, filename, table, 21 columns), worksheet (name, datasource ref, rows/cols shelf fields, mark type), calculated fields, joins, and unsupported pattern detection; `.twbx` unzip supported; validated against `simple.twb`
+- T4: not started — next step: generate the smallest valid PBIR semantic model
 
 ---
 
