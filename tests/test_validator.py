@@ -2,7 +2,7 @@
 import json
 from pathlib import Path
 import pytest
-from tab_to_pbi.validator import ValidationResult, load_schema
+from tab_to_pbi.validator import ValidationResult, load_schema, check_presence
 
 
 def test_validation_result_fields():
@@ -27,3 +27,93 @@ def test_load_schema_uses_cache(tmp_path):
     schema2 = load_schema(url, cache_dir)
     assert schema1 == schema2
     assert any(cache_dir.iterdir())
+
+
+# --- Helpers ---
+
+def _make_valid_structure(base: Path) -> tuple[Path, Path]:
+    """Create minimal valid PBIR folder structure on disk."""
+    report_dir = base / "simple.Report"
+    model_dir = base / "simple.SemanticModel"
+    defn_dir = report_dir / "definition"
+    pages_dir = defn_dir / "pages" / "ReportSection1"
+    visuals_dir = pages_dir / "visuals" / "visual_1"
+
+    for d in [report_dir, defn_dir, pages_dir, visuals_dir, model_dir]:
+        d.mkdir(parents=True)
+
+    (report_dir / "definition.pbir").write_text("{}")
+    (defn_dir / "version.json").write_text("{}")
+    (defn_dir / "report.json").write_text("{}")
+    (pages_dir / "page.json").write_text("{}")
+    (visuals_dir / "visual.json").write_text("{}")
+    (model_dir / "definition.pbism").write_text("{}")
+    (model_dir / "model.bim").write_text("{}")
+
+    return report_dir, model_dir
+
+
+# --- Presence tests ---
+
+def test_presence_clean(tmp_path):
+    report_dir, _ = _make_valid_structure(tmp_path)
+    errors = check_presence(report_dir)
+    assert errors == []
+
+
+def test_presence_missing_definition_pbir(tmp_path):
+    report_dir, _ = _make_valid_structure(tmp_path)
+    (report_dir / "definition.pbir").unlink()
+    errors = check_presence(report_dir)
+    assert any(r.level == "ERROR" and "definition.pbir" in r.message for r in errors)
+
+
+def test_presence_missing_definition_folder(tmp_path):
+    report_dir, _ = _make_valid_structure(tmp_path)
+    import shutil
+    shutil.rmtree(report_dir / "definition")
+    errors = check_presence(report_dir)
+    assert any(r.level == "ERROR" and "definition/" in r.message for r in errors)
+
+
+def test_presence_missing_version_json(tmp_path):
+    report_dir, _ = _make_valid_structure(tmp_path)
+    (report_dir / "definition" / "version.json").unlink()
+    errors = check_presence(report_dir)
+    assert any(r.level == "ERROR" and "version.json" in r.message for r in errors)
+
+
+def test_presence_missing_report_json(tmp_path):
+    report_dir, _ = _make_valid_structure(tmp_path)
+    (report_dir / "definition" / "report.json").unlink()
+    errors = check_presence(report_dir)
+    assert any(r.level == "ERROR" and "report.json" in r.message for r in errors)
+
+
+def test_presence_no_pages(tmp_path):
+    report_dir, _ = _make_valid_structure(tmp_path)
+    import shutil
+    shutil.rmtree(report_dir / "definition" / "pages")
+    errors = check_presence(report_dir)
+    assert any(r.level == "ERROR" and "pages/" in r.message for r in errors)
+
+
+def test_presence_page_missing_page_json(tmp_path):
+    report_dir, _ = _make_valid_structure(tmp_path)
+    (report_dir / "definition" / "pages" / "ReportSection1" / "page.json").unlink()
+    errors = check_presence(report_dir)
+    assert any(r.level == "ERROR" and "page.json" in r.message for r in errors)
+
+
+def test_presence_missing_model_bim(tmp_path):
+    report_dir, model_dir = _make_valid_structure(tmp_path)
+    (model_dir / "model.bim").unlink()
+    errors = check_presence(report_dir)
+    assert any(r.level == "ERROR" and "model.bim" in r.message for r in errors)
+
+
+def test_presence_missing_definition_pbism(tmp_path):
+    report_dir, model_dir = _make_valid_structure(tmp_path)
+    (model_dir / "definition.pbism").unlink()
+    errors = check_presence(report_dir)
+    assert any(r.level == "ERROR" and "definition.pbism" in r.message for r in errors)
