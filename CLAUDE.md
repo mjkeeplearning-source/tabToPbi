@@ -65,7 +65,7 @@ This MVP is intentionally constrained. The goal is to produce a valid PBIR outpu
 - V4: complete — Phase 2: JSON schema validation (`check_schemas`, `_validate_file`); 17 tests pass
 - V5: complete — Phase 3: semantic cross-reference checks (`check_semantics`, `_extract_projections`); 25 tests pass
 - V6: complete — top-level `validate()` orchestrator + `print_results()`; 27 tests pass
-- V7: not started — standalone CLI entry point (`uv run tab_to_pbi/validator.py <report-dir>`)
+- V7: complete — standalone CLI entry point; verified against `output/simple.Report`, exits 0 with 1 expected warning
 - V8: not started — integrate `validate()` into `main.py` pipeline, exit 1 on errors
 
 ---
