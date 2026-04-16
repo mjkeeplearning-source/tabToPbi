@@ -57,7 +57,7 @@ This MVP is intentionally constrained. The goal is to produce a valid PBIR outpu
 - T5: complete — `generator.py` fixed to write proper PBIR format: `definition/` subfolder with `version.json`, `report.json`, `pages/`; all files include `$schema` and correct required fields per MS spec; `transformer.py` maps sheets to visual descriptors
 - T6: not started — verify PBIR opens in Power BI Desktop (blocked on validator first)
 
-### Validator (in progress — plan at docs/superpowers/plans/2026-04-16-pbir-validator.md)
+### Validator (complete — plan at docs/superpowers/plans/2026-04-16-pbir-validator.md)
 - Design: approved — Option C: jsonschema against official MS schemas + semantic cross-reference checks
 - V1: complete — `jsonschema` 4.26.0 added, `.pbir_schema_cache/` added to `.gitignore`
 - V2: complete — `ValidationResult` dataclass + `load_schema()` with local cache; `tests/test_validator.py` created, 3 tests pass
@@ -66,7 +66,7 @@ This MVP is intentionally constrained. The goal is to produce a valid PBIR outpu
 - V5: complete — Phase 3: semantic cross-reference checks (`check_semantics`, `_extract_projections`); 25 tests pass
 - V6: complete — top-level `validate()` orchestrator + `print_results()`; 27 tests pass
 - V7: complete — standalone CLI entry point; verified against `output/simple.Report`, exits 0 with 1 expected warning
-- V8: not started — integrate `validate()` into `main.py` pipeline, exit 1 on errors
+- V8: complete — `validate()` integrated into `main.py` pipeline; exits 1 on errors; 27 tests pass
 
 ---
 
