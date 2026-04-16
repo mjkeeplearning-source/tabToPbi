@@ -2,7 +2,7 @@
 import json
 from pathlib import Path
 import pytest
-from tab_to_pbi.validator import ValidationResult, load_schema, check_presence, check_schemas
+from tab_to_pbi.validator import ValidationResult, load_schema, check_presence, check_schemas, check_semantics
 
 
 def test_validation_result_fields():
@@ -169,3 +169,138 @@ def test_schema_no_schema_field(tmp_path):
     (report_dir / "definition" / "version.json").write_text(json.dumps({"version": "1.0.0"}))
     errors = check_schemas(report_dir)
     assert any("version.json" in r.file and "missing $schema" in r.message for r in errors)
+
+
+# --- Semantic tests ---
+
+_VISUAL_SCHEMA = "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.0.0/schema.json"
+
+_VALID_MODEL_BIM = {
+    "name": "simple",
+    "compatibilityLevel": 1550,
+    "model": {
+        "culture": "en-US",
+        "tables": [
+            {
+                "name": "Orders",
+                "columns": [
+                    {"name": "Country", "dataType": "string", "sourceColumn": "Country"},
+                ],
+                "partitions": [{"name": "Orders", "mode": "import", "source": {"type": "m", "expression": ["let", "in", "x"]}}],
+            }
+        ],
+        "relationships": [],
+    },
+}
+
+_VALID_PBIR = {
+    "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definitionProperties/2.0.0/schema.json",
+    "version": "4.0",
+    "datasetReference": {"byPath": {"path": "../simple.SemanticModel"}},
+}
+
+_VALID_VISUAL = {
+    "$schema": _VISUAL_SCHEMA,
+    "name": "visual_1",
+    "position": {"x": 0, "y": 0, "z": 0, "height": 300, "width": 400, "tabOrder": 0},
+    "visual": {
+        "visualType": "tableEx",
+        "query": {
+            "queryState": {
+                "Values": {
+                    "projections": [
+                        {
+                            "field": {"Column": {"Expression": {"SourceRef": {"Entity": "Orders"}}, "Property": "Country"}},
+                            "queryRef": "Orders.Country",
+                            "active": True,
+                        }
+                    ]
+                }
+            }
+        },
+        "objects": {},
+    },
+}
+
+
+def _setup_semantic_test(tmp_path, pbir=None, model_bim=None, visual=None):
+    report_dir, model_dir = _make_valid_structure(tmp_path)
+    (report_dir / "definition.pbir").write_text(json.dumps(pbir or _VALID_PBIR))
+    (model_dir / "model.bim").write_text(json.dumps(model_bim or _VALID_MODEL_BIM))
+    v_path = report_dir / "definition" / "pages" / "ReportSection1" / "visuals" / "visual_1" / "visual.json"
+    v_path.parent.mkdir(parents=True, exist_ok=True)
+    v_path.write_text(json.dumps(visual or _VALID_VISUAL))
+    return report_dir, model_dir
+
+
+def test_semantics_clean(tmp_path):
+    report_dir, _ = _setup_semantic_test(tmp_path)
+    results = check_semantics(report_dir)
+    errors = [r for r in results if r.level == "ERROR"]
+    assert errors == []
+
+
+def test_semantics_bypath_missing_model(tmp_path):
+    report_dir, model_dir = _setup_semantic_test(tmp_path)
+    import shutil
+    shutil.rmtree(model_dir)
+    results = check_semantics(report_dir)
+    assert any("byPath" in r.message and r.level == "ERROR" for r in results)
+
+
+def test_semantics_unknown_entity(tmp_path):
+    bad_visual = {**_VALID_VISUAL, "visual": {
+        **_VALID_VISUAL["visual"],
+        "query": {"queryState": {"Values": {"projections": [
+            {"field": {"Column": {"Expression": {"SourceRef": {"Entity": "NonExistent"}}, "Property": "Country"}}, "queryRef": "x", "active": True}
+        ]}}},
+    }}
+    report_dir, _ = _setup_semantic_test(tmp_path, visual=bad_visual)
+    results = check_semantics(report_dir)
+    assert any("NonExistent" in r.message and r.level == "ERROR" for r in results)
+
+
+def test_semantics_unknown_column(tmp_path):
+    bad_visual = {**_VALID_VISUAL, "visual": {
+        **_VALID_VISUAL["visual"],
+        "query": {"queryState": {"Values": {"projections": [
+            {"field": {"Column": {"Expression": {"SourceRef": {"Entity": "Orders"}}, "Property": "NoSuchCol"}}, "queryRef": "x", "active": True}
+        ]}}},
+    }}
+    report_dir, _ = _setup_semantic_test(tmp_path, visual=bad_visual)
+    results = check_semantics(report_dir)
+    assert any("NoSuchCol" in r.message and r.level == "ERROR" for r in results)
+
+
+def test_semantics_no_tables_in_model(tmp_path):
+    bad_bim = {**_VALID_MODEL_BIM, "model": {**_VALID_MODEL_BIM["model"], "tables": []}}
+    report_dir, _ = _setup_semantic_test(tmp_path, model_bim=bad_bim)
+    results = check_semantics(report_dir)
+    assert any("no tables" in r.message.lower() and r.level == "ERROR" for r in results)
+
+
+def test_semantics_table_no_partitions(tmp_path):
+    bad_bim = {**_VALID_MODEL_BIM, "model": {**_VALID_MODEL_BIM["model"], "tables": [
+        {"name": "Orders", "columns": [], "partitions": []}
+    ]}}
+    report_dir, _ = _setup_semantic_test(tmp_path, model_bim=bad_bim)
+    results = check_semantics(report_dir)
+    assert any("partition" in r.message.lower() and r.level == "ERROR" for r in results)
+
+
+def test_semantics_no_relationships_warning(tmp_path):
+    report_dir, _ = _setup_semantic_test(tmp_path)
+    results = check_semantics(report_dir)
+    assert any("relationship" in r.message.lower() and r.level == "WARNING" for r in results)
+
+
+def test_semantics_visual_no_projections_warning(tmp_path):
+    empty_visual = {
+        "$schema": _VISUAL_SCHEMA,
+        "name": "visual_1",
+        "position": {"x": 0, "y": 0, "z": 0, "height": 300, "width": 400, "tabOrder": 0},
+        "visual": {"visualType": "tableEx", "query": {"queryState": {}}, "objects": {}},
+    }
+    report_dir, _ = _setup_semantic_test(tmp_path, visual=empty_visual)
+    results = check_semantics(report_dir)
+    assert any("projection" in r.message.lower() and r.level == "WARNING" for r in results)

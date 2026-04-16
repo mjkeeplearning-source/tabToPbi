@@ -145,3 +145,105 @@ def _validate_file(fpath: Path, rel: str, cache_dir: Path) -> list[ValidationRes
         results.append(ValidationResult("ERROR", rel, f"{error.message} (at {path})"))
 
     return results
+
+
+def check_semantics(report_dir: Path) -> list[ValidationResult]:
+    """Phase 3: cross-file semantic consistency checks."""
+    results = []
+    model_dir = _find_model_dir(report_dir)
+
+    # Check byPath resolves to an existing directory
+    pbir_path = report_dir / "definition.pbir"
+    if pbir_path.exists():
+        try:
+            pbir = json.loads(pbir_path.read_text())
+            by_path = pbir.get("datasetReference", {}).get("byPath", {}).get("path")
+            if by_path:
+                resolved = (report_dir / by_path).resolve()
+                if not resolved.is_dir():
+                    results.append(ValidationResult(
+                        "ERROR", str(pbir_path.relative_to(report_dir.parent)),
+                        f"byPath '{by_path}' does not resolve to an existing directory",
+                    ))
+        except (json.JSONDecodeError, KeyError):
+            pass
+
+    # Load model.bim tables for cross-reference checks
+    tables_by_name: dict[str, set[str]] = {}
+    if model_dir and (model_dir / "model.bim").exists():
+        try:
+            bim = json.loads((model_dir / "model.bim").read_text())
+            tables = bim.get("model", {}).get("tables", [])
+            rel = str((model_dir / "model.bim").relative_to(report_dir.parent))
+
+            if not tables:
+                results.append(ValidationResult("ERROR", rel, "model.bim has no tables"))
+            for table in tables:
+                tname = table.get("name", "")
+                tables_by_name[tname] = {c["name"] for c in table.get("columns", [])}
+                if not table.get("partitions"):
+                    results.append(ValidationResult("ERROR", rel, f"Table '{tname}' has no partitions"))
+                else:
+                    for part in table["partitions"]:
+                        expr = part.get("source", {}).get("expression", [])
+                        if isinstance(expr, list) and any("Unsupported connection type" in line for line in expr):
+                            results.append(ValidationResult(
+                                "WARNING", rel, f"Table '{tname}' partition uses unsupported connection type"
+                            ))
+
+            if not bim.get("model", {}).get("relationships"):
+                results.append(ValidationResult(
+                    "WARNING", rel, "No relationships defined (expected for single-table Import mode)"
+                ))
+        except json.JSONDecodeError:
+            pass
+
+    # Check visual field references against model.bim
+    defn_dir = report_dir / "definition"
+    if (defn_dir / "pages").is_dir():
+        for page_dir in (defn_dir / "pages").iterdir():
+            if not page_dir.is_dir():
+                continue
+            visuals_dir = page_dir / "visuals"
+            if not visuals_dir.is_dir():
+                continue
+            for visual_dir in visuals_dir.iterdir():
+                if not visual_dir.is_dir():
+                    continue
+                vpath = visual_dir / "visual.json"
+                if not vpath.exists():
+                    continue
+                rel = str(vpath.relative_to(report_dir.parent))
+                try:
+                    visual = json.loads(vpath.read_text())
+                except json.JSONDecodeError:
+                    continue
+
+                projections = _extract_projections(visual)
+                if not projections:
+                    results.append(ValidationResult("WARNING", rel, "Visual has no field projections"))
+                    continue
+
+                for proj in projections:
+                    col = proj.get("field", {}).get("Column", {})
+                    entity = col.get("Expression", {}).get("SourceRef", {}).get("Entity")
+                    prop = col.get("Property")
+                    if entity and entity not in tables_by_name:
+                        results.append(ValidationResult(
+                            "ERROR", rel, f"SourceRef.Entity '{entity}' not found in model.bim tables"
+                        ))
+                    elif entity and prop and prop not in tables_by_name.get(entity, set()):
+                        results.append(ValidationResult(
+                            "ERROR", rel, f"Column '{prop}' not found in table '{entity}' in model.bim"
+                        ))
+
+    return results
+
+
+def _extract_projections(visual: dict) -> list[dict]:
+    """Extract all projections from a visual's queryState."""
+    query_state = visual.get("visual", {}).get("query", {}).get("queryState", {})
+    projections = []
+    for role in query_state.values():
+        projections.extend(role.get("projections", []))
+    return projections
