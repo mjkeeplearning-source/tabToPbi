@@ -276,3 +276,17 @@ def print_results(report_dir: Path, results: list[ValidationResult]) -> None:
         print("Validation failed.")
     else:
         print("All checks passed (0 errors, 0 warnings)." if warnings == 0 else "Validation passed with warnings.")
+
+
+if __name__ == "__main__":
+    import sys
+    if len(sys.argv) != 2:
+        print("Usage: uv run tab_to_pbi/validator.py <path/to/Report-folder>")
+        sys.exit(1)
+    _report_dir = Path(sys.argv[1])
+    if not _report_dir.is_dir():
+        print(f"Error: {_report_dir} is not a directory")
+        sys.exit(1)
+    _results = validate(_report_dir)
+    print_results(_report_dir, _results)
+    sys.exit(1 if any(r.level == "ERROR" for r in _results) else 0)
