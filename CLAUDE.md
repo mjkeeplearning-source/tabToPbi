@@ -48,12 +48,25 @@ This MVP is intentionally constrained. The goal is to produce a valid PBIR outpu
 - Storage mode for MVP: Import only
 - MVP success criteria: generated PBIR opens successfully in Power BI Desktop
 
-### Status (2026-04-07)
+### Status (2026-04-16)
 - Planning: complete
 - T1: complete — uv project initialised, folder structure created, stubs for all modules, CLI smoke-tested end to end
 - T2: complete — `input/simple.twb` added (Tableau Superstore sample, Excel connection, single Orders table, one sheet "Sheet 1", no calculated fields, no joins)
 - T3: complete — `parser.py` implemented; parses datasource (connection type, filename, table, 21 columns), worksheet (name, datasource ref, rows/cols shelf fields, mark type), calculated fields, joins, and unsupported pattern detection; `.twbx` unzip supported; validated against `simple.twb`
-- T4: not started — next step: generate the smallest valid PBIR semantic model
+- T4: complete — `generator.py` generates PBIR SemanticModel (`model.bim` + `definition.pbism`); `transformer.py` maps datasources to TMSL tables with Power Query M expressions
+- T5: complete — `generator.py` fixed to write proper PBIR format: `definition/` subfolder with `version.json`, `report.json`, `pages/`; all files include `$schema` and correct required fields per MS spec; `transformer.py` maps sheets to visual descriptors
+- T6: not started — verify PBIR opens in Power BI Desktop (blocked on validator first)
+
+### Validator (in progress — plan at docs/superpowers/plans/2026-04-16-pbir-validator.md)
+- Design: approved — Option C: jsonschema against official MS schemas + semantic cross-reference checks
+- V1: complete — `jsonschema` 4.26.0 added, `.pbir_schema_cache/` added to `.gitignore`
+- V2: not started — `ValidationResult` dataclass + `load_schema()` with local cache
+- V3: not started — Phase 1: file presence checks (`check_presence`)
+- V4: not started — Phase 2: JSON schema validation (`check_schemas`) against MS schemas
+- V5: not started — Phase 3: semantic cross-reference checks (`check_semantics`)
+- V6: not started — top-level `validate()` orchestrator + `print_results()`
+- V7: not started — standalone CLI entry point (`uv run tab_to_pbi/validator.py <report-dir>`)
+- V8: not started — integrate `validate()` into `main.py` pipeline, exit 1 on errors
 
 ---
 
