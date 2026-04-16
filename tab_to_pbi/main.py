@@ -32,6 +32,13 @@ def main():
     print(f"Output: {report_path}")
     print(f"Report: {report_file}")
 
+    from tab_to_pbi.validator import validate, print_results
+    results = validate(report_path)
+    print()
+    print_results(report_path, results)
+    if any(r.level == "ERROR" for r in results):
+        sys.exit(1)
+
 
 if __name__ == "__main__":
     main()
