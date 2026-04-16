@@ -62,7 +62,7 @@ This MVP is intentionally constrained. The goal is to produce a valid PBIR outpu
 - V1: complete — `jsonschema` 4.26.0 added, `.pbir_schema_cache/` added to `.gitignore`
 - V2: complete — `ValidationResult` dataclass + `load_schema()` with local cache; `tests/test_validator.py` created, 3 tests pass
 - V3: complete — Phase 1: file presence checks (`check_presence`); 9 tests pass
-- V4: not started — Phase 2: JSON schema validation (`check_schemas`) against MS schemas
+- V4: complete — Phase 2: JSON schema validation (`check_schemas`, `_validate_file`); 17 tests pass
 - V5: not started — Phase 3: semantic cross-reference checks (`check_semantics`)
 - V6: not started — top-level `validate()` orchestrator + `print_results()`
 - V7: not started — standalone CLI entry point (`uv run tab_to_pbi/validator.py <report-dir>`)
