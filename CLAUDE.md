@@ -60,7 +60,7 @@ This MVP is intentionally constrained. The goal is to produce a valid PBIR outpu
 ### Validator (in progress — plan at docs/superpowers/plans/2026-04-16-pbir-validator.md)
 - Design: approved — Option C: jsonschema against official MS schemas + semantic cross-reference checks
 - V1: complete — `jsonschema` 4.26.0 added, `.pbir_schema_cache/` added to `.gitignore`
-- V2: not started — `ValidationResult` dataclass + `load_schema()` with local cache
+- V2: complete — `ValidationResult` dataclass + `load_schema()` with local cache; `tests/test_validator.py` created, 3 tests pass
 - V3: not started — Phase 1: file presence checks (`check_presence`)
 - V4: not started — Phase 2: JSON schema validation (`check_schemas`) against MS schemas
 - V5: not started — Phase 3: semantic cross-reference checks (`check_semantics`)
