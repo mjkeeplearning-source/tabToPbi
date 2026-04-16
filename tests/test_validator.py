@@ -2,7 +2,7 @@
 import json
 from pathlib import Path
 import pytest
-from tab_to_pbi.validator import ValidationResult, load_schema, check_presence, check_schemas, check_semantics
+from tab_to_pbi.validator import ValidationResult, load_schema, check_presence, check_schemas, check_semantics, validate
 
 
 def test_validation_result_fields():
@@ -304,3 +304,67 @@ def test_semantics_visual_no_projections_warning(tmp_path):
     report_dir, _ = _setup_semantic_test(tmp_path, visual=empty_visual)
     results = check_semantics(report_dir)
     assert any("projection" in r.message.lower() and r.level == "WARNING" for r in results)
+
+
+# --- Integration tests ---
+
+_PBIR_SCHEMA = "https://developer.microsoft.com/json-schemas/fabric/item/report/definitionProperties/2.0.0/schema.json"
+_VERSION_SCHEMA_URL = "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/versionMetadata/1.0.0/schema.json"
+_REPORT_SCHEMA = "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/report/1.0.0/schema.json"
+_PAGE_SCHEMA_URL = "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/page/1.0.0/schema.json"
+
+
+def _make_fully_valid_structure(tmp_path):
+    """Full valid PBIR structure with schema-compliant JSON content."""
+    report_dir, model_dir = _make_valid_structure(tmp_path)
+
+    (report_dir / "definition.pbir").write_text(json.dumps({
+        "$schema": _PBIR_SCHEMA,
+        "version": "4.0",
+        "datasetReference": {"byPath": {"path": f"../{model_dir.name}"}},
+    }))
+    (report_dir / "definition" / "version.json").write_text(json.dumps({
+        "$schema": _VERSION_SCHEMA_URL,
+        "version": "1.0.0",
+    }))
+    (report_dir / "definition" / "report.json").write_text(json.dumps({
+        "$schema": _REPORT_SCHEMA,
+        "layoutOptimization": "None",
+        "themeCollection": {"baseTheme": {"name": "CY24SU06", "reportVersionAtImport": "5.58", "type": "SharedResources"}},
+    }))
+    (report_dir / "definition" / "pages" / "ReportSection1" / "page.json").write_text(json.dumps({
+        "$schema": _PAGE_SCHEMA_URL,
+        "name": "ReportSection1",
+        "displayName": "Sheet 1",
+        "displayOption": "FitToPage",
+    }))
+    v_path = report_dir / "definition" / "pages" / "ReportSection1" / "visuals" / "visual_1" / "visual.json"
+    v_path.parent.mkdir(parents=True, exist_ok=True)
+    v_path.write_text(json.dumps({
+        "$schema": _VISUAL_SCHEMA,
+        "name": "visual_1",
+        "position": {"x": 0, "y": 0, "z": 0, "height": 300, "width": 400, "tabOrder": 0},
+        "visual": {
+            "visualType": "tableEx",
+            "query": {"queryState": {"Values": {"projections": [
+                {"field": {"Column": {"Expression": {"SourceRef": {"Entity": "Orders"}}, "Property": "Country"}}, "queryRef": "Orders.Country", "active": True}
+            ]}}},
+            "objects": {},
+        },
+    }))
+    (model_dir / "model.bim").write_text(json.dumps(_VALID_MODEL_BIM))
+    return report_dir
+
+
+def test_validate_fully_valid(tmp_path):
+    report_dir = _make_fully_valid_structure(tmp_path)
+    results = validate(report_dir)
+    errors = [r for r in results if r.level == "ERROR"]
+    assert errors == [], f"Unexpected errors: {errors}"
+
+
+def test_validate_returns_errors_on_broken_structure(tmp_path):
+    report_dir, _ = _make_valid_structure(tmp_path)
+    (report_dir / "definition.pbir").unlink()
+    results = validate(report_dir)
+    assert any(r.level == "ERROR" for r in results)

@@ -247,3 +247,32 @@ def _extract_projections(visual: dict) -> list[dict]:
     for role in query_state.values():
         projections.extend(role.get("projections", []))
     return projections
+
+
+def validate(report_dir: Path, cache_dir: Path = _DEFAULT_CACHE) -> list[ValidationResult]:
+    """Run all three validation phases. Returns combined results."""
+    results = check_presence(report_dir)
+    if any(r.level == "ERROR" for r in results):
+        return results
+    results.extend(check_schemas(report_dir, cache_dir))
+    if not any(r.level == "ERROR" for r in results):
+        results.extend(check_semantics(report_dir))
+    return results
+
+
+def print_results(report_dir: Path, results: list[ValidationResult]) -> None:
+    """Print validation results to stdout."""
+    print(f"Validating {report_dir}...")
+    if not results:
+        print("All checks passed (0 errors, 0 warnings).")
+        return
+    errors = sum(1 for r in results if r.level == "ERROR")
+    warnings = sum(1 for r in results if r.level == "WARNING")
+    for r in results:
+        print(f"\n  {r.level:<7} {r.file}")
+        print(f"          {r.message}")
+    print(f"\n{errors} error{'s' if errors != 1 else ''}, {warnings} warning{'s' if warnings != 1 else ''}")
+    if errors:
+        print("Validation failed.")
+    else:
+        print("All checks passed (0 errors, 0 warnings)." if warnings == 0 else "Validation passed with warnings.")
