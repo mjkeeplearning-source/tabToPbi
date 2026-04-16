@@ -5,6 +5,8 @@ import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 
+import jsonschema
+
 _SCHEMA_BASE = "https://developer.microsoft.com/json-schemas/fabric/item/report"
 _DEFAULT_CACHE = Path(".pbir_schema_cache")
 
@@ -84,5 +86,62 @@ def check_presence(report_dir: Path) -> list[ValidationResult]:
             err("Missing required file: model.bim")
         if not (model_dir / "definition.pbism").exists():
             err("Missing required file: definition.pbism")
+
+    return results
+
+
+def check_schemas(report_dir: Path, cache_dir: Path = _DEFAULT_CACHE) -> list[ValidationResult]:
+    """Phase 2: validate each required JSON file against its declared MS schema."""
+    results = []
+    defn_dir = report_dir / "definition"
+
+    files_to_check = [
+        report_dir / "definition.pbir",
+        defn_dir / "version.json",
+        defn_dir / "report.json",
+    ]
+    if (defn_dir / "pages").is_dir():
+        for page_dir in (defn_dir / "pages").iterdir():
+            if page_dir.is_dir():
+                files_to_check.append(page_dir / "page.json")
+                visuals_dir = page_dir / "visuals"
+                if visuals_dir.is_dir():
+                    for visual_dir in visuals_dir.iterdir():
+                        if visual_dir.is_dir():
+                            files_to_check.append(visual_dir / "visual.json")
+
+    for fpath in files_to_check:
+        if not fpath.exists():
+            continue
+        rel = str(fpath.relative_to(report_dir.parent))
+        results.extend(_validate_file(fpath, rel, cache_dir))
+
+    return results
+
+
+def _validate_file(fpath: Path, rel: str, cache_dir: Path) -> list[ValidationResult]:
+    """Parse and schema-validate a single JSON file."""
+    results = []
+    try:
+        data = json.loads(fpath.read_text())
+    except json.JSONDecodeError as e:
+        results.append(ValidationResult("ERROR", rel, f"Invalid JSON: {e.msg} at line {e.lineno}"))
+        return results
+
+    schema_url = data.get("$schema")
+    if not schema_url:
+        results.append(ValidationResult("ERROR", rel, "missing $schema field — cannot validate"))
+        return results
+
+    try:
+        schema = load_schema(schema_url, cache_dir)
+    except Exception as e:
+        results.append(ValidationResult("WARNING", rel, f"Could not fetch schema {schema_url}: {e}"))
+        return results
+
+    validator = jsonschema.Draft7Validator(schema)
+    for error in sorted(validator.iter_errors(data), key=lambda e: str(e.path)):
+        path = " > ".join(str(p) for p in error.absolute_path) or "(root)"
+        results.append(ValidationResult("ERROR", rel, f"{error.message} (at {path})"))
 
     return results

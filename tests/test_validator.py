@@ -2,7 +2,7 @@
 import json
 from pathlib import Path
 import pytest
-from tab_to_pbi.validator import ValidationResult, load_schema, check_presence
+from tab_to_pbi.validator import ValidationResult, load_schema, check_presence, check_schemas
 
 
 def test_validation_result_fields():
@@ -117,3 +117,55 @@ def test_presence_missing_definition_pbism(tmp_path):
     (model_dir / "definition.pbism").unlink()
     errors = check_presence(report_dir)
     assert any(r.level == "ERROR" and "definition.pbism" in r.message for r in errors)
+
+
+# --- Schema validation tests ---
+
+_VERSION_SCHEMA = "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/versionMetadata/1.0.0/schema.json"
+_PAGE_SCHEMA = "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/page/1.0.0/schema.json"
+
+
+def test_schema_valid_version_json(tmp_path):
+    report_dir, _ = _make_valid_structure(tmp_path)
+    (report_dir / "definition" / "version.json").write_text(json.dumps({
+        "$schema": _VERSION_SCHEMA,
+        "version": "1.0.0",
+    }))
+    errors = check_schemas(report_dir)
+    version_errors = [r for r in errors if "version.json" in r.file]
+    assert version_errors == []
+
+
+def test_schema_invalid_version_json_missing_required(tmp_path):
+    report_dir, _ = _make_valid_structure(tmp_path)
+    (report_dir / "definition" / "version.json").write_text(json.dumps({
+        "$schema": _VERSION_SCHEMA,
+    }))
+    errors = check_schemas(report_dir)
+    assert any("version.json" in r.file and r.level == "ERROR" for r in errors)
+
+
+def test_schema_invalid_json_syntax(tmp_path):
+    report_dir, _ = _make_valid_structure(tmp_path)
+    (report_dir / "definition" / "version.json").write_text("not json {{{")
+    errors = check_schemas(report_dir)
+    assert any("version.json" in r.file and "Invalid JSON" in r.message for r in errors)
+
+
+def test_schema_page_missing_display_option(tmp_path):
+    report_dir, _ = _make_valid_structure(tmp_path)
+    (report_dir / "definition" / "pages" / "ReportSection1" / "page.json").write_text(json.dumps({
+        "$schema": _PAGE_SCHEMA,
+        "name": "ReportSection1",
+        "displayName": "Sheet 1",
+        # missing displayOption
+    }))
+    errors = check_schemas(report_dir)
+    assert any("page.json" in r.file and r.level == "ERROR" for r in errors)
+
+
+def test_schema_no_schema_field(tmp_path):
+    report_dir, _ = _make_valid_structure(tmp_path)
+    (report_dir / "definition" / "version.json").write_text(json.dumps({"version": "1.0.0"}))
+    errors = check_schemas(report_dir)
+    assert any("version.json" in r.file and "missing $schema" in r.message for r in errors)
