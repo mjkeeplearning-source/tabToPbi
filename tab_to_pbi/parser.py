@@ -32,6 +32,23 @@ def _parse_twbx(path: Path) -> ET.Element:
             return ET.parse(f).getroot()
 
 
+def extract_twbx_data(path: Path, dest_dir: Path) -> Path:
+    """Extract embedded data files from a .twbx into dest_dir (flat layout).
+
+    Returns dest_dir. Only non-.twb entries are extracted; directory structure
+    is flattened so each file lands directly in dest_dir.
+    """
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(path) as zf:
+        for name in zf.namelist():
+            if name.endswith(".twb") or name.endswith("/"):
+                continue
+            filename = Path(name).name
+            dest = dest_dir / filename
+            dest.write_bytes(zf.read(name))
+    return dest_dir
+
+
 def _parse_datasources(root: ET.Element) -> list[dict]:
     """Extract datasource info from all non-builtin <datasource> elements."""
     results = []

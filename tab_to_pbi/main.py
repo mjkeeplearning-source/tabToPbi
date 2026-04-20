@@ -6,7 +6,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from tab_to_pbi.parser import parse
+from tab_to_pbi.parser import parse, extract_twbx_data
 from tab_to_pbi.transformer import transform
 from tab_to_pbi.generator import generate
 from tab_to_pbi.translator import translate_calc_fields_in_transformed
@@ -28,7 +28,12 @@ def main():
     output_dir = Path("output")
     output_dir.mkdir(exist_ok=True)
 
-    data_dir = input_path.parent.parent / "data"
+    if input_path.suffix.lower() == ".twbx":
+        data_dir = output_dir / f"{input_path.stem}_data"
+        extract_twbx_data(input_path, data_dir)
+        print(f"Extracted data: {data_dir}")
+    else:
+        data_dir = input_path.parent.parent / "data"
 
     workbook = parse(input_path)
     _dump(workbook, output_dir / f"{input_path.stem}.parsed.json")

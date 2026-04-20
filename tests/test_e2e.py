@@ -17,9 +17,9 @@ SIMPLE_JOIN = Path("input/simple_join.twb")
 SUPERSTORE = Path("input/Superstore.twb")
 
 
-def _mock_translate(formula: str, table_name: str) -> tuple[str, str]:
-    """Deterministic stand-in for Claude: translate simple formulas, reject LOD/Parameters."""
-    if any(marker in formula for marker in ("{fixed", "[Parameters].", "[federated.", "INDEX()")):
+def _mock_translate(formula: str, table_name: str, columns=None) -> tuple[str, str]:
+    """Deterministic stand-in for Claude: translate simple formulas, reject Parameters/cross-ds."""
+    if any(marker in formula for marker in ("[Parameters].", "[federated.", "INDEX()")):
         return ("", "unsupported")
     return (f"MOCK_DAX({table_name})", "translated")
 

@@ -17,7 +17,14 @@ Rules:
 - Replace CASE/WHEN/THEN/ELSE/END → SWITCH(TRUE(), ...).
 - Replace string literals as-is.
 - For simple field references like [Field] → 'TableName'[Field].
-- If the formula uses Tableau LOD expressions ({fixed}, {include}, {exclude}), Parameters ([Parameters].*), cross-datasource references ([federated.*]), table calculations (INDEX(), RANK(), RUNNING_SUM()), or any construct with no DAX equivalent, return exactly: UNSUPPORTED
+
+LOD expressions:
+- {FIXED [d1], [d2] : AGG([m])} → CALCULATE(AGG('TableName'[m]), ALLEXCEPT('TableName', 'TableName'[d1], 'TableName'[d2]))
+- {FIXED : AGG([m])} (no dims) → CALCULATE(AGG('TableName'[m]), ALL('TableName'))
+- {INCLUDE [d] : AGG([m])} → CALCULATE(AGG('TableName'[m]), VALUES('TableName'[d]))
+- {EXCLUDE [d] : AGG([m])} → CALCULATE(AGG('TableName'[m]), ALL('TableName'[d]))
+
+- If the formula uses Parameters ([Parameters].*), cross-datasource references ([federated.*]), or table calculations (INDEX(), SIZE()), return exactly: UNSUPPORTED
 - Do not add DEFINE MEASURE or variable wrappers unless needed."""
 
 
@@ -28,12 +35,13 @@ def _client() -> anthropic.Anthropic:
     return _CLIENT
 
 
-def translate_formula(formula: str, table_name: str) -> tuple[str, str]:
+def translate_formula(formula: str, table_name: str, columns: list[str] | None = None) -> tuple[str, str]:
     """Translate a Tableau formula to DAX.
 
     Returns (dax_expression, status) where status is 'translated' or 'unsupported'.
     """
-    prompt = f"Table name: {table_name}\nTableau formula: {formula}"
+    col_hint = f"\nAvailable columns: {', '.join(columns)}" if columns else ""
+    prompt = f"Table name: {table_name}{col_hint}\nTableau formula: {formula}"
     msg = _client().messages.create(
         model="claude-opus-4-7",
         max_tokens=256,
@@ -53,11 +61,17 @@ def translate_calc_fields_in_transformed(transformed: dict) -> dict:
     if not calc_fields:
         return transformed
 
+    # Build column list per table for context
+    columns_by_table: dict[str, list[str]] = {}
+    for t in transformed.get("tables", []):
+        columns_by_table[t["name"]] = [c["name"] for c in t.get("columns", [])]
+
     measures = {(m["table"], m["name"]): m for m in transformed.get("measures", [])}
     updated_cfs = []
     for cf in calc_fields:
         table_name = cf.get("table") or (transformed.get("tables") or [{}])[0].get("name", "")
-        dax, status = translate_formula(cf["formula"], table_name)
+        columns = columns_by_table.get(table_name)
+        dax, status = translate_formula(cf["formula"], table_name, columns)
         updated_cf = {**cf, "status": status}
         if status == "translated" and dax:
             updated_cf["dax"] = dax
