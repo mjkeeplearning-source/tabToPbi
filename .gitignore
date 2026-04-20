@@ -5,3 +5,4 @@ __pycache__/
 .python-version
 output/
 .pbir_schema_cache/
+data/

@@ -20,7 +20,7 @@
       <connection class='federated'>
         <named-connections>
           <named-connection caption='sample_-_superstore' name='excel-direct.1merhzj0ybeue119qust80mi0016'>
-            <connection class='excel-direct' cleaning='no' compat='no' dataRefreshTime='' filename='/Users/mj/Downloads/sample_-_superstore.xls' interpretationMode='0' password='' server='' validate='no' />
+            <connection class='excel-direct' cleaning='no' compat='no' dataRefreshTime='' filename='C:\vibe_coding\tabToPbi\data\sample_-_superstore.xls' interpretationMode='0' password='' server='' validate='no' />
           </named-connection>
         </named-connections>
         <relation connection='excel-direct.1merhzj0ybeue119qust80mi0016' name='Orders' table='[Orders$]' type='table'>

@@ -48,14 +48,20 @@ This MVP is intentionally constrained. The goal is to produce a valid PBIR outpu
 - Storage mode for MVP: Import only
 - MVP success criteria: generated PBIR opens successfully in Power BI Desktop
 
-### Status (2026-04-16)
+### Status (2026-04-20)
 - Planning: complete
 - T1: complete — uv project initialised, folder structure created, stubs for all modules, CLI smoke-tested end to end
 - T2: complete — `input/simple.twb` added (Tableau Superstore sample, Excel connection, single Orders table, one sheet "Sheet 1", no calculated fields, no joins)
 - T3: complete — `parser.py` implemented; parses datasource (connection type, filename, table, 21 columns), worksheet (name, datasource ref, rows/cols shelf fields, mark type), calculated fields, joins, and unsupported pattern detection; `.twbx` unzip supported; validated against `simple.twb`
 - T4: complete — `generator.py` generates PBIR SemanticModel (`model.bim` + `definition.pbism`); `transformer.py` maps datasources to TMSL tables with Power Query M expressions
 - T5: complete — `generator.py` fixed to write proper PBIR format: `definition/` subfolder with `version.json`, `report.json`, `pages/`; all files include `$schema` and correct required fields per MS spec; `transformer.py` maps sheets to visual descriptors
-- T6: not started — verify PBIR opens in Power BI Desktop (blocked on validator first)
+- T6: complete — PBIR opens successfully in Power BI Desktop 2.152 with data loaded and visual rendered
+- T7: complete — multi-table PostgreSQL datasource parsed; connection details (server, dbname, port), tables (schema + name), column→table mapping, and logical-layer relationships all extracted; `postgres` added to supported connection types
+- T8: complete — Tableau `object-graph` relationships parsed; transformer produces one PBI table per physical table with correct field-to-table binding; relationships written to `model.tmdl`; end-to-end validated against `input/simple_join.twb`; 30 tests passing
+- T9: complete — calculated fields extracted with `name`, `internal_name`, `formula`, `datatype`, `role`; `calc_name_map` built per datasource; shelf refs to `Calculation_xxx` resolved and skipped from visual projections; recorded in `migration_report.json` as `pending_translation`; 13 dedicated unit tests added (`tests/test_t9_calculated_fields.py`); 43 tests passing; all 3 input workbooks validated end-to-end
+- T10: complete — worksheet filters extracted from all sheets; `_parse_filters(ws)` added to `parser.py`; parses `categorical` and `quantitative` filter classes; extracts field name from `[ds_ref].[prefix:name:suffix]` column attribute; includes `min`/`max` for quantitative (date/range) filters; skips Tableau virtual fields; `filters` key added to each sheet dict; transformer passes filters to visual descriptors and records `sheet_filters` in migration report; 10 dedicated unit tests added (`tests/test_t10_filters.py`); validated against all 3 workbooks (Superstore has categorical + quantitative filters; simple has none); 65 tests passing total
+- T13: complete — new `translator.py` calls Claude (`claude-opus-4-7`) per calc field to translate Tableau formula → DAX; `translate_calc_fields_in_transformed()` called from `main.py` after `transform()`; translated measures written to TMDL alongside shelf-derived measures; migration report records `status: translated` + `dax` for each translated field, `status: unsupported` for unsupported ones; validated against `input/Superstore.twb` (21 calc fields: 10 translated, 11 unsupported); 0 errors end-to-end; parser fix: Tableau virtual fields (`:Measure Names`, `:Measure Values`) now skipped from shelf parsing
+- E2E tests: complete — `tests/test_e2e.py` added with 15 tests covering T9 and T13 end-to-end using real `.twb` files and mocked Claude translation (no API calls); verifies pending fields stay out of TMDL, translated measures land in TMDL, unsupported stay out, validator passes 0 errors for all 3 workbooks (simple, simple_join, Superstore); 65 tests passing total
 
 ### Validator (complete — plan at docs/superpowers/plans/2026-04-16-pbir-validator.md)
 - Design: approved — Option C: jsonschema against official MS schemas + semantic cross-reference checks
@@ -67,6 +73,37 @@ This MVP is intentionally constrained. The goal is to produce a valid PBIR outpu
 - V6: complete — top-level `validate()` orchestrator + `print_results()`; 27 tests pass
 - V7: complete — standalone CLI entry point; verified against `output/simple.Report`, exits 0 with 1 expected warning
 - V8: complete — `validate()` integrated into `main.py` pipeline; exits 1 on errors; 27 tests pass
+- V9: complete — updated for PBI Desktop 2.152 format: `pages.json` presence check added; `definition.pbir` removed from schema validation (no `$schema` in new format); schema versions updated
+
+### UI Test Layer (complete — 2026-04-19)
+- Tool: `pywinauto` + `Pillow` (Windows UI Automation, no external driver/service needed)
+- PBI Desktop: Store app at `C:\Program Files\WindowsApps\Microsoft.MicrosoftPowerBIDesktop_2.152.1279.0_x64__8wekyb3d8bbwe\bin\PBIDesktop.exe`
+- Test file: `tests/test_pbi_desktop.py` — 3 tests, all passing
+- L1 (open without errors): complete — launches PBI Desktop, waits for main window, asserts no error dialog, saves screenshot to `output/test_screenshots/`
+- L3 (visual type correct): complete — asserts `visualType` in each generated `visual.json` matches expected type from `transformed.json`; saves screenshot for human review
+- Key finding: PBI Desktop renders visuals inside a WebView (Chromium), so visual types are NOT exposed in the native UIA accessibility tree. Visual type validation is done against the generated PBIR files instead, which is the authoritative pipeline output.
+
+### Visual & Aggregation Mapping (complete — 2026-04-19)
+- Debug JSON dumps added to pipeline: `output/<stem>.parsed.json` and `output/<stem>.transformed.json` written on every run for inspection
+- Visual type inference: `parser.py` now preserves Tableau shelf field prefix as `{name, continuous, aggregation}` dict; `transformer.py` infers PBI visual type from shelf layout when Tableau mark is `Automatic`
+- Aggregation extraction: Tableau prefix codes (`ctd`, `sum`, `avg`, `cnt`, etc.) decoded to DAX functions; aggregated shelf fields auto-generate named DAX measures (e.g. `DISTINCTCOUNT('Table'[Product ID])`) written to TMDL
+- Role-based field binding: `generator.py` assigns fields to correct PBI `queryState` roles (`Category`/`Y` for bar/column/line; `Values` for table); uses `Measure` projection type for aggregated fields and `Column` for dimensions
+- Tableau → PBI visual type map: `Bar`→`barChart`, `Column`→`columnChart`, `Line`→`lineChart`, `Text`/`Automatic`→`tableEx`
+- Tableau aggregation → DAX map: `ctd`/`cntd`→`DISTINCTCOUNT`, `cnt`→`COUNTA`, `sum`→`SUM`, `avg`→`AVERAGE`, `min`→`MIN`, `max`→`MAX`, `median`→`MEDIAN`
+
+### Input workbooks (as of 2026-04-19)
+- `input/simple.twb` — Excel, 1 table (Orders), no joins, no calc fields
+- `input/simple_join.twb` — PostgreSQL, 2 tables (orders + returns), 1 relationship, 2 calc fields (DeltaOrder, Margin)
+- `input/simple_join_calculated_line.twb` — PostgreSQL, 3 tables (people + orders + returns), no calc fields; confirms multi-table path generalises beyond 2 tables
+- `input/Superstore.twb` — Excel, 3 datasources (Sales Target, Sample - Superstore, Sales Commission), 21 calc fields; primary T13 validation workbook
+
+### T7 + T8: Multi-table datasources & relationships (complete — 2026-04-19)
+- Input: `input/simple_join.twb` — PostgreSQL connection (AWS RDS), two tables (`superstore.orders`, `superstore.returns`), Tableau logical-layer relationship on `order_id`
+- **Parser**: extracts PostgreSQL connection details (server, dbname, port); parses multiple tables from `collection`-type relation; column→source_table mapping from `<cols><map>` + `<metadata-records>`; relationship extracted from `<object-graph>`; `postgres` added to supported connection types
+- **Transformer**: multi-table datasources produce one PBI table per physical table; field→table lookup for correct per-field `SourceRef.Entity` in visuals; DAX measures scoped to their source table; relationships passed through to output
+- **Generator**: PostgreSQL Power Query M expression added (`PostgreSQL.Database(...)`); relationships written to `model.tmdl` as `relationship '...' fromColumn/toColumn`; per-field entity references in visual.json use correct table
+- **Validator**: `_find_model_dir` fixed to match SemanticModel by stem (not first glob) — critical for multi-output directories
+- **Tests**: 30 passing (up from 27); test fixtures updated to include `pages.json`; stale assertions corrected
 
 ---
 
@@ -115,19 +152,39 @@ input/foo.twb
 
 ```
 output/MyReport.Report/
-├── definition.pbir
-├── report.json
-└── pages/
-    └── ReportSection<id>/
-        ├── page.json
-        └── visuals/
-            └── <visual-id>/
-                └── visual.json
+├── definition.pbir                  ← no $schema field (PBI Desktop 2.152+)
+└── definition/
+    ├── version.json                 ← version: "2.0.0"
+    ├── report.json                  ← schema 3.2.0
+    └── pages/
+        ├── pages.json               ← REQUIRED: pageOrder + activePageName manifest
+        └── ReportSection1/
+            ├── page.json            ← schema 2.1.0
+            └── visuals/
+                └── visual_1/
+                    └── visual.json
 
 output/MyReport.SemanticModel/
-├── model.bim
-└── definition.pbism
+├── definition.pbism
+└── definition/
+    ├── database.tmdl
+    ├── model.tmdl
+    └── tables/
+        └── <TableName>.tmdl
 ```
+
+### PBI Desktop 2.152 Compatibility Notes
+
+These were discovered through T6 verification against PBI Desktop 2.152 (March 2026):
+
+- **`pages.json` is required** — `definition/pages/pages.json` must exist with `pageOrder` and `activePageName`. Without it, PBI Desktop creates no explorations and throws a JS rendering crash (`Cannot read properties of undefined (reading 'visualContainers')`).
+- **Schema versions have advanced** — `report/3.2.0`, `page/2.1.0` (not 1.0.0). Microsoft does not publish these schemas publicly, so the validator warns rather than validates them.
+- **`definition.pbir` has no `$schema` field** in the new format.
+- **`version.json` version is `"2.0.0"`**, not `"1.0.0"`.
+- **`report.json` format changed**: `reportVersionAtImport` is now an object `{"visual":..., "report":..., "page":...}`; `layoutOptimization` removed; `settings` block added.
+- **TMDL format** (`PBI_tmdlInDataset` preview feature) must be enabled in PBI Desktop for TMDL semantic models to load. TMSL (`model.bim`) is the fallback for older versions.
+- **Do not save in PBI Desktop** during testing — it will overwrite the generated files. If accidentally saved, delete `output/` and regenerate.
+- **Data file must be `.xlsx`** — PBI Desktop 64-bit cannot read `.xls` without the ACE OLEDB 12.0 driver. Generator prefers `.xlsx` over `.xls` when both exist.
 
 ---
 
@@ -138,21 +195,21 @@ output/MyReport.SemanticModel/
 - T2: Add real Tableau workbooks to `input/` for development and validation
 
 **Phase 2 — Vertical Slice**
-- T3: Parse one simple `.twb` — one datasource, one sheet, one supported visual
-- T4: Generate the smallest valid PBIR semantic model
-- T5: Generate one report page and one visual
-- T6: Verify the PBIR output opens in Power BI Desktop
+- T3: ✓ Parse one simple `.twb` — one datasource, one sheet, one supported visual
+- T4: ✓ Generate the smallest valid PBIR semantic model
+- T5: ✓ Generate one report page and one visual
+- T6: ✓ Verify the PBIR output opens in Power BI Desktop
 
 **Phase 3 — Expand Parsing**
-- T7: Extract data sources (connection type, server, database, table info)
-- T8: Extract simple joins (inner/left joins with explicit keys only)
-- T9: Extract calculated fields (name + Tableau formula)
-- T10: Extract sheets (name, viz type, filters, dimensions, measures used)
+- T7: ✓ Extract data sources (connection type, server, database, table info) — PostgreSQL multi-table supported
+- T8: ✓ Extract simple joins / relationships (Tableau logical-layer `object-graph` relationships with explicit key columns)
+- T9: ✓ Extract calculated fields — name, internal Tableau name, formula, datatype, role; shelf refs to `Calculation_xxx` resolved via `calc_name_map`; pending fields skipped from visual projections; recorded in `migration_report.json` as `status: pending_translation`; 13 unit tests; all 3 input workbooks pass end-to-end
+- T10: ✓ Extract sheets (name, viz type, filters, dimensions, measures used)
 - T11: Handle `.twbx` (unzip → `.twb` + embedded data files)
 - T12: Detect and log unsupported patterns (data blending, custom SQL, live connections, complex joins)
 
 **Phase 4 — AI Transform**
-- T13: Translate supported calculated fields → DAX using Claude
+- T13: ✓ Translate supported calculated fields → DAX using Claude (`claude-opus-4-7`); `translator.py` module; called from `main.py` after `transform()`; translated measures written to TMDL; Superstore.twb: 10/21 translated, 11 unsupported (LOD, Parameters, cross-datasource, table calcs); 0 errors end-to-end
 - T14: Map supported Tableau viz types → Power BI visual type + config using deterministic rules
 
 **Phase 5 — Generate PBIR**

@@ -37,28 +37,32 @@ def _parse_datasources(root: ET.Element) -> list[dict]:
     results = []
     for ds in root.findall("./datasources/datasource"):
         name = ds.get("name", "")
-        # Skip Tableau built-in datasources (Parameters, etc.)
         if name in ("Parameters",) or not name:
             continue
 
         connection = _parse_connection(ds)
-        columns = _parse_columns(ds)
+        tables = _parse_tables(ds, connection)
+        columns = _parse_columns(ds, connection)
         calculated_fields = _parse_calculated_fields(ds)
-        joins = _parse_joins(ds)
+        relationships = _parse_relationships(ds)
+        # internal Tableau name → display caption for shelf resolution
+        calc_name_map = {cf["internal_name"]: cf["name"] for cf in calculated_fields}
 
         results.append({
             "name": name,
             "caption": ds.get("caption", name),
             "connection": connection,
+            "tables": tables,
             "columns": columns,
             "calculated_fields": calculated_fields,
-            "joins": joins,
+            "calc_name_map": calc_name_map,
+            "relationships": relationships,
         })
     return results
 
 
 def _parse_connection(ds: ET.Element) -> dict:
-    """Extract connection details: type, filename/server, table."""
+    """Extract connection details."""
     conn = ds.find("connection")
     if conn is None:
         return {}
@@ -66,22 +70,32 @@ def _parse_connection(ds: ET.Element) -> dict:
     conn_class = conn.get("class", "")
 
     if conn_class == "federated":
-        # Unwrap to the named real connection
         named = conn.find("./named-connections/named-connection/connection")
         if named is not None:
             actual_class = named.get("class", "")
             filename = named.get("filename", "")
             server = named.get("server", "")
+            dbname = named.get("dbname", "")
+            port = named.get("port", "")
+            username = named.get("username", "")
         else:
-            actual_class = filename = server = ""
+            actual_class = filename = server = dbname = port = username = ""
 
         relation = conn.find("relation")
-        table = relation.get("table", "").strip("[]") if relation is not None else ""
-        table_name = relation.get("name", "") if relation is not None else ""
+        rel_type = relation.get("type", "") if relation is not None else ""
+        # For single-table federated (non-collection)
+        table = ""
+        table_name = ""
+        if relation is not None and rel_type != "collection":
+            table = relation.get("table", "").strip("[]")
+            table_name = relation.get("name", "")
     else:
         actual_class = conn_class
         filename = conn.get("filename", "")
         server = conn.get("server", "")
+        dbname = conn.get("dbname", "")
+        port = conn.get("port", "")
+        username = conn.get("username", "")
         relation = conn.find("relation")
         table = relation.get("table", "").strip("[]") if relation is not None else ""
         table_name = relation.get("name", "") if relation is not None else ""
@@ -90,45 +104,146 @@ def _parse_connection(ds: ET.Element) -> dict:
         "type": actual_class,
         "filename": filename,
         "server": server,
+        "dbname": dbname,
+        "port": port,
+        "username": username,
         "table": table,
         "table_name": table_name,
     }
 
 
-def _parse_columns(ds: ET.Element) -> list[dict]:
-    """Extract column definitions from the relation inside the connection."""
+def _parse_tables(ds: ET.Element, connection: dict) -> list[dict]:
+    """Extract physical table list. For collection relations returns all child tables."""
+    conn = ds.find("connection")
+    if conn is None:
+        return []
+
+    relation = conn.find("relation")
+    if relation is None:
+        return []
+
+    if relation.get("type") == "collection":
+        tables = []
+        for child in relation.findall("relation[@type='table']"):
+            raw_table = child.get("table", "")  # e.g. [superstore].[orders]
+            parts = raw_table.strip("[]").split("].[")
+            schema = parts[0] if len(parts) == 2 else ""
+            table = parts[1] if len(parts) == 2 else raw_table.strip("[]")
+            tables.append({
+                "name": child.get("name", table),
+                "schema": schema,
+                "table": table,
+            })
+        return tables
+
+    # Single table
+    table_name = connection.get("table_name") or connection.get("table", "")
+    if table_name:
+        return [{"name": table_name, "schema": "", "table": table_name}]
+    return []
+
+
+def _parse_columns(ds: ET.Element, connection: dict) -> list[dict]:
+    """Extract columns with source_table info.
+
+    For collection (multi-table): uses metadata-records (has parent-name) and
+    cols/map to build source_table assignment.
+    For single-table: uses relation/columns/column elements.
+    """
+    conn = ds.find("connection")
+    if conn is None:
+        return []
+
+    relation = conn.find("relation")
+    if relation is not None and relation.get("type") == "collection":
+        # Build logical-name → source_table from cols/map
+        col_table: dict[str, str] = {}
+        for m in conn.findall("./cols/map"):
+            key = m.get("key", "").strip("[]")          # e.g. "category"
+            value = m.get("value", "")                   # e.g. "[orders].[category]"
+            parts = value.strip("[]").split("].[")
+            if len(parts) == 2:
+                col_table[key] = parts[0]                # "orders"
+
+        # Build columns from metadata-records
+        cols = []
+        for mr in conn.findall("./metadata-records/metadata-record[@class='column']"):
+            local_name = mr.findtext("local-name", "").strip("[]")
+            local_type = mr.findtext("local-type", "string")
+            source_table = col_table.get(local_name, "")
+            if local_name:
+                cols.append({
+                    "name": local_name,
+                    "datatype": local_type,
+                    "source_table": source_table,
+                })
+        return cols
+
+    # Single-table fallback
     cols = []
     for col in ds.findall("./connection/relation/columns/column"):
         cols.append({
             "name": col.get("name", ""),
             "datatype": col.get("datatype", ""),
+            "source_table": connection.get("table_name", ""),
         })
     return cols
 
 
 def _parse_calculated_fields(ds: ET.Element) -> list[dict]:
-    """Extract calculated field definitions."""
+    """Extract calculated field definitions with name, formula, datatype, role, and internal_name."""
     fields = []
     for col in ds.findall("./column"):
         formula = col.find("calculation")
         if formula is not None:
+            internal_name = col.get("name", "").strip("[]")
             fields.append({
-                "name": col.get("caption", col.get("name", "")),
+                "name": col.get("caption", internal_name),
+                "internal_name": internal_name,
                 "formula": formula.get("formula", ""),
+                "datatype": col.get("datatype", ""),
+                "role": col.get("role", ""),
             })
     return fields
 
 
-def _parse_joins(ds: ET.Element) -> list[dict]:
-    """Extract join definitions (inner/left with explicit keys)."""
-    joins = []
-    for rel in ds.findall("./connection/relation[@type='join']"):
-        joins.append({
-            "type": rel.get("join", ""),
-            "left": rel.get("left", ""),
-            "right": rel.get("right", ""),
+def _parse_relationships(ds: ET.Element) -> list[dict]:
+    """Extract relationships from object-graph (Tableau logical layer)."""
+    rels = []
+    for rel in ds.findall("./object-graph/relationships/relationship"):
+        expr = rel.find("expression[@op='=']")
+        if expr is None:
+            continue
+        exprs = expr.findall("expression")
+        if len(exprs) != 2:
+            continue
+        left_logical = exprs[0].get("op", "").strip("[]")
+        right_logical = exprs[1].get("op", "").strip("[]")
+
+        conn = ds.find("connection")
+        col_table: dict[str, str] = {}
+        col_physical: dict[str, str] = {}
+        if conn is not None:
+            for m in conn.findall("./cols/map"):
+                key = m.get("key", "").strip("[]")
+                value = m.get("value", "")
+                parts = value.strip("[]").split("].[")
+                if len(parts) == 2:
+                    col_table[key] = parts[0]
+                    col_physical[key] = parts[1]
+
+        left_table = col_table.get(left_logical, "")
+        left_col = col_physical.get(left_logical, left_logical)
+        right_table = col_table.get(right_logical, "")
+        right_col = col_physical.get(right_logical, right_logical)
+
+        rels.append({
+            "from_table": left_table,
+            "from_column": left_col,
+            "to_table": right_table,
+            "to_column": right_col,
         })
-    return joins
+    return rels
 
 
 def _parse_sheets(root: ET.Element) -> list[dict]:
@@ -149,25 +264,74 @@ def _parse_sheets(root: ET.Element) -> list[dict]:
             "rows": _parse_shelf_fields(rows_text),
             "cols": _parse_shelf_fields(cols_text),
             "mark_type": mark_type,
+            "filters": _parse_filters(ws),
         })
     return sheets
 
 
-def _parse_shelf_fields(shelf: str) -> list[str]:
-    """Parse shelf string like '[ds].[field]' into a list of field references."""
+def _parse_filters(ws: ET.Element) -> list[dict]:
+    """Extract worksheet-level filters from a <worksheet> element."""
+    filters = []
+    for f in ws.iter("filter"):
+        col = f.get("column", "")
+        cls = f.get("class", "")
+        if "].[" in col:
+            field_ref = col.split("].[", 1)[1].rstrip("]")
+        else:
+            field_ref = col.strip("[]")
+        segments = field_ref.split(":", 2)
+        name = segments[1] if len(segments) == 3 else field_ref
+        if name.startswith(":"):
+            continue  # skip Tableau virtual fields
+        entry: dict = {"field": name, "class": cls}
+        if cls == "quantitative":
+            entry["min"] = f.findtext("min", "")
+            entry["max"] = f.findtext("max", "")
+        filters.append(entry)
+    return filters
+
+
+_DISCRETE_PREFIXES = {"none", "yr", "qr", "mn", "wk", "dt", "hr", "mt", "sg"}
+
+_AGG_MAP = {
+    "ctd": "DISTINCTCOUNT",
+    "cntd": "DISTINCTCOUNT",
+    "cnt": "COUNTA",
+    "sum": "SUM",
+    "avg": "AVERAGE",
+    "min": "MIN",
+    "max": "MAX",
+    "median": "MEDIAN",
+}
+
+
+def _parse_shelf_fields(shelf: str) -> list[dict]:
+    """Parse shelf string into list of {name, continuous, aggregation} dicts."""
     if not shelf.strip():
         return []
-    # Split on commas (multiple fields) then strip ds prefix
     parts = [p.strip() for p in shelf.split(",")]
     fields = []
     for part in parts:
-        # Format: [datasource].[field_ref]
         if "].[" in part:
             field_ref = part.split("].[", 1)[1].rstrip("]")
         else:
             field_ref = part.strip("[]")
-        fields.append(field_ref)
+        segments = field_ref.split(":", 2)
+        if len(segments) == 3:
+            prefix, name, _ = segments
+            continuous = prefix not in _DISCRETE_PREFIXES
+            aggregation = _AGG_MAP.get(prefix)
+        else:
+            name = field_ref
+            continuous = False
+            aggregation = None
+        if name.startswith(":"):
+            continue  # Tableau virtual field (e.g. :Measure Names, :Measure Values)
+        fields.append({"name": name, "continuous": continuous, "aggregation": aggregation})
     return fields
+
+
+_SUPPORTED_CONN_TYPES = {"excel-direct", "textscan", "csv", "postgres", ""}
 
 
 def _detect_unsupported(root: ET.Element, datasources: list[dict]) -> list[str]:
@@ -175,20 +339,12 @@ def _detect_unsupported(root: ET.Element, datasources: list[dict]) -> list[str]:
     issues = []
 
     for ds in datasources:
-        conn = ds.get("connection", {})
-        conn_type = conn.get("type", "")
-
-        if conn_type not in ("excel-direct", "textscan", "csv", ""):
+        conn_type = ds.get("connection", {}).get("type", "")
+        if conn_type not in _SUPPORTED_CONN_TYPES:
             issues.append(
                 f"Datasource '{ds['name']}': unsupported connection type '{conn_type}'"
             )
 
-        if ds.get("joins"):
-            issues.append(
-                f"Datasource '{ds['name']}': joins detected (not yet supported)"
-            )
-
-    # Detect custom SQL
     for custom_sql in root.iter("relation"):
         if custom_sql.get("type") == "text":
             issues.append("Custom SQL relation detected (not supported)")

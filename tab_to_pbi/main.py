@@ -9,8 +9,14 @@ from dotenv import load_dotenv
 from tab_to_pbi.parser import parse
 from tab_to_pbi.transformer import transform
 from tab_to_pbi.generator import generate
+from tab_to_pbi.translator import translate_calc_fields_in_transformed
 
 load_dotenv()
+
+
+def _dump(data: dict, path: Path) -> None:
+    path.write_text(json.dumps(data, indent=2, default=str))
+    print(f"Debug: {path}")
 
 
 def main():
@@ -22,9 +28,16 @@ def main():
     output_dir = Path("output")
     output_dir.mkdir(exist_ok=True)
 
+    data_dir = input_path.parent.parent / "data"
+
     workbook = parse(input_path)
+    _dump(workbook, output_dir / f"{input_path.stem}.parsed.json")
+
     transformed = transform(workbook)
-    report_path = generate(transformed, output_dir)
+    transformed = translate_calc_fields_in_transformed(transformed)
+    _dump(transformed, output_dir / f"{input_path.stem}.transformed.json")
+
+    report_path = generate(transformed, output_dir, data_dir)
 
     report_file = output_dir / f"{input_path.stem}.migration_report.json"
     report_file.write_text(json.dumps(transformed.get("report", {}), indent=2))

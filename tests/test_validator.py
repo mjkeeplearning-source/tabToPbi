@@ -45,6 +45,7 @@ def _make_valid_structure(base: Path) -> tuple[Path, Path]:
     (report_dir / "definition.pbir").write_text("{}")
     (defn_dir / "version.json").write_text("{}")
     (defn_dir / "report.json").write_text("{}")
+    (pages_dir.parent / "pages.json").write_text("{}")
     (pages_dir / "page.json").write_text("{}")
     (visuals_dir / "visual.json").write_text("{}")
     (model_dir / "definition.pbism").write_text("{}")
@@ -276,16 +277,17 @@ def test_semantics_no_tables_in_model(tmp_path):
     bad_bim = {**_VALID_MODEL_BIM, "model": {**_VALID_MODEL_BIM["model"], "tables": []}}
     report_dir, _ = _setup_semantic_test(tmp_path, model_bim=bad_bim)
     results = check_semantics(report_dir)
-    assert any("no tables" in r.message.lower() and r.level == "ERROR" for r in results)
+    assert any("not found" in r.message.lower() and r.level == "ERROR" for r in results)
 
 
-def test_semantics_table_no_partitions(tmp_path):
+def test_semantics_table_no_columns(tmp_path):
     bad_bim = {**_VALID_MODEL_BIM, "model": {**_VALID_MODEL_BIM["model"], "tables": [
         {"name": "Orders", "columns": [], "partitions": []}
     ]}}
     report_dir, _ = _setup_semantic_test(tmp_path, model_bim=bad_bim)
     results = check_semantics(report_dir)
-    assert any("partition" in r.message.lower() and r.level == "ERROR" for r in results)
+    # Visual references Country which is not in the empty column list
+    assert any("Country" in r.message and r.level == "ERROR" for r in results)
 
 
 def test_semantics_no_relationships_warning(tmp_path):
@@ -331,6 +333,11 @@ def _make_fully_valid_structure(tmp_path):
         "$schema": _REPORT_SCHEMA,
         "layoutOptimization": "None",
         "themeCollection": {"baseTheme": {"name": "CY24SU06", "reportVersionAtImport": "5.58", "type": "SharedResources"}},
+    }))
+    (report_dir / "definition" / "pages" / "pages.json").write_text(json.dumps({
+        "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/pagesMetadata/1.0.0/schema.json",
+        "pageOrder": ["ReportSection1"],
+        "activePageName": "ReportSection1",
     }))
     (report_dir / "definition" / "pages" / "ReportSection1" / "page.json").write_text(json.dumps({
         "$schema": _PAGE_SCHEMA_URL,

@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Program Files/**)",
+      "Read(//c/Program Files \\(x86\\)/**)",
+      "Bash(dir C:\\\\vibe_coding\\\\tabToPbi\\\\output *)",
+      "Bash(uv run *)",
+      "Bash(~/.local/bin/uv run *)",
+      "Bash(dir *)",
+      "Bash(start *)",
+      "Bash('~/.local/bin/uv' run --with xlrd --with openpyxl --with pandas python -c ' *)",
+      "Bash(rm -rf .pbir_schema_cache/)",
+      "Bash(rm -rf output/)",
+      "Bash(curl *)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\({k:d[k] for k in ['version','description','main','scripts','dependencies','devDependencies','bin'] if k in d}, indent=2\\)\\)\")",
+      "WebFetch(domain:registry.npmjs.org)",
+      "WebFetch(domain:www.npmjs.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:pypi.org)",
+      "Bash(python *)",
+      "Bash(uv add *)",
+      "Bash(python3 -c ' *)",
+      "Bash(env)",
+      "Bash(python3 *)",
+      "Bash(git add *)"
+    ]
+  }
+}

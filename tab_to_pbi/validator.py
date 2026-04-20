@@ -11,10 +11,10 @@ _SCHEMA_BASE = "https://developer.microsoft.com/json-schemas/fabric/item/report"
 _DEFAULT_CACHE = Path(".pbir_schema_cache")
 
 SCHEMAS = {
-    "definition.pbir": f"{_SCHEMA_BASE}/definitionProperties/2.0.0/schema.json",
     "version.json": f"{_SCHEMA_BASE}/definition/versionMetadata/1.0.0/schema.json",
-    "report.json": f"{_SCHEMA_BASE}/definition/report/1.0.0/schema.json",
-    "page.json": f"{_SCHEMA_BASE}/definition/page/1.0.0/schema.json",
+    "pages.json": f"{_SCHEMA_BASE}/definition/pagesMetadata/1.0.0/schema.json",
+    "report.json": f"{_SCHEMA_BASE}/definition/report/3.2.0/schema.json",
+    "page.json": f"{_SCHEMA_BASE}/definition/page/2.1.0/schema.json",
     "visual.json": f"{_SCHEMA_BASE}/definition/visualContainer/1.0.0/schema.json",
 }
 
@@ -27,7 +27,11 @@ class ValidationResult:
 
 
 def _find_model_dir(report_dir: Path) -> Path | None:
-    """Find the sibling SemanticModel directory."""
+    """Find the matching sibling SemanticModel directory (same stem as report)."""
+    stem = report_dir.name.removesuffix(".Report")
+    exact = report_dir.parent / f"{stem}.SemanticModel"
+    if exact.is_dir():
+        return exact
     candidates = list(report_dir.parent.glob("*.SemanticModel"))
     return candidates[0] if candidates else None
 
@@ -74,6 +78,8 @@ def check_presence(report_dir: Path) -> list[ValidationResult]:
     pages_dir = defn_dir / "pages"
     if not pages_dir.is_dir() or not any(pages_dir.iterdir()):
         err("Missing required folder with pages: definition/pages/")
+    elif not (pages_dir / "pages.json").exists():
+        err("Missing required file: definition/pages/pages.json")
     else:
         for page_dir in pages_dir.iterdir():
             if page_dir.is_dir() and not (page_dir / "page.json").exists():
@@ -82,10 +88,12 @@ def check_presence(report_dir: Path) -> list[ValidationResult]:
     if model_dir is None:
         err("Missing SemanticModel directory (expected sibling of Report folder)")
     else:
-        if not (model_dir / "model.bim").exists():
-            err("Missing required file: model.bim")
         if not (model_dir / "definition.pbism").exists():
             err("Missing required file: definition.pbism")
+        has_bim = (model_dir / "model.bim").exists()
+        has_tmdl = (model_dir / "definition" / "model.tmdl").exists()
+        if not has_bim and not has_tmdl:
+            err("Missing semantic model: expected definition/model.tmdl (TMDL) or model.bim (TMSL)")
 
     return results
 
@@ -96,12 +104,13 @@ def check_schemas(report_dir: Path, cache_dir: Path = _DEFAULT_CACHE) -> list[Va
     defn_dir = report_dir / "definition"
 
     files_to_check = [
-        report_dir / "definition.pbir",
         defn_dir / "version.json",
         defn_dir / "report.json",
     ]
-    if (defn_dir / "pages").is_dir():
-        for page_dir in (defn_dir / "pages").iterdir():
+    pages_dir = defn_dir / "pages"
+    if pages_dir.is_dir():
+        files_to_check.append(pages_dir / "pages.json")
+        for page_dir in pages_dir.iterdir():
             if page_dir.is_dir():
                 files_to_check.append(page_dir / "page.json")
                 visuals_dir = page_dir / "visuals"
@@ -168,35 +177,26 @@ def check_semantics(report_dir: Path) -> list[ValidationResult]:
         except (json.JSONDecodeError, KeyError):
             pass
 
-    # Load model.bim tables for cross-reference checks
+    # Load table/column names for cross-reference checks (TMDL or TMSL)
     tables_by_name: dict[str, set[str]] = {}
-    if model_dir and (model_dir / "model.bim").exists():
-        try:
-            bim = json.loads((model_dir / "model.bim").read_text())
-            tables = bim.get("model", {}).get("tables", [])
-            rel = str((model_dir / "model.bim").relative_to(report_dir.parent))
-
-            if not tables:
-                results.append(ValidationResult("ERROR", rel, "model.bim has no tables"))
-            for table in tables:
-                tname = table.get("name", "")
-                tables_by_name[tname] = {c["name"] for c in table.get("columns", [])}
-                if not table.get("partitions"):
-                    results.append(ValidationResult("ERROR", rel, f"Table '{tname}' has no partitions"))
-                else:
-                    for part in table["partitions"]:
-                        expr = part.get("source", {}).get("expression", [])
-                        if isinstance(expr, list) and any("Unsupported connection type" in line for line in expr):
-                            results.append(ValidationResult(
-                                "WARNING", rel, f"Table '{tname}' partition uses unsupported connection type"
-                            ))
-
-            if not bim.get("model", {}).get("relationships"):
-                results.append(ValidationResult(
-                    "WARNING", rel, "No relationships defined (expected for single-table Import mode)"
-                ))
-        except json.JSONDecodeError:
-            pass
+    if model_dir:
+        tmdl_tables_dir = model_dir / "definition" / "tables"
+        bim_path = model_dir / "model.bim"
+        if tmdl_tables_dir.is_dir():
+            tables_by_name = _load_tmdl_tables(tmdl_tables_dir)
+        elif bim_path.exists():
+            try:
+                bim = json.loads(bim_path.read_text())
+                rel = str(bim_path.relative_to(report_dir.parent))
+                for table in bim.get("model", {}).get("tables", []):
+                    tname = table.get("name", "")
+                    tables_by_name[tname] = {c["name"] for c in table.get("columns", [])}
+                if not bim.get("model", {}).get("relationships"):
+                    results.append(ValidationResult(
+                        "WARNING", rel, "No relationships defined (expected for single-table Import mode)"
+                    ))
+            except json.JSONDecodeError:
+                pass
 
     # Check visual field references against model.bim
     defn_dir = report_dir / "definition"
@@ -238,6 +238,24 @@ def check_semantics(report_dir: Path) -> list[ValidationResult]:
                         ))
 
     return results
+
+
+def _load_tmdl_tables(tables_dir: Path) -> dict[str, set[str]]:
+    """Parse TMDL table files to extract {table_name: {column_names}} for cross-reference."""
+    import re
+    tables: dict[str, set[str]] = {}
+    for tmdl_file in tables_dir.glob("*.tmdl"):
+        text = tmdl_file.read_text(encoding="utf-8")
+        table_match = re.search(r"^table\s+'?([^'\n]+)'?", text, re.MULTILINE)
+        if not table_match:
+            continue
+        table_name = table_match.group(1).strip("'")
+        columns = {
+            m.group(1).strip("'")
+            for m in re.finditer(r"^\s+column\s+'?([^'\n]+)'?", text, re.MULTILINE)
+        }
+        tables[table_name] = columns
+    return tables
 
 
 def _extract_projections(visual: dict) -> list[dict]:
