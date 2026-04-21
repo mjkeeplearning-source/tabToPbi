@@ -48,6 +48,18 @@ This MVP is intentionally constrained. The goal is to produce a valid PBIR outpu
 - Storage mode for MVP: Import only
 - MVP success criteria: generated PBIR opens successfully in Power BI Desktop
 
+### Decisions confirmed (2026-04-20) — T12 DirectQuery design
+- Live connections (SQL datasource without extract): **support via DirectQuery mode**, not flag-and-skip
+- DirectQuery storage mode: set `mode: directQuery` on affected tables + model-level `defaultMode` in TMDL — low complexity, mechanical change
+- Power Query M for DirectQuery: our current simple M expressions fold cleanly to SQL; no change needed for basic table sources; `Value.NativeQuery()` used for custom SQL on SQL-capable sources
+- DAX compatibility for DirectQuery: **two-stage approach**
+  - Stage 1 (deterministic blocklist): after Claude translates, scan resulting DAX for DirectQuery-incompatible functions (`MEDIAN`, `PERCENTILE`, `PATH`, `DATATABLE`, time intelligence on non-date tables); flag as `status: unsupported_directquery` and exclude from TMDL
+  - Stage 2 (prompt-level constraint): when datasource is DirectQuery, tell Claude in the translation prompt to restrict output to DirectQuery-compatible DAX only; Claude self-restricts first, blocklist catches anything that slips through
+  - Rationale: relying solely on Claude risks hallucination; relying solely on blocklist misses subtle invalid patterns; both together give defense in depth
+- Relationships in DirectQuery: same-source constraint enforced (cross-source relationships not supported); our current workbooks are already single-source so no change needed
+- Credentials/connection: user responsibility after opening in PBI Desktop; migration report notes this explicitly
+- Data blending: still flagged as unsupported (sheets referencing >1 datasource)
+
 ### Status (2026-04-20)
 - Planning: complete
 - T1: complete — uv project initialised, folder structure created, stubs for all modules, CLI smoke-tested end to end
@@ -63,7 +75,15 @@ This MVP is intentionally constrained. The goal is to produce a valid PBIR outpu
 - T11: complete — `.twbx` support end-to-end; `extract_twbx_data(path, dest_dir)` added to `parser.py`; extracts all non-`.twb` embedded files into a flat directory; `main.py` auto-detects `.twbx` input, extracts data to `output/<stem>_data/`, passes it as `data_dir` to generator; validated against `input/tabpbi.twbx` (3 datasources, 12 sheets, 0 pipeline errors); 7 dedicated tests in `tests/test_t11_twbx.py`; 72 tests passing total
 - T13: complete — new `translator.py` calls Claude (`claude-opus-4-7`) per calc field to translate Tableau formula → DAX; `translate_calc_fields_in_transformed()` called from `main.py` after `transform()`; translated measures written to TMDL alongside shelf-derived measures; migration report records `status: translated` + `dax` for each translated field, `status: unsupported` for unsupported ones; validated against `input/Superstore.twb` (21 calc fields: 10 translated, 11 unsupported); 0 errors end-to-end; parser fix: Tableau virtual fields (`:Measure Names`, `:Measure Values`) now skipped from shelf parsing
 - T13 improvement (2026-04-20) — LOD expressions now translated: added `{FIXED}→CALCULATE+ALLEXCEPT`, `{INCLUDE}→CALCULATE+VALUES`, `{EXCLUDE}→CALCULATE+ALL` rules to prompt; `translate_formula()` now accepts optional `columns` list for column-level context; `translate_calc_fields_in_transformed()` passes per-table column names to Claude; `Order Profitable?` (`{fixed [Order ID]: SUM([Profit])} > 0`) now correctly translates; `Total Compensation` correctly reclassified as unsupported (depends on Parameter-based fields); mock in `test_e2e.py` updated to match new signature; 72 tests passing
-- E2E tests: complete — `tests/test_e2e.py` added with 15 tests covering T9 and T13 end-to-end using real `.twb` files and mocked Claude translation (no API calls); verifies pending fields stay out of TMDL, translated measures land in TMDL, unsupported stay out, validator passes 0 errors for all 3 workbooks (simple, simple_join, Superstore); 72 tests passing total
+- E2E tests: complete — `tests/test_e2e.py` added with 15 tests covering T9 and T13 end-to-end using real `.twb` files and mocked Claude translation (no API calls); verifies pending fields stay out of TMDL, translated measures land in TMDL, unsupported stay out, validator passes 0 errors for all 3 workbooks (simple, simple_join, Superstore)
+- T12: complete — physical-layer joins (INNER/LEFT/RIGHT/FULL OUTER), custom SQL, live connections (DirectQuery mode), data blending detection; 25 dedicated unit tests in `tests/test_t12.py`; parametrised E2E test across all 5 input files (`simple.twb`, `simple_join.twb`, `simple_join_calculated_line.twb`, `Superstore.twb`, `tabpbi.twbx`) — all pass 0 errors
+- Tableau XML Schema Conformance (2026-04-20) — reviewed `parser.py` against official XSD 2026.1.0; 6 fixes: full-outer join `"full"` value, unsupported relation types flagged (`union`/`subquery`/`stored-proc`/`pivot`), `parent-name` metadata fallback for source_table, `mark_orientation` attribute parsed, extract `enabled="false"` treated as live, `_AGG_MAP` extended with `var`/`varp`/`stdev`/`stdevp`; 6 new tests added
+- T14: complete — Tableau → PBI visual type mapping expanded and wired; `MARK_TO_VISUAL` covers high (`Area`→`areaChart`, `Pie`→`pieChart`) and medium (`Circle`/`Shape`→`scatterChart`, `Polygon`/`Multipolygon`→`filledMap`, `PolyLine`→`map`) confidence mappings; `_VISUAL_ROLES` extended with correct PBI role names per visual type; `mark_orientation="y"` on explicit `Bar` mark flips to `Column` (columnChart); unsupported mark types (`Heatmap`, `GanttBar`, `VizExtension`, etc.) fall back to `tableEx` and emit warning in `report["unsupported"]`; `_SUPPORTED_MARK_TYPES` constant added; 14 dedicated unit tests in `tests/test_t14.py`; **120 tests passing total; all 5 input workbooks pass E2E with 0 errors**
+- T15–T19: complete (built incrementally) — semantic model files, report files, migration_report.json, CLI, and automated validator all operational
+- T19 PBI Desktop verification (2026-04-21, in progress) — all 5 workbooks generate with 0 pipeline errors; `simple.Report` confirmed opens and renders correctly in PBI Desktop; `simple_join.Report` confirmed opens and both visuals render correctly (category/DeltaOrder column chart + category/Margin bar chart); `simple_join_calculated_line.Report`, `Superstore.Report`, `tabpbi.Report` pending manual PBI Desktop verification
+- Bug fix (2026-04-21): multi-table column disambiguation — Tableau uses logical name `order_id (returns)` for `returns.order_id` to avoid name collision; PBI/TMDL tables are separate so physical name is correct; fixed `parser.py` to capture `remote_name` (physical column) from `cols/map`; fixed `transformer.py` to use physical name as TMDL column name and `sourceColumn`; resolves "ToColumn refers to an object which cannot be found" error on open
+- Bug fix (2026-04-21): translated calc fields missing from visual projections — transformer was skipping ALL calc fields from shelf projections (pending translation); fixed to include calc fields as tentative measure projections using display name; after translation, `translate_calc_fields_in_transformed()` prunes projections for unsupported fields; `DeltaOrder` and `Margin` now correctly appear on Y-axis
+- Bug fix (2026-04-21): cross-table formula translation — Claude was returning UNSUPPORTED for `DeltaOrder` (`COUNTD([order_id]) - COUNTD([order_id (returns)])`) because it only received the primary table's columns; fixed `translate_formula()` to accept `all_tables` dict and include related table columns + disambiguation note in prompt; `DeltaOrder` now correctly translates to `DISTINCTCOUNT('orders'[order_id]) - DISTINCTCOUNT('returns'[order_id])`; 117 tests passing
 
 ### Validator (complete — plan at docs/superpowers/plans/2026-04-16-pbir-validator.md)
 - Design: approved — Option C: jsonschema against official MS schemas + semantic cross-reference checks
@@ -90,7 +110,7 @@ This MVP is intentionally constrained. The goal is to produce a valid PBIR outpu
 - Visual type inference: `parser.py` now preserves Tableau shelf field prefix as `{name, continuous, aggregation}` dict; `transformer.py` infers PBI visual type from shelf layout when Tableau mark is `Automatic`
 - Aggregation extraction: Tableau prefix codes (`ctd`, `sum`, `avg`, `cnt`, etc.) decoded to DAX functions; aggregated shelf fields auto-generate named DAX measures (e.g. `DISTINCTCOUNT('Table'[Product ID])`) written to TMDL
 - Role-based field binding: `generator.py` assigns fields to correct PBI `queryState` roles (`Category`/`Y` for bar/column/line; `Values` for table); uses `Measure` projection type for aggregated fields and `Column` for dimensions
-- Tableau → PBI visual type map: `Bar`→`barChart`, `Column`→`columnChart`, `Line`→`lineChart`, `Text`/`Automatic`→`tableEx`
+- Tableau → PBI visual type map: `Bar`→`barChart`, `Column`→`columnChart`, `Line`→`lineChart`, `Area`→`areaChart`, `Pie`→`pieChart`, `Circle`/`Shape`→`scatterChart`, `Polygon`/`Multipolygon`→`filledMap`, `PolyLine`→`map`, `Text`/`Automatic`→`tableEx`
 - Tableau aggregation → DAX map: `ctd`/`cntd`→`DISTINCTCOUNT`, `cnt`→`COUNTA`, `sum`→`SUM`, `avg`→`AVERAGE`, `min`→`MIN`, `max`→`MAX`, `median`→`MEDIAN`
 
 ### Input workbooks (as of 2026-04-19)
@@ -208,11 +228,12 @@ These were discovered through T6 verification against PBI Desktop 2.152 (March 2
 - T9: ✓ Extract calculated fields — name, internal Tableau name, formula, datatype, role; shelf refs to `Calculation_xxx` resolved via `calc_name_map`; pending fields skipped from visual projections; recorded in `migration_report.json` as `status: pending_translation`; 13 unit tests; all 3 input workbooks pass end-to-end
 - T10: ✓ Extract sheets (name, viz type, filters, dimensions, measures used)
 - T11: ✓ Handle `.twbx` (unzip → `.twb` + embedded data files)
-- T12: Detect and log unsupported patterns + expand join support; scope:
+- T12: complete — Detect and log unsupported patterns + expand join support + DirectQuery mode; scope:
   - Physical-layer joins (`<relation type="join">`): INNER + LEFT + RIGHT OUTER supported → mapped to PBI model relationships (RIGHT = flipped LEFT); FULL OUTER + non-equi → flagged as unsupported
-  - Custom SQL (`<relation type="text">`): Option B — wrap in `Value.NativeQuery()` for SQL-capable sources (postgres); flag as unsupported for Excel/CSV
-  - Live connections: detect SQL-type datasources without extract → flag as unsupported
+  - Custom SQL (`<relation type="text">`): wrap in `Value.NativeQuery()` for SQL-capable sources (postgres); flag as unsupported for Excel/CSV
+  - Live connections: detect SQL-type datasources without extract → generate DirectQuery mode PBIR (set `mode: directQuery` on tables + model); two-stage DAX safety (prompt constraint + blocklist); credentials note in migration report
   - Data blending: detect sheets referencing >1 datasource → flag as unsupported
+  - 25 dedicated unit tests in `tests/test_t12.py`; 97 tests passing total (up from 72)
 
 **Phase 4 — AI Transform**
 - T13: ✓ Translate supported calculated fields → DAX using Claude (`claude-opus-4-7`); `translator.py` module; called from `main.py` after `transform()`; translated measures written to TMDL; Superstore.twb: 10/21 translated, 11 unsupported (LOD, Parameters, cross-datasource, table calcs); 0 errors end-to-end
@@ -233,7 +254,7 @@ These were discovered through T6 verification against PBI Desktop 2.152 (March 2
 |----------|-------------|
 | .twb and .twbx files | Tableau Server API |
 | PBIR folder output | Push to Power BI Service |
-| Import mode only | DirectQuery / live connections |
+| Import mode (extract-based) + DirectQuery (live SQL connections) | DirectQuery on non-SQL sources |
 | Single primary datasource | Data blending |
 | Simple inner/left joins with explicit keys | Complex joins / federated joins |
 | Table, bar, line visuals | Complex custom visuals |

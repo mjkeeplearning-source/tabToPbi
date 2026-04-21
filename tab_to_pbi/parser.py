@@ -12,9 +12,9 @@ def parse(path: Path) -> dict:
     else:
         root = ET.parse(path).getroot()
 
-    datasources = _parse_datasources(root)
+    datasources, join_flags = _parse_datasources(root)
     sheets = _parse_sheets(root)
-    unsupported = _detect_unsupported(root, datasources)
+    unsupported = _detect_unsupported(root, datasources) + join_flags
 
     return {
         "name": path.stem,
@@ -49,9 +49,10 @@ def extract_twbx_data(path: Path, dest_dir: Path) -> Path:
     return dest_dir
 
 
-def _parse_datasources(root: ET.Element) -> list[dict]:
-    """Extract datasource info from all non-builtin <datasource> elements."""
+def _parse_datasources(root: ET.Element) -> tuple[list[dict], list[str]]:
+    """Extract datasource info. Returns (datasources, physical_join_flags)."""
     results = []
+    all_join_flags: list[str] = []
     for ds in root.findall("./datasources/datasource"):
         name = ds.get("name", "")
         if name in ("Parameters",) or not name:
@@ -61,8 +62,10 @@ def _parse_datasources(root: ET.Element) -> list[dict]:
         tables = _parse_tables(ds, connection)
         columns = _parse_columns(ds, connection)
         calculated_fields = _parse_calculated_fields(ds)
-        relationships = _parse_relationships(ds)
-        # internal Tableau name → display caption for shelf resolution
+        logical_rels = _parse_relationships(ds)
+        physical_rels, join_flags = _parse_physical_joins(ds.find("connection"))
+        all_join_flags.extend(join_flags)
+        relationships = logical_rels + physical_rels
         calc_name_map = {cf["internal_name"]: cf["name"] for cf in calculated_fields}
 
         results.append({
@@ -75,7 +78,7 @@ def _parse_datasources(root: ET.Element) -> list[dict]:
             "calc_name_map": calc_name_map,
             "relationships": relationships,
         })
-    return results
+    return results, all_join_flags
 
 
 def _parse_connection(ds: ET.Element) -> dict:
@@ -100,10 +103,13 @@ def _parse_connection(ds: ET.Element) -> dict:
 
         relation = conn.find("relation")
         rel_type = relation.get("type", "") if relation is not None else ""
-        # For single-table federated (non-collection)
         table = ""
         table_name = ""
-        if relation is not None and rel_type != "collection":
+        custom_sql = ""
+        if relation is not None and rel_type == "text":
+            custom_sql = (relation.text or "").strip()
+            table_name = relation.get("name", "Custom SQL Query")
+        elif relation is not None and rel_type not in ("collection", "join"):
             table = relation.get("table", "").strip("[]")
             table_name = relation.get("name", "")
     else:
@@ -114,8 +120,19 @@ def _parse_connection(ds: ET.Element) -> dict:
         port = conn.get("port", "")
         username = conn.get("username", "")
         relation = conn.find("relation")
-        table = relation.get("table", "").strip("[]") if relation is not None else ""
-        table_name = relation.get("name", "") if relation is not None else ""
+        custom_sql = ""
+        if relation is not None and relation.get("type") == "text":
+            custom_sql = (relation.text or "").strip()
+            table = ""
+            table_name = relation.get("name", "Custom SQL Query")
+        else:
+            table = relation.get("table", "").strip("[]") if relation is not None else ""
+            table_name = relation.get("name", "") if relation is not None else ""
+
+    extract_el = ds.find("extract")
+    live_connection = actual_class in _SQL_CONN_TYPES and (
+        extract_el is None or extract_el.get("enabled", "true") == "false"
+    )
 
     return {
         "type": actual_class,
@@ -126,6 +143,8 @@ def _parse_connection(ds: ET.Element) -> dict:
         "username": username,
         "table": table,
         "table_name": table_name,
+        "custom_sql": custom_sql,
+        "live_connection": live_connection,
     }
 
 
@@ -153,6 +172,21 @@ def _parse_tables(ds: ET.Element, connection: dict) -> list[dict]:
             })
         return tables
 
+    if relation.get("type") == "join":
+        tables = []
+        for r in relation.iter("relation"):
+            if r.get("type") == "table":
+                raw_table = r.get("table", "")
+                parts = raw_table.strip("[]").split("].[")
+                schema = parts[0] if len(parts) == 2 else ""
+                table_name = parts[1] if len(parts) == 2 else raw_table.strip("[]")
+                tables.append({
+                    "name": r.get("name", table_name),
+                    "schema": schema,
+                    "table": table_name,
+                })
+        return tables
+
     # Single table
     table_name = connection.get("table_name") or connection.get("table", "")
     if table_name:
@@ -173,24 +207,29 @@ def _parse_columns(ds: ET.Element, connection: dict) -> list[dict]:
 
     relation = conn.find("relation")
     if relation is not None and relation.get("type") == "collection":
-        # Build logical-name → source_table from cols/map
+        # Build logical-name → source_table and → physical column from cols/map
         col_table: dict[str, str] = {}
+        col_physical: dict[str, str] = {}
         for m in conn.findall("./cols/map"):
-            key = m.get("key", "").strip("[]")          # e.g. "category"
-            value = m.get("value", "")                   # e.g. "[orders].[category]"
+            key = m.get("key", "").strip("[]")     # e.g. "order_id (returns)"
+            value = m.get("value", "")              # e.g. "[returns].[order_id]"
             parts = value.strip("[]").split("].[")
             if len(parts) == 2:
-                col_table[key] = parts[0]                # "orders"
+                col_table[key] = parts[0]           # "returns"
+                col_physical[key] = parts[1]        # "order_id"
 
         # Build columns from metadata-records
         cols = []
         for mr in conn.findall("./metadata-records/metadata-record[@class='column']"):
             local_name = mr.findtext("local-name", "").strip("[]")
             local_type = mr.findtext("local-type", "string")
-            source_table = col_table.get(local_name, "")
+            parent_name = mr.findtext("parent-name", "").strip("[]")
+            source_table = col_table.get(local_name, "") or parent_name
+            remote_name = col_physical.get(local_name, local_name)
             if local_name:
                 cols.append({
                     "name": local_name,
+                    "remote_name": remote_name,
                     "datatype": local_type,
                     "source_table": source_table,
                 })
@@ -222,6 +261,51 @@ def _parse_calculated_fields(ds: ET.Element) -> list[dict]:
                 "role": col.get("role", ""),
             })
     return fields
+
+
+def _parse_physical_joins(conn: ET.Element) -> tuple[list[dict], list[str]]:
+    """Extract relationships from physical-layer join relations.
+
+    INNER + LEFT + RIGHT → PBI relationships (RIGHT is flipped to LEFT).
+    FULL OUTER + non-equi → unsupported flags.
+    Returns (relationships, unsupported_flags).
+    """
+    rels = []
+    flags = []
+    if conn is None:
+        return rels, flags
+    top_rel = conn.find("relation")
+    if top_rel is None or top_rel.get("type") != "join":
+        return rels, flags
+
+    join_type = top_rel.get("join", "inner").lower().replace(" ", "")
+    if join_type in ("full", "fullouter", "fullouterjoin"):
+        child_names = [r.get("name", "") for r in top_rel.findall("relation")]
+        flags.append(f"FULL OUTER join on {child_names} is not supported")
+        return rels, flags
+
+    exprs = top_rel.findall("./clause[@type='join']/expression[@op='=']/expression")
+    if len(exprs) != 2:
+        flags.append("Non-equi join detected — not supported")
+        return rels, flags
+
+    def _split(op: str) -> tuple[str, str]:
+        parts = op.strip("[]").split("].[")
+        return (parts[0], parts[1]) if len(parts) == 2 else ("", op)
+
+    left_table, left_col = _split(exprs[0].get("op", ""))
+    right_table, right_col = _split(exprs[1].get("op", ""))
+
+    if join_type in ("right", "rightouter"):
+        left_table, left_col, right_table, right_col = right_table, right_col, left_table, left_col
+
+    rels.append({
+        "from_table": left_table,
+        "from_column": left_col,
+        "to_table": right_table,
+        "to_column": right_col,
+    })
+    return rels, flags
 
 
 def _parse_relationships(ds: ET.Element) -> list[dict]:
@@ -274,6 +358,7 @@ def _parse_sheets(root: ET.Element) -> list[dict]:
         cols_text = ws.findtext("./table/cols", "")
         mark = ws.find("./table/panes/pane/mark")
         mark_type = mark.get("class", "Automatic") if mark is not None else "Automatic"
+        mark_orientation = mark.get("orientation", "") if mark is not None else ""
 
         sheets.append({
             "name": name,
@@ -281,6 +366,7 @@ def _parse_sheets(root: ET.Element) -> list[dict]:
             "rows": _parse_shelf_fields(rows_text),
             "cols": _parse_shelf_fields(cols_text),
             "mark_type": mark_type,
+            "mark_orientation": mark_orientation,
             "filters": _parse_filters(ws),
         })
     return sheets
@@ -319,6 +405,10 @@ _AGG_MAP = {
     "min": "MIN",
     "max": "MAX",
     "median": "MEDIAN",
+    "var": "VAR.S",
+    "varp": "VAR.P",
+    "stdev": "STDEV.S",
+    "stdevp": "STDEV.P",
 }
 
 
@@ -349,6 +439,8 @@ def _parse_shelf_fields(shelf: str) -> list[dict]:
 
 
 _SUPPORTED_CONN_TYPES = {"excel-direct", "textscan", "csv", "postgres", ""}
+_SQL_CONN_TYPES = {"postgres", "sqlserver", "mysql", "bigquery", "redshift", "snowflake", "oracle"}
+_UNSUPPORTED_RELATION_TYPES = {"union", "batch-union", "subquery", "stored-proc", "pivot", "project"}
 
 
 def _detect_unsupported(root: ET.Element, datasources: list[dict]) -> list[str]:
@@ -356,14 +448,38 @@ def _detect_unsupported(root: ET.Element, datasources: list[dict]) -> list[str]:
     issues = []
 
     for ds in datasources:
-        conn_type = ds.get("connection", {}).get("type", "")
+        conn = ds.get("connection", {})
+        conn_type = conn.get("type", "")
         if conn_type not in _SUPPORTED_CONN_TYPES:
             issues.append(
                 f"Datasource '{ds['name']}': unsupported connection type '{conn_type}'"
             )
+        # Live connections use DirectQuery — note in report for user awareness
+        if conn.get("live_connection"):
+            issues.append(
+                f"Datasource '{ds['name']}': live SQL connection — generated as DirectQuery mode"
+            )
 
-    for custom_sql in root.iter("relation"):
-        if custom_sql.get("type") == "text":
-            issues.append("Custom SQL relation detected (not supported)")
+    for rel in root.iter("relation"):
+        rtype = rel.get("type", "")
+        if rtype == "text":
+            name = rel.get("name", "unnamed")
+            issues.append(f"Custom SQL relation '{name}' detected — wrapped in Value.NativeQuery for SQL sources")
+        elif rtype in _UNSUPPORTED_RELATION_TYPES:
+            name = rel.get("name", rtype)
+            issues.append(f"Relation type '{rtype}' ('{name}') is not supported")
+
+    # Data blending: sheet referencing more than one non-Parameters datasource
+    for ws in root.findall("./worksheets/worksheet"):
+        sheet_name = ws.get("name", "")
+        deps = [
+            d.get("datasource", "")
+            for d in ws.findall("./table/view/datasource-dependencies")
+            if "Parameters" not in d.get("datasource", "")
+        ]
+        if len(deps) > 1:
+            issues.append(
+                f"Sheet '{sheet_name}': data blending across {deps} — not supported"
+            )
 
     return issues

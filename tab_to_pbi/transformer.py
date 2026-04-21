@@ -17,7 +17,18 @@ _AGG_LABEL = {
     "MIN": "Min",
     "MAX": "Max",
     "MEDIAN": "Median",
+    "VAR.S": "Var",
+    "VAR.P": "VarP",
+    "STDEV.S": "StDev",
+    "STDEV.P": "StDevP",
 }
+
+
+def _apply_storage_mode(conn: dict) -> dict:
+    """Return conn with storage_mode set based on live_connection flag."""
+    if conn.get("live_connection"):
+        return {**conn, "storage_mode": "directQuery"}
+    return {**conn, "storage_mode": "import"}
 
 
 def transform(workbook: dict) -> dict:
@@ -50,7 +61,7 @@ def transform(workbook: dict) -> dict:
             })
 
     measures: dict[tuple, dict] = {}
-    visuals = _process_sheets(workbook, tables, field_lookup, calc_name_lookup, measures)
+    visuals, visual_warnings = _process_sheets(workbook, tables, field_lookup, calc_name_lookup, measures)
 
     sheet_filters = [
         {"sheet": s["name"], "filters": s.get("filters", [])}
@@ -59,7 +70,7 @@ def transform(workbook: dict) -> dict:
     ]
     report = {
         "calculated_fields": pending_calc_fields,
-        "unsupported": workbook.get("unsupported", []),
+        "unsupported": workbook.get("unsupported", []) + visual_warnings,
         "tables_generated": [t["name"] for t in tables],
         "sheet_filters": sheet_filters,
     }
@@ -97,7 +108,8 @@ def _map_datasource(ds: dict) -> tuple[list[dict], list[dict], dict[str, str]]:
         }
         for col in columns
     ]
-    table = {"name": pbi_table_name, "connection": conn, "columns": pbi_columns}
+    effective_conn = _apply_storage_mode(conn)
+    table = {"name": pbi_table_name, "connection": effective_conn, "columns": pbi_columns}
     field_map = {col["name"]: pbi_table_name for col in columns}
     return [table], [], field_map
 
@@ -116,17 +128,20 @@ def _map_multi_table_postgres(
     for col in columns:
         src = col.get("source_table", "")
         if src in by_table:
+            physical = col.get("remote_name", col["name"])
             by_table[src].append({
-                "name": col["name"],
+                "name": physical,
                 "dataType": DATATYPE_MAP.get(col["datatype"], "string"),
-                "sourceColumn": col["name"],
+                "sourceColumn": physical,
             })
+            # map both logical name and physical name to the source table
             field_map[col["name"]] = src
+            field_map[physical] = src
 
     pbi_tables = []
     for t in tables_meta:
         tname = t["name"]
-        table_conn = {**conn, "schema": t["schema"], "table": t["table"], "table_name": tname}
+        table_conn = _apply_storage_mode({**conn, "schema": t["schema"], "table": t["table"], "table_name": tname})
         pbi_tables.append({
             "name": tname,
             "connection": table_conn,
@@ -146,18 +161,26 @@ def _map_multi_table_postgres(
     return pbi_tables, relationships, field_map
 
 
+_SUPPORTED_MARK_TYPES = {
+    "Bar", "Column", "Line", "Area", "Pie",
+    "Circle", "Shape", "Polygon", "Multipolygon", "PolyLine",
+    "Text", "Automatic",
+}
+
+
 def _process_sheets(
     workbook: dict,
     tables: list[dict],
     field_lookup: dict[str, dict[str, str]],
     calc_name_lookup: dict[str, dict[str, str]],
     measures: dict,
-) -> list[dict]:
-    """Map sheets to visual descriptors, generating DAX measures for aggregated fields."""
+) -> tuple[list[dict], list[str]]:
+    """Map sheets to visual descriptors. Returns (visuals, unsupported_warnings)."""
     ds_list = workbook.get("datasources", [])
     ds_default_table = {ds["name"]: tables[i]["name"] for i, ds in enumerate(ds_list) if i < len(tables)}
 
     visuals = []
+    unsupported_warnings: list[str] = []
     for sheet in workbook.get("sheets", []):
         ds_name = sheet["datasource"]
         fmap = field_lookup.get(ds_name, {})
@@ -166,8 +189,16 @@ def _process_sheets(
 
         rows, cols = sheet["rows"], sheet["cols"]
         mark_type = sheet["mark_type"]
+        mark_orientation = sheet.get("mark_orientation", "")
         if mark_type == "Automatic":
             mark_type = _infer_mark_type(rows, cols)
+        elif mark_type == "Bar" and mark_orientation == "y":
+            mark_type = "Column"
+
+        if mark_type not in _SUPPORTED_MARK_TYPES:
+            unsupported_warnings.append(
+                f"Sheet '{sheet['name']}': mark type '{mark_type}' not supported — rendered as table"
+            )
 
         row_fields = [r for f in rows for r in [_resolve_field(f, fmap, cmap, default_table, measures)] if r]
         col_fields = [r for f in cols for r in [_resolve_field(f, fmap, cmap, default_table, measures)] if r]
@@ -181,7 +212,7 @@ def _process_sheets(
             "mark_type": mark_type,
             "filters": sheet.get("filters", []),
         })
-    return visuals
+    return visuals, unsupported_warnings
 
 
 def _resolve_field(
@@ -194,7 +225,7 @@ def _resolve_field(
     """Return {name, is_measure, table} ref, or None if field is a pending calc field."""
     if not isinstance(field, dict):
         if field in calc_name_map:
-            return None  # calculated field pending translation — skip projection
+            return {"name": calc_name_map[field], "is_measure": True, "table": default_table}
         tname = field_table_map.get(field, default_table)
         return {"name": field, "is_measure": False, "table": tname}
 
@@ -202,7 +233,8 @@ def _resolve_field(
     name = field["name"]
 
     if name in calc_name_map:
-        return None  # calculated field pending translation — skip projection
+        display_name = calc_name_map[name]
+        return {"name": display_name, "is_measure": True, "table": default_table}
 
     tname = field_table_map.get(name, default_table)
 

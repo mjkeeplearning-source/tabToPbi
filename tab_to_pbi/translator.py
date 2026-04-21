@@ -5,6 +5,13 @@ import anthropic
 
 _CLIENT: anthropic.Anthropic | None = None
 
+_DIRECTQUERY_BLOCKLIST = {
+    "MEDIAN", "PERCENTILE.INC", "PERCENTILE.EXC", "PERCENTILE",
+    "PATH", "PATHITEM", "PATHITEMREVERSE", "PATHLENGTH", "PATHCONTAINS",
+    "DATATABLE", "ROLLUPADDISSUBTOTAL", "ROLLUPGROUP",
+    "TOPNSKIP",
+}
+
 _SYSTEM = """You are a Tableau-to-DAX formula translator.
 Given a Tableau calculated field formula and the Power BI table name that contains the columns, translate it to a valid DAX measure expression.
 
@@ -35,22 +42,56 @@ def _client() -> anthropic.Anthropic:
     return _CLIENT
 
 
-def translate_formula(formula: str, table_name: str, columns: list[str] | None = None) -> tuple[str, str]:
+_DQ_CONSTRAINT = (
+    "\nIMPORTANT: This measure will run in DirectQuery mode. "
+    "Only use DAX functions compatible with DirectQuery. "
+    "Do NOT use MEDIAN, PERCENTILE, PATH functions, DATATABLE, or time intelligence "
+    "functions on non-date tables. If the formula requires any of these, return UNSUPPORTED."
+)
+
+
+def _blocklist_check(dax: str) -> bool:
+    """Return True if dax contains a DirectQuery-incompatible function."""
+    upper = dax.upper()
+    return any(fn + "(" in upper for fn in _DIRECTQUERY_BLOCKLIST)
+
+
+def translate_formula(
+    formula: str,
+    table_name: str,
+    columns: list[str] | None = None,
+    directquery: bool = False,
+    all_tables: dict[str, list[str]] | None = None,
+) -> tuple[str, str]:
     """Translate a Tableau formula to DAX.
 
-    Returns (dax_expression, status) where status is 'translated' or 'unsupported'.
+    Returns (dax_expression, status) where status is 'translated', 'unsupported',
+    or 'unsupported_directquery'.
     """
-    col_hint = f"\nAvailable columns: {', '.join(columns)}" if columns else ""
-    prompt = f"Table name: {table_name}{col_hint}\nTableau formula: {formula}"
+    system = _SYSTEM + (_DQ_CONSTRAINT if directquery else "")
+    col_hint = f"\nPrimary table columns: {', '.join(columns)}" if columns else ""
+    related_hint = ""
+    if all_tables and len(all_tables) > 1:
+        others = {t: cols for t, cols in all_tables.items() if t != table_name}
+        related_hint = "\nRelated tables: " + "; ".join(
+            f"{t}[{', '.join(cols)}]" for t, cols in others.items()
+        )
+        related_hint += (
+            "\nNote: Tableau disambiguates duplicate column names with a (TableName) suffix, "
+            "e.g. [order_id (returns)] refers to the 'order_id' column in the 'returns' table."
+        )
+    prompt = f"Table name: {table_name}{col_hint}{related_hint}\nTableau formula: {formula}"
     msg = _client().messages.create(
         model="claude-opus-4-7",
         max_tokens=256,
-        system=_SYSTEM,
+        system=system,
         messages=[{"role": "user", "content": prompt}],
     )
     result = msg.content[0].text.strip()
     if result.upper() == "UNSUPPORTED":
         return "", "unsupported"
+    if directquery and _blocklist_check(result):
+        return "", "unsupported_directquery"
     return result, "translated"
 
 
@@ -66,20 +107,38 @@ def translate_calc_fields_in_transformed(transformed: dict) -> dict:
     for t in transformed.get("tables", []):
         columns_by_table[t["name"]] = [c["name"] for c in t.get("columns", [])]
 
+    # Identify which tables use DirectQuery
+    dq_tables = {
+        t["name"]
+        for t in transformed.get("tables", [])
+        if t.get("connection", {}).get("storage_mode") == "directQuery"
+    }
+
     measures = {(m["table"], m["name"]): m for m in transformed.get("measures", [])}
     updated_cfs = []
     for cf in calc_fields:
         table_name = cf.get("table") or (transformed.get("tables") or [{}])[0].get("name", "")
         columns = columns_by_table.get(table_name)
-        dax, status = translate_formula(cf["formula"], table_name, columns)
+        is_dq = table_name in dq_tables
+        dax, status = translate_formula(cf["formula"], table_name, columns, directquery=is_dq, all_tables=columns_by_table)
         updated_cf = {**cf, "status": status}
         if status == "translated" and dax:
             updated_cf["dax"] = dax
             measures[(table_name, cf["name"])] = {"name": cf["name"], "table": table_name, "dax": dax}
         updated_cfs.append(updated_cf)
 
+    unsupported_names = {cf["name"] for cf in updated_cfs if cf["status"] != "translated"}
+    updated_visuals = []
+    for v in transformed.get("visuals", []):
+        updated_visuals.append({
+            **v,
+            "row_fields": [f for f in v.get("row_fields", []) if f.get("name") not in unsupported_names],
+            "col_fields": [f for f in v.get("col_fields", []) if f.get("name") not in unsupported_names],
+        })
+
     return {
         **transformed,
         "measures": list(measures.values()),
+        "visuals": updated_visuals,
         "report": {**report, "calculated_fields": updated_cfs},
     }

@@ -8,6 +8,13 @@ MARK_TO_VISUAL = {
     "Bar": "barChart",
     "Column": "columnChart",
     "Line": "lineChart",
+    "Area": "areaChart",
+    "Pie": "pieChart",
+    "Circle": "scatterChart",
+    "Shape": "scatterChart",
+    "Polygon": "filledMap",
+    "Multipolygon": "filledMap",
+    "PolyLine": "map",
     "Text": "tableEx",
 }
 
@@ -76,11 +83,17 @@ def _write_tmdl_model(model_dir: Path, transformed: dict, data_dir: Path) -> Non
             "",
         ]
 
+    has_dq = any(
+        t.get("connection", {}).get("storage_mode") == "directQuery"
+        for t in transformed.get("tables", [])
+    )
     model_tmdl = (
         "model Model\n"
         "\tculture: en-US\n"
         "\tdefaultPowerBIDataSourceVersion: powerBI_V3\n"
     )
+    if has_dq:
+        model_tmdl += "\tdefaultMode: directQuery\n"
     if rel_lines:
         model_tmdl += "\n" + "\n".join(rel_lines)
     (defn_dir / "model.tmdl").write_text(model_tmdl, encoding="utf-8")
@@ -93,7 +106,7 @@ def _write_tmdl_model(model_dir: Path, transformed: dict, data_dir: Path) -> Non
         _write_tmdl_table(tables_dir, table, data_dir, measures_by_table.get(table["name"], []))
 
 
-def _write_tmdl_table(tables_dir: Path, table: dict, data_dir: Path, measures: list = []) -> None:
+def _write_tmdl_table(tables_dir: Path, table: dict, data_dir: Path, measures: list | None = None) -> None:
     """Write one TMDL table file."""
     name = table["name"]
     qname = _tmdl_id(name)
@@ -109,9 +122,13 @@ def _write_tmdl_table(tables_dir: Path, table: dict, data_dir: Path, measures: l
         lines.append(f"\tmeasure {_tmdl_id(m['name'])} = {m['dax']}")
         lines.append("")
 
-    expr_lines = _build_m_expression(table["connection"], data_dir)
+    if measures is None:
+        measures = []
+    conn = table["connection"]
+    storage_mode = conn.get("storage_mode", "import")
+    expr_lines = _build_m_expression(conn, data_dir)
     lines.append(f"\tpartition {qname} = m")
-    lines.append("\t\tmode: import")
+    lines.append(f"\t\tmode: {storage_mode}")
     lines.append("\t\tsource =")
     for line in expr_lines:
         lines.append(f"\t\t\t{line}")
@@ -146,9 +163,18 @@ def _build_m_expression(conn: dict, data_dir: Path) -> list[str]:
     if conn_type == "postgres":
         server = conn.get("server", "")
         dbname = conn.get("dbname", "")
+        custom_sql = conn.get("custom_sql", "")
+        if custom_sql:
+            escaped_sql = custom_sql.replace('"', '""')
+            return [
+                "let",
+                f'    Source = PostgreSQL.Database("{server}", "{dbname}"),',
+                f'    nav = Value.NativeQuery(Source, "{escaped_sql}", null, [EnableFolding=true])',
+                "in",
+                "    nav",
+            ]
         schema = conn.get("schema", "")
         table = conn.get("table", "")
-        nav_var = f"{schema}_{table}" if schema else table
         return [
             "let",
             f'    Source = PostgreSQL.Database("{server}", "{dbname}"),',
@@ -263,12 +289,17 @@ def _write_page(page_dir: Path, visual_info: dict, ordinal: int) -> None:
         _write_visual(visual_dir, visual_info)
 
 
-# Maps visual type to (category_role, value_role, category_shelf, value_shelf)
-# category_shelf / value_shelf: "row" or "col" — which Tableau shelf feeds each role
+# Maps visual type to (role1, role2, shelf_for_role1, shelf_for_role2)
+# shelf values: "row" or "col" — which Tableau shelf feeds each PBI role
 _VISUAL_ROLES = {
-    "barChart":    ("Category", "Y", "row", "col"),
-    "columnChart": ("Category", "Y", "col", "row"),
-    "lineChart":   ("Category", "Y", "col", "row"),
+    "barChart":    ("Category", "Y",        "row", "col"),
+    "columnChart": ("Category", "Y",        "col", "row"),
+    "lineChart":   ("Category", "Y",        "col", "row"),
+    "areaChart":   ("Category", "Y",        "col", "row"),
+    "pieChart":    ("Legend",   "Values",   "row", "col"),
+    "scatterChart":("X",        "Y",        "col", "row"),
+    "map":         ("Location", "Size",     "row", "col"),
+    "filledMap":   ("Location", "Size",     "row", "col"),
 }
 
 
