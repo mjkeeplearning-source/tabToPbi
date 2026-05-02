@@ -20,6 +20,15 @@ MARK_TO_VISUAL = {
 
 _SCHEMA_BASE = "https://developer.microsoft.com/json-schemas/fabric/item/report"
 
+# Maps PBI/TMDL dataType → Power Query M type literal
+_M_TYPE_MAP = {
+    "string":   "type text",
+    "int64":    "Int64.Type",
+    "double":   "Decimal.Type",
+    "dateTime": "type datetime",
+    "boolean":  "type logical",
+}
+
 
 def generate(transformed: dict, output_dir: Path, data_dir: Path = Path("data")) -> Path:
     """Write PBIR SemanticModel and Report files. Returns the Report folder path."""
@@ -69,19 +78,8 @@ def _write_tmdl_model(model_dir: Path, transformed: dict, data_dir: Path) -> Non
         legacy_bim.unlink()
 
     name = transformed["name"]
-    database_tmdl = f"database '{name}'\n\tcompatibilityLevel: 1550\n"
+    database_tmdl = f"database '{name}'\n\tcompatibilityLevel: 1600\n"
     (defn_dir / "database.tmdl").write_text(database_tmdl, encoding="utf-8")
-
-    rels = transformed.get("relationships", [])
-    rel_lines = []
-    for r in rels:
-        rel_name = f"{r['from_table']}_{r['from_column']} -> {r['to_table']}_{r['to_column']}"
-        rel_lines += [
-            f"\trelationship '{rel_name}'",
-            f"\t\tfromColumn: {r['from_table']}.{r['from_column']}",
-            f"\t\ttoColumn: {r['to_table']}.{r['to_column']}",
-            "",
-        ]
 
     has_dq = any(
         t.get("connection", {}).get("storage_mode") == "directQuery"
@@ -94,9 +92,24 @@ def _write_tmdl_model(model_dir: Path, transformed: dict, data_dir: Path) -> Non
     )
     if has_dq:
         model_tmdl += "\tdefaultMode: directQuery\n"
-    if rel_lines:
-        model_tmdl += "\n" + "\n".join(rel_lines)
     (defn_dir / "model.tmdl").write_text(model_tmdl, encoding="utf-8")
+
+    # Write relationships as a standalone file (PBI Desktop format)
+    rels = transformed.get("relationships", [])
+    rel_path = defn_dir / "relationships.tmdl"
+    if rels:
+        rel_lines = []
+        for r in rels:
+            rel_name = f"{r['from_table']}_{r['from_column']} -> {r['to_table']}_{r['to_column']}"
+            rel_lines += [
+                f"relationship '{rel_name}'",
+                f"\tfromColumn: {r['from_table']}.{r['from_column']}",
+                f"\ttoColumn: {r['to_table']}.{r['to_column']}",
+                "",
+            ]
+        rel_path.write_text("\n".join(rel_lines), encoding="utf-8")
+    elif rel_path.exists():
+        rel_path.unlink()
 
     measures_by_table: dict[str, list] = {}
     for m in transformed.get("measures", []):
@@ -126,7 +139,7 @@ def _write_tmdl_table(tables_dir: Path, table: dict, data_dir: Path, measures: l
         measures = []
     conn = table["connection"]
     storage_mode = conn.get("storage_mode", "import")
-    expr_lines = _build_m_expression(conn, data_dir)
+    expr_lines = _build_m_expression(conn, data_dir, table["columns"])
     lines.append(f"\tpartition {qname} = m")
     lines.append(f"\t\tmode: {storage_mode}")
     lines.append("\t\tsource =")
@@ -138,9 +151,32 @@ def _write_tmdl_table(tables_dir: Path, table: dict, data_dir: Path, measures: l
     (tables_dir / f"{safe_name}.tmdl").write_text("\n".join(lines), encoding="utf-8")
 
 
-def _build_m_expression(conn: dict, data_dir: Path) -> list[str]:
-    """Build Power Query M expression lines from connection info."""
+def _build_m_expression(conn: dict, data_dir: Path, columns: list[dict] | None = None) -> list[str]:
+    """Build Power Query M expression lines from connection info.
+
+    For file-based sources (Excel, CSV), appends an explicit Table.TransformColumnTypes
+    step derived from Tableau column metadata so PBI doesn't mistype numeric columns.
+    """
     conn_type = conn.get("type", "")
+
+    def _type_step(prev: str) -> list[str]:
+        """Return lines for Table.TransformColumnTypes, or empty list if no columns."""
+        if not columns:
+            return []
+        pairs = [
+            f'        {{"{col["name"].replace(chr(34), chr(34)*2)}", {_M_TYPE_MAP[col["dataType"]]}}}'
+            for col in columns
+            if col["dataType"] in _M_TYPE_MAP
+        ]
+        if not pairs:
+            return []
+        return [
+            f'    #"Changed Types" = Table.TransformColumnTypes({prev}, {{',
+            *[p + "," for p in pairs[:-1]],
+            pairs[-1],
+            "    })",
+        ]
+
     stem = Path(conn.get("filename", "")).stem
     xlsx = data_dir / f"{stem}.xlsx"
     xls = data_dir / f"{stem}.xls"
@@ -151,16 +187,46 @@ def _build_m_expression(conn: dict, data_dir: Path) -> list[str]:
     escaped_table = table_name.replace('"', '""')
 
     if conn_type == "excel-direct":
+        type_lines = _type_step('#"Promoted Headers"')
+        last_step = '#"Changed Types"' if type_lines else '#"Promoted Headers"'
         return [
             "let",
             f'    Source = Excel.Workbook(File.Contents("{filename}"), null, true),',
             f'    {safe_var}_Sheet = Source{{[Item="{escaped_table}",Kind="Sheet"]}}[Data],',
-            f'    #"Promoted Headers" = Table.PromoteHeaders({safe_var}_Sheet, [PromoteAllScalars=true])',
+            f'    #"Promoted Headers" = Table.PromoteHeaders({safe_var}_Sheet, [PromoteAllScalars=true])'
+            + ("," if type_lines else ""),
+            *type_lines,
             "in",
-            '    #"Promoted Headers"',
+            f"    {last_step}",
         ]
 
-    if conn_type == "postgres":
+    if conn_type == "textscan":
+        csv_path = (data_dir / conn.get("filename", "")).resolve().as_posix()
+        type_lines = _type_step('#"Promoted Headers"')
+        last_step = '#"Changed Types"' if type_lines else '#"Promoted Headers"'
+        return [
+            "let",
+            f'    Source = Csv.Document(File.Contents("{csv_path}"), [Delimiter=",", Encoding=65001, QuoteStyle=QuoteStyle.None]),',
+            f'    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars=true])'
+            + ("," if type_lines else ""),
+            *type_lines,
+            "in",
+            f"    {last_step}",
+        ]
+
+    # SQL-based connections share the same structure; only the M connector function differs
+    _SQL_CONNECTOR = {
+        "postgres":  "PostgreSQL.Database",
+        "sqlserver": "Sql.Database",
+        "mysql":     "MySQL.Database",
+        "redshift":  "AmazonRedshift.Database",
+        "snowflake": "Snowflake.Databases",
+        "oracle":    "Oracle.Database",
+        "bigquery":  "GoogleBigQuery.Database",
+    }
+
+    if conn_type in _SQL_CONNECTOR:
+        fn = _SQL_CONNECTOR[conn_type]
         server = conn.get("server", "")
         dbname = conn.get("dbname", "")
         custom_sql = conn.get("custom_sql", "")
@@ -168,7 +234,7 @@ def _build_m_expression(conn: dict, data_dir: Path) -> list[str]:
             escaped_sql = custom_sql.replace('"', '""')
             return [
                 "let",
-                f'    Source = PostgreSQL.Database("{server}", "{dbname}"),',
+                f'    Source = {fn}("{server}", "{dbname}"),',
                 f'    nav = Value.NativeQuery(Source, "{escaped_sql}", null, [EnableFolding=true])',
                 "in",
                 "    nav",
@@ -177,7 +243,7 @@ def _build_m_expression(conn: dict, data_dir: Path) -> list[str]:
         table = conn.get("table", "")
         return [
             "let",
-            f'    Source = PostgreSQL.Database("{server}", "{dbname}"),',
+            f'    Source = {fn}("{server}", "{dbname}"),',
             f'    nav = Source{{[Schema="{schema}", Item="{table}"]}}[Data]',
             "in",
             "    nav",
@@ -248,13 +314,23 @@ def _write_pages(definition_dir: Path, transformed: dict) -> None:
     """Write one page folder per sheet under definition/pages/, plus pages.json manifest."""
     pages_dir = definition_dir / "pages"
     pages_dir.mkdir(exist_ok=True)
+
+    # Group visuals by page_name (sheet), preserving insertion order
+    pages: dict[str, list[dict]] = {}
+    for v in transformed.get("visuals", []):
+        key = v.get("page_name", v["name"])
+        pages.setdefault(key, []).append(v)
+
     section_ids = []
-    for i, visual_info in enumerate(transformed.get("visuals", [])):
+    global_visual_idx = 0
+    for i, (_, page_visuals) in enumerate(pages.items()):
         section_id = f"ReportSection{i + 1}"
         section_ids.append(section_id)
         page_dir = pages_dir / section_id
         page_dir.mkdir(exist_ok=True)
-        _write_page(page_dir, visual_info, i)
+        _write_page(page_dir, page_visuals, global_visual_idx)
+        global_visual_idx += len(page_visuals)
+
     _write_pages_manifest(pages_dir, section_ids)
 
 
@@ -268,25 +344,28 @@ def _write_pages_manifest(pages_dir: Path, section_ids: list[str]) -> None:
     (pages_dir / "pages.json").write_text(json.dumps(content, indent=2))
 
 
-def _write_page(page_dir: Path, visual_info: dict, ordinal: int) -> None:
-    """Write page.json and visuals for this sheet."""
+def _write_page(page_dir: Path, page_visuals: list[dict], base_visual_idx: int) -> None:
+    """Write page.json and visuals for this sheet. Multiple visuals are laid out side-by-side."""
+    display_name = page_visuals[0].get("page_name", page_visuals[0]["name"])
     page = {
         "$schema": f"{_SCHEMA_BASE}/definition/page/2.1.0/schema.json",
         "name": page_dir.name,
-        "displayName": visual_info["name"],
+        "displayName": display_name,
         "displayOption": "FitToPage",
         "height": 720,
         "width": 1280,
     }
     (page_dir / "page.json").write_text(json.dumps(page, indent=2))
 
-    has_fields = visual_info.get("row_fields") or visual_info.get("col_fields")
-    if has_fields and visual_info.get("table"):
-        visuals_dir = page_dir / "visuals"
-        visuals_dir.mkdir(exist_ok=True)
-        visual_dir = visuals_dir / f"visual_{ordinal + 1}"
-        visual_dir.mkdir(exist_ok=True)
-        _write_visual(visual_dir, visual_info)
+    slot = 0
+    for j, visual_info in enumerate(page_visuals):
+        if visual_info.get("row_fields") or visual_info.get("col_fields"):
+            visuals_dir = page_dir / "visuals"
+            visuals_dir.mkdir(exist_ok=True)
+            visual_dir = visuals_dir / f"visual_{base_visual_idx + j + 1}"
+            visual_dir.mkdir(exist_ok=True)
+            _write_visual(visual_dir, visual_info, x_offset=20 + slot * 620)
+            slot += 1
 
 
 # Maps visual type to (role1, role2, shelf_for_role1, shelf_for_role2)
@@ -325,7 +404,7 @@ def _make_projection(default_table: str, field: dict | str) -> dict:
     }
 
 
-def _write_visual(visual_dir: Path, visual_info: dict) -> None:
+def _write_visual(visual_dir: Path, visual_info: dict, x_offset: int = 20) -> None:
     """Write visual.json with role-based field projections per visual type."""
     visual_type = MARK_TO_VISUAL.get(visual_info["mark_type"], "tableEx")
     table_name = visual_info["table"]
@@ -350,7 +429,7 @@ def _write_visual(visual_dir: Path, visual_info: dict) -> None:
     visual = {
         "$schema": f"{_SCHEMA_BASE}/definition/visualContainer/1.0.0/schema.json",
         "name": visual_dir.name,
-        "position": {"x": 20, "y": 20, "z": 0, "height": 360, "width": 560, "tabOrder": 0},
+        "position": {"x": x_offset, "y": 20, "z": 0, "height": 360, "width": 560, "tabOrder": 0},
         "visual": {
             "visualType": visual_type,
             "query": {"queryState": query_state},

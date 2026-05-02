@@ -56,8 +56,8 @@ def test_virtual_fields_excluded_from_filters():
             assert not f["field"].startswith(":")
 
 
-def test_simple_twb_no_filters():
-    workbook = parse(SIMPLE)
+def test_simple_join_twb_no_filters():
+    workbook = parse(SIMPLE_JOIN)
     for sheet in workbook["sheets"]:
         assert sheet["filters"] == []
 
@@ -84,6 +84,6 @@ def test_transformer_sheet_filters_structure():
         assert isinstance(entry["filters"], list)
 
 
-def test_transformer_simple_report_no_sheet_filters():
-    transformed = transform(parse(SIMPLE))
+def test_transformer_simple_join_report_no_sheet_filters():
+    transformed = transform(parse(SIMPLE_JOIN))
     assert transformed["report"]["sheet_filters"] == []

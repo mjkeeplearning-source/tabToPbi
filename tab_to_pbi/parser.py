@@ -396,6 +396,14 @@ def _parse_filters(ws: ET.Element) -> list[dict]:
 
 _DISCRETE_PREFIXES = {"none", "yr", "qr", "mn", "wk", "dt", "hr", "mt", "sg"}
 
+_DATE_PART_MAP = {
+    "yr": "YEAR",
+    "qr": "QUARTER",
+    "mn": "MONTH",
+    "wk": "WEEKNUM",
+    "hr": "HOUR",
+}
+
 _AGG_MAP = {
     "ctd": "DISTINCTCOUNT",
     "cntd": "DISTINCTCOUNT",
@@ -416,7 +424,11 @@ def _parse_shelf_fields(shelf: str) -> list[dict]:
     """Parse shelf string into list of {name, continuous, aggregation} dicts."""
     if not shelf.strip():
         return []
-    parts = [p.strip() for p in shelf.split(",")]
+    text = shelf.strip()
+    # Tableau wraps compound measure lists in parens: (field1 + field2)
+    if text.startswith("(") and text.endswith(")"):
+        text = text[1:-1]
+    parts = [p.strip() for p in text.replace(" + ", ",").split(",")]
     fields = []
     for part in parts:
         if "].[" in part:
@@ -434,11 +446,12 @@ def _parse_shelf_fields(shelf: str) -> list[dict]:
             aggregation = None
         if name.startswith(":"):
             continue  # Tableau virtual field (e.g. :Measure Names, :Measure Values)
-        fields.append({"name": name, "continuous": continuous, "aggregation": aggregation})
+        date_part = _DATE_PART_MAP.get(prefix) if len(segments) == 3 else None
+        fields.append({"name": name, "continuous": continuous, "aggregation": aggregation, "date_part": date_part})
     return fields
 
 
-_SUPPORTED_CONN_TYPES = {"excel-direct", "textscan", "csv", "postgres", ""}
+_SUPPORTED_CONN_TYPES = {"excel-direct", "textscan", "csv", "postgres", "sqlserver", "mysql", "bigquery", "redshift", "snowflake", "oracle", ""}
 _SQL_CONN_TYPES = {"postgres", "sqlserver", "mysql", "bigquery", "redshift", "snowflake", "oracle"}
 _UNSUPPORTED_RELATION_TYPES = {"union", "batch-union", "subquery", "stored-proc", "pivot", "project"}
 

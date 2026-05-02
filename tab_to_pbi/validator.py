@@ -252,7 +252,7 @@ def _load_tmdl_tables(tables_dir: Path) -> dict[str, set[str]]:
         table_name = table_match.group(1).strip("'")
         columns = {
             m.group(1).strip("'")
-            for m in re.finditer(r"^\s+column\s+'?([^'\n]+)'?", text, re.MULTILINE)
+            for m in re.finditer(r"^\s+(?:calculated)?[Cc]olumn\s+'?([^'\n]+)'?", text, re.MULTILINE)
         }
         tables[table_name] = columns
     return tables

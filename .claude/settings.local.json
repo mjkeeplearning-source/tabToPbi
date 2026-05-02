@@ -22,7 +22,20 @@
       "Bash(python3 -c ' *)",
       "Bash(env)",
       "Bash(python3 *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:api.github.com)",
+      "WebSearch",
+      "WebFetch(domain:medium.com)",
+      "WebFetch(domain:tableauandbehold.com)",
+      "WebFetch(domain:gist.github.com)",
+      "WebFetch(domain:bitips.blog)",
+      "WebFetch(domain:draftbi.com)",
+      "Bash(grep -n \"order_id\\\\|\\\\\\\\\\\\\\\\\\(.*\\\\\\\\\\\\\\\\\\)\\\\|col.*name\\\\|caption\\\\|metadata\" C:/vibe_coding/tabToPbi/tab_to_pbi/parser.py)",
+      "Bash(git *)",
+      "PowerShell(Get-Content *)"
     ]
   }
 }

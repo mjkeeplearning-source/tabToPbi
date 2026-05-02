@@ -95,6 +95,13 @@ def translate_formula(
     return result, "translated"
 
 
+def _substitute_calc_names(formula: str, calc_name_map: dict[str, str]) -> str:
+    """Replace [Calculation_xxx] tokens with display names before sending to Claude."""
+    for internal, display in calc_name_map.items():
+        formula = formula.replace(f"[{internal}]", f"[{display}]")
+    return formula
+
+
 def translate_calc_fields_in_transformed(transformed: dict) -> dict:
     """Run AI translation on pending calc fields. Returns updated transformed dict."""
     report = transformed.get("report", {})
@@ -114,13 +121,16 @@ def translate_calc_fields_in_transformed(transformed: dict) -> dict:
         if t.get("connection", {}).get("storage_mode") == "directQuery"
     }
 
+    calc_name_map = transformed.get("calc_name_map", {})
+
     measures = {(m["table"], m["name"]): m for m in transformed.get("measures", [])}
     updated_cfs = []
     for cf in calc_fields:
         table_name = cf.get("table") or (transformed.get("tables") or [{}])[0].get("name", "")
         columns = columns_by_table.get(table_name)
         is_dq = table_name in dq_tables
-        dax, status = translate_formula(cf["formula"], table_name, columns, directquery=is_dq, all_tables=columns_by_table)
+        formula = _substitute_calc_names(cf["formula"], calc_name_map)
+        dax, status = translate_formula(formula, table_name, columns, directquery=is_dq, all_tables=columns_by_table)
         updated_cf = {**cf, "status": status}
         if status == "translated" and dax:
             updated_cf["dax"] = dax

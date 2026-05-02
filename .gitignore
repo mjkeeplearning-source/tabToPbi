@@ -6,3 +6,5 @@ __pycache__/
 output/
 .pbir_schema_cache/
 data/
+input/
+output/

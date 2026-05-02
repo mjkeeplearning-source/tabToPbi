@@ -75,6 +75,11 @@ def transform(workbook: dict) -> dict:
         "sheet_filters": sheet_filters,
     }
 
+    # Merge all datasource calc_name_maps into one for the translator
+    merged_calc_name_map: dict[str, str] = {}
+    for ds in workbook.get("datasources", []):
+        merged_calc_name_map.update(ds.get("calc_name_map", {}))
+
     return {
         **workbook,
         "tables": tables,
@@ -82,6 +87,7 @@ def transform(workbook: dict) -> dict:
         "measures": list(measures.values()),
         "relationships": relationships,
         "report": report,
+        "calc_name_map": merged_calc_name_map,
     }
 
 
@@ -203,15 +209,33 @@ def _process_sheets(
         row_fields = [r for f in rows for r in [_resolve_field(f, fmap, cmap, default_table, measures)] if r]
         col_fields = [r for f in cols for r in [_resolve_field(f, fmap, cmap, default_table, measures)] if r]
 
-        visuals.append({
-            "name": sheet["name"],
-            "table": default_table,
-            "field_table_map": fmap,
-            "row_fields": row_fields,
-            "col_fields": col_fields,
-            "mark_type": mark_type,
-            "filters": sheet.get("filters", []),
-        })
+        col_measures = [f for f in col_fields if f and f.get("is_measure")]
+        col_dims = [f for f in col_fields if f and not f.get("is_measure")]
+
+        if len(col_measures) > 1:
+            # Multiple measures on cols shelf → one visual per measure on the same page
+            for m in col_measures:
+                visuals.append({
+                    "name": f"{sheet['name']} - {m['name']}",
+                    "page_name": sheet["name"],
+                    "table": default_table,
+                    "field_table_map": fmap,
+                    "row_fields": row_fields,
+                    "col_fields": col_dims + [m],
+                    "mark_type": mark_type,
+                    "filters": sheet.get("filters", []),
+                })
+        else:
+            visuals.append({
+                "name": sheet["name"],
+                "page_name": sheet["name"],
+                "table": default_table,
+                "field_table_map": fmap,
+                "row_fields": row_fields,
+                "col_fields": col_fields,
+                "mark_type": mark_type,
+                "filters": sheet.get("filters", []),
+            })
     return visuals, unsupported_warnings
 
 
@@ -237,6 +261,10 @@ def _resolve_field(
         return {"name": display_name, "is_measure": True, "table": default_table}
 
     tname = field_table_map.get(name, default_table)
+
+    if field.get("date_part"):
+        # Bind the raw date column; PBI's date hierarchy handles year/month/day granularity
+        return {"name": name, "is_measure": False, "table": tname or default_table}
 
     if not agg or not tname:
         return {"name": name, "is_measure": False, "table": tname or default_table}
