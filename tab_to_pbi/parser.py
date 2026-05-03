@@ -21,6 +21,7 @@ def parse(path: Path) -> dict:
         "datasources": datasources,
         "sheets": sheets,
         "unsupported": unsupported,
+        "datasource_filters": _parse_datasource_filters(root),
     }
 
 
@@ -372,25 +373,54 @@ def _parse_sheets(root: ET.Element) -> list[dict]:
     return sheets
 
 
+def _parse_filter_element(f: ET.Element) -> dict | None:
+    """Parse a single <filter> element into a filter dict. Returns None for virtual fields."""
+    col = f.get("column", "")
+    cls = f.get("class", "")
+    if "].[" in col:
+        field_ref = col.split("].[", 1)[1].rstrip("]")
+    else:
+        field_ref = col.strip("[]")
+    segments = field_ref.split(":", 2)
+    name = segments[1] if len(segments) == 3 else field_ref
+    if name.startswith(":"):
+        return None
+    entry: dict = {"field": name, "class": cls}
+    if cls == "categorical":
+        # member attribute is encoded as '"value"' in Tableau XML
+        members = [
+            gf.get("member", "").strip('"')
+            for gf in f.iter("groupfilter")
+            if gf.get("function") == "member"
+        ]
+        if members:
+            entry["values"] = members
+    elif cls == "quantitative":
+        if len(segments) == 3 and segments[0] in _AGG_MAP:
+            entry["agg_prefix"] = segments[0]
+        entry["min"] = f.findtext("min", "")
+        entry["max"] = f.findtext("max", "")
+    return entry
+
+
 def _parse_filters(ws: ET.Element) -> list[dict]:
     """Extract worksheet-level filters from a <worksheet> element."""
     filters = []
-    for f in ws.iter("filter"):
-        col = f.get("column", "")
-        cls = f.get("class", "")
-        if "].[" in col:
-            field_ref = col.split("].[", 1)[1].rstrip("]")
-        else:
-            field_ref = col.strip("[]")
-        segments = field_ref.split(":", 2)
-        name = segments[1] if len(segments) == 3 else field_ref
-        if name.startswith(":"):
-            continue  # skip Tableau virtual fields
-        entry: dict = {"field": name, "class": cls}
-        if cls == "quantitative":
-            entry["min"] = f.findtext("min", "")
-            entry["max"] = f.findtext("max", "")
-        filters.append(entry)
+    for f in ws.findall("./table/view/filter"):
+        entry = _parse_filter_element(f)
+        if entry is not None:
+            filters.append(entry)
+    return filters
+
+
+def _parse_datasource_filters(root: ET.Element) -> list[dict]:
+    """Extract filters from <shared-views> that apply across all sheets."""
+    filters = []
+    for sv in root.findall("./shared-views/shared-view"):
+        for f in sv.findall("filter"):
+            entry = _parse_filter_element(f)
+            if entry is not None:
+                filters.append(entry)
     return filters
 
 
@@ -428,7 +458,7 @@ def _parse_shelf_fields(shelf: str) -> list[dict]:
     # Tableau wraps compound measure lists in parens: (field1 + field2)
     if text.startswith("(") and text.endswith(")"):
         text = text[1:-1]
-    parts = [p.strip() for p in text.replace(" + ", ",").split(",")]
+    parts = [p.strip() for p in text.replace(" + ", ",").replace(" / ", ",").split(",")]
     fields = []
     for part in parts:
         if "].[" in part:

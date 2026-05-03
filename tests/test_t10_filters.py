@@ -56,10 +56,44 @@ def test_virtual_fields_excluded_from_filters():
             assert not f["field"].startswith(":")
 
 
-def test_simple_join_twb_no_filters():
+def test_simple_join_sheet1_quantitative_filter():
     workbook = parse(SIMPLE_JOIN)
-    for sheet in workbook["sheets"]:
-        assert sheet["filters"] == []
+    sheet1 = next(s for s in workbook["sheets"] if s["name"] == "Sheet 1")
+    assert len(sheet1["filters"]) == 1
+    f = sheet1["filters"][0]
+    assert f["class"] == "quantitative"
+    assert f["field"] == "profit"
+    assert f["agg_prefix"] == "max"
+    assert f["min"] == "1013.13"
+    assert "max" in f
+
+
+def test_simple_join_sheet2_categorical_filter_has_values():
+    workbook = parse(SIMPLE_JOIN)
+    sheet2 = next(s for s in workbook["sheets"] if s["name"] == "Sheet 2")
+    assert len(sheet2["filters"]) == 1
+    f = sheet2["filters"][0]
+    assert f["class"] == "categorical"
+    assert f["field"] == "sub_category"
+    assert "values" in f
+    assert "Accessories" in f["values"]
+
+
+def test_simple_join_datasource_filters():
+    workbook = parse(SIMPLE_JOIN)
+    ds_filters = workbook["datasource_filters"]
+    assert len(ds_filters) == 1
+    assert ds_filters[0]["field"] == "region"
+    assert ds_filters[0]["class"] == "categorical"
+    assert set(ds_filters[0]["values"]) == {"East", "South", "West"}
+
+
+def test_simple_join_sheet3_rows_has_category_and_subcategory():
+    workbook = parse(SIMPLE_JOIN)
+    sheet3 = next(s for s in workbook["sheets"] if s["name"] == "Sheet 3")
+    row_names = [f["name"] for f in sheet3["rows"]]
+    assert "category" in row_names
+    assert "sub_category" in row_names
 
 
 # --- Transformer: filters passed to visuals and report ---
@@ -84,6 +118,25 @@ def test_transformer_sheet_filters_structure():
         assert isinstance(entry["filters"], list)
 
 
-def test_transformer_simple_join_report_no_sheet_filters():
+def test_transformer_simple_join_report_has_sheet_filters():
     transformed = transform(parse(SIMPLE_JOIN))
-    assert transformed["report"]["sheet_filters"] == []
+    sheet_filters = transformed["report"]["sheet_filters"]
+    assert len(sheet_filters) >= 1
+    sheet_names = [sf["sheet"] for sf in sheet_filters]
+    assert "Sheet 1" in sheet_names
+
+
+def test_transformer_enriches_visual_filters_with_table():
+    transformed = transform(parse(SIMPLE_JOIN))
+    sheet1_visual = next(v for v in transformed["visuals"] if v["page_name"] == "Sheet 1")
+    for f in sheet1_visual["filters"]:
+        assert "table" in f
+        assert f["table"] != ""
+
+
+def test_transformer_datasource_filters_enriched():
+    transformed = transform(parse(SIMPLE_JOIN))
+    ds_filters = transformed["datasource_filters"]
+    assert len(ds_filters) == 1
+    assert ds_filters[0]["field"] == "region"
+    assert ds_filters[0]["table"] == "orders"
