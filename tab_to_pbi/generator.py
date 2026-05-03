@@ -1,5 +1,6 @@
 """Write PBIR folder structure from transformed workbook dict."""
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -19,6 +20,19 @@ MARK_TO_VISUAL = {
 }
 
 _SCHEMA_BASE = "https://developer.microsoft.com/json-schemas/fabric/item/report"
+
+# Maps Tableau aggregation prefix → PBI semantic query Aggregation.Function integer
+_PBI_AGG_FUNC = {
+    "sum": 0,
+    "avg": 1,
+    "average": 1,
+    "cntd": 2,
+    "ctd": 2,
+    "min": 3,
+    "max": 4,
+    "cnt": 5,
+    "median": 6,
+}
 
 # Maps PBI/TMDL dataType → Power Query M type literal
 _M_TYPE_MAP = {
@@ -45,10 +59,130 @@ def generate(transformed: dict, output_dir: Path, data_dir: Path = Path("data"))
     _write_tmdl_model(model_dir, transformed, data_dir)
     _write_definition_pbir(report_dir, name)
     _write_version_json(definition_dir)
-    _write_report_json(definition_dir)
+    _write_report_json(definition_dir, transformed.get("datasource_filters", []))
     _write_pages(definition_dir, transformed)
 
     return report_dir
+
+
+def _format_literal(value: str) -> str:
+    """Format a Tableau filter value string as a PBI semantic query literal."""
+    v = value.strip()
+    # Tableau date-only: #2023-01-03#  → date'2023-01-03'
+    # Tableau datetime:  #2023-01-03 12:00:00#  → datetime'2023-01-03T12:00:00'
+    if v.startswith("#") and v.endswith("#"):
+        inner = v.strip("#").strip()
+        if " " in inner:
+            return f"datetime'{inner.replace(' ', 'T')}'"
+        return f"date'{inner}'"
+    try:
+        float_val = float(v)
+        int_val = int(float_val)
+        return f"{v}L" if int_val == float_val and "." not in v else f"{v}D"
+    except ValueError:
+        return f"'{v}'"
+
+
+def _build_filter_entry(f: dict, idx: int) -> dict | None:
+    """Build one PBI filterConfig entry from an enriched filter dict."""
+    field_name = f["field"]
+    table_name = f.get("table", "")
+    cls = f["class"]
+    if not table_name:
+        return None
+
+    filter_id = hashlib.md5(f"{field_name}_{cls}_{idx}".encode()).hexdigest()[:20]
+    field_ref = {
+        "Column": {
+            "Expression": {"SourceRef": {"Entity": table_name}},
+            "Property": field_name,
+        }
+    }
+    col_expr = {
+        "Column": {
+            "Expression": {"SourceRef": {"Source": "f"}},
+            "Property": field_name,
+        }
+    }
+    from_clause = [{"Name": "f", "Entity": table_name, "Type": 0}]
+
+    if cls == "categorical":
+        values = f.get("values", [])
+        if not values:
+            return None  # level-members only — no restriction to migrate
+        condition = {
+            "In": {
+                "Expressions": [col_expr],
+                "Values": [[{"Literal": {"Value": f"'{v}'"}}] for v in values],
+            }
+        }
+        filter_type = "Categorical"
+        where = [{"Condition": condition}]
+    elif cls == "quantitative":
+        agg_prefix = f.get("agg_prefix")
+        min_val = f.get("min", "")
+        max_val = f.get("max", "")
+        if agg_prefix and agg_prefix in _PBI_AGG_FUNC:
+            # Post-aggregation filter: use Aggregation expression + Advanced type
+            agg_func = _PBI_AGG_FUNC[agg_prefix]
+            agg_expr = {
+                "Aggregation": {
+                    "Expression": col_expr,
+                    "Function": agg_func,
+                }
+            }
+            agg_field_ref = {
+                "Aggregation": {
+                    "Expression": {
+                        "Column": {
+                            "Expression": {"SourceRef": {"Entity": table_name}},
+                            "Property": field_name,
+                        }
+                    },
+                    "Function": agg_func,
+                }
+            }
+            where = []
+            if min_val:
+                where.append({"Condition": {"Comparison": {"ComparisonKind": 2, "Left": agg_expr, "Right": {"Literal": {"Value": _format_literal(min_val)}}}}})
+            if max_val:
+                where.append({"Condition": {"Comparison": {"ComparisonKind": 4, "Left": agg_expr, "Right": {"Literal": {"Value": _format_literal(max_val)}}}}})
+            if not where:
+                return None
+            filter_type = "Advanced"
+            field_ref = agg_field_ref
+        else:
+            # Row-level filter: use raw Column expression + Range type
+            if min_val and max_val:
+                where = [{"Condition": {"Between": {"Expression": col_expr, "LowerBound": {"Literal": {"Value": _format_literal(min_val)}}, "UpperBound": {"Literal": {"Value": _format_literal(max_val)}}}}}]
+            elif min_val:
+                where = [{"Condition": {"Comparison": {"ComparisonKind": 2, "Left": col_expr, "Right": {"Literal": {"Value": _format_literal(min_val)}}}}}]
+            elif max_val:
+                where = [{"Condition": {"Comparison": {"ComparisonKind": 4, "Left": col_expr, "Right": {"Literal": {"Value": _format_literal(max_val)}}}}}]
+            else:
+                return None
+            filter_type = "Range"
+    else:
+        return None
+
+    return {
+        "name": filter_id,
+        "field": field_ref,
+        "type": filter_type,
+        "filter": {
+            "Version": 2,
+            "From": from_clause,
+            "Where": where,
+        },
+        "howCreated": "User",
+        "isHiddenInViewMode": False,
+    }
+
+
+def _build_filter_config(filters: list[dict]) -> dict | None:
+    """Build a PBI filterConfig dict from a list of enriched filter dicts."""
+    entries = [e for i, f in enumerate(filters) for e in [_build_filter_entry(f, i)] if e]
+    return {"filters": entries} if entries else None
 
 
 def _write_definition_pbism(model_dir: Path) -> None:
@@ -272,7 +406,7 @@ def _write_version_json(definition_dir: Path) -> None:
     (definition_dir / "version.json").write_text(json.dumps(content, indent=2))
 
 
-def _write_report_json(definition_dir: Path) -> None:
+def _write_report_json(definition_dir: Path, datasource_filters: list[dict] | None = None) -> None:
     """Write definition/report.json matching PBI Desktop 2.152 format."""
     content = {
         "$schema": f"{_SCHEMA_BASE}/definition/report/3.2.0/schema.json",
@@ -307,6 +441,10 @@ def _write_report_json(definition_dir: Path) -> None:
             "useDefaultAggregateDisplayName": True,
         },
     }
+    if datasource_filters:
+        filter_config = _build_filter_config(datasource_filters)
+        if filter_config:
+            content["filterConfig"] = filter_config
     (definition_dir / "report.json").write_text(json.dumps(content, indent=2))
 
 
@@ -426,13 +564,18 @@ def _write_visual(visual_dir: Path, visual_info: dict, x_offset: int = 20) -> No
             "Values": {"projections": [_make_projection(table_name, f) for f in all_fields]}
         }
 
-    visual = {
+    visual_obj: dict = {
+        "visualType": visual_type,
+        "query": {"queryState": query_state},
+    }
+    container: dict = {
         "$schema": f"{_SCHEMA_BASE}/definition/visualContainer/1.0.0/schema.json",
         "name": visual_dir.name,
         "position": {"x": x_offset, "y": 20, "z": 0, "height": 360, "width": 560, "tabOrder": 0},
-        "visual": {
-            "visualType": visual_type,
-            "query": {"queryState": query_state},
-        },
+        "visual": visual_obj,
     }
-    (visual_dir / "visual.json").write_text(json.dumps(visual, indent=2))
+    filter_config = _build_filter_config(visual_info.get("filters", []))
+    if filter_config:
+        container["filterConfig"] = filter_config
+
+    (visual_dir / "visual.json").write_text(json.dumps(container, indent=2))

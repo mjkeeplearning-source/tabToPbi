@@ -80,6 +80,16 @@ def transform(workbook: dict) -> dict:
     for ds in workbook.get("datasources", []):
         merged_calc_name_map.update(ds.get("calc_name_map", {}))
 
+    # Enrich datasource_filters with table names for report-level filter generation
+    all_field_map: dict[str, str] = {}
+    for fmap in field_lookup.values():
+        all_field_map.update(fmap)
+    default_table_name = tables[0]["name"] if tables else ""
+    datasource_filters = [
+        {**f, "table": all_field_map.get(f["field"], default_table_name)}
+        for f in workbook.get("datasource_filters", [])
+    ]
+
     return {
         **workbook,
         "tables": tables,
@@ -88,6 +98,7 @@ def transform(workbook: dict) -> dict:
         "relationships": relationships,
         "report": report,
         "calc_name_map": merged_calc_name_map,
+        "datasource_filters": datasource_filters,
     }
 
 
@@ -212,6 +223,12 @@ def _process_sheets(
         col_measures = [f for f in col_fields if f and f.get("is_measure")]
         col_dims = [f for f in col_fields if f and not f.get("is_measure")]
 
+        # Enrich filters with table names for PBI filter generation
+        enriched_filters = [
+            {**f, "table": fmap.get(f["field"], default_table)}
+            for f in sheet.get("filters", [])
+        ]
+
         if len(col_measures) > 1:
             # Multiple measures on cols shelf → one visual per measure on the same page
             for m in col_measures:
@@ -223,7 +240,7 @@ def _process_sheets(
                     "row_fields": row_fields,
                     "col_fields": col_dims + [m],
                     "mark_type": mark_type,
-                    "filters": sheet.get("filters", []),
+                    "filters": enriched_filters,
                 })
         else:
             visuals.append({
@@ -234,7 +251,7 @@ def _process_sheets(
                 "row_fields": row_fields,
                 "col_fields": col_fields,
                 "mark_type": mark_type,
-                "filters": sheet.get("filters", []),
+                "filters": enriched_filters,
             })
     return visuals, unsupported_warnings
 

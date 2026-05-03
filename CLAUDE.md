@@ -298,3 +298,22 @@ These were discovered through T6 verification against PBI Desktop 2.152 (March 2
 - At least one report page with one supported visual renders correctly.
 - Unsupported workbook features are detected and written to the migration report.
 - The output includes a machine-readable `migration_report.json`.
+
+---
+
+## Features
+
+| Feature | Description | Status |
+|---------|-------------|--------|
+| Excel / CSV datasource | Parses `.twb`/`.twbx` with Excel and CSV connections; generates Power Query M with explicit column types | Complete |
+| PostgreSQL multi-table datasource | Parses multi-table federated postgres connections; maps each physical table to a PBI table with correct column binding | Complete |
+| SQL datasources (SQLServer, MySQL, Redshift, Snowflake, Oracle, BigQuery) | Generates correct Power Query M connector per SQL dialect; custom SQL wrapped in `Value.NativeQuery` | Complete |
+| Relationships | Extracts Tableau logical-layer (object-graph) and physical-layer (JOIN) relationships; writes `relationships.tmdl` | Complete |
+| Calculated fields → DAX | Translates supported Tableau formulas to DAX via Claude (`claude-opus-4-7`); LOD expressions, cross-table refs supported | Complete |
+| Visual type mapping | Maps Tableau mark types to PBI visual types (bar, column, line, area, pie, scatter, map, table) | Complete |
+| Aggregation → DAX measures | Decodes Tableau shelf aggregation prefixes (SUM, COUNTD, AVG, etc.) into named DAX measures written to TMDL | Complete |
+| DirectQuery mode | Live SQL connections (no extract) generated as DirectQuery with two-stage DAX safety check | Complete |
+| `.twbx` support | Extracts embedded data files from `.twbx` archives; resolves file paths for M expressions | Complete |
+| Filter migration | Migrates Tableau worksheet filters (visual-level) and shared-view filters (report-level) to PBI `filterConfig` JSON; supports categorical (In) and quantitative (Between/Comparison) filter types; date, datetime, integer, decimal literal formatting | Complete |
+| Migration report | Writes `migration_report.json` with translated fields, unsupported items, sheet filters, and table inventory | Complete |
+| PBIR validator | JSON-schema validation + semantic cross-reference checks; integrated into pipeline; exits 1 on errors | Complete |
