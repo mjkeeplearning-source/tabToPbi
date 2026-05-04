@@ -365,11 +365,32 @@ def _parse_sheets(root: ET.Element) -> list[dict]:
         )
         show_data_labels = label_fmt is not None and label_fmt.get("value") == "true"
 
+        # Tableau text tables (crosstabs) encode their measures in <encodings><text>,
+        # not on the cols shelf. Gate: only treat as text table when cols is empty,
+        # rows is non-empty, mark is Automatic, and text encoding fields exist.
+        text_enc_fields = []
+        for text_enc in ws.findall("./table/panes/pane/encodings/text"):
+            col_attr = text_enc.get("column", "")
+            if col_attr:
+                text_enc_fields.extend(_parse_shelf_fields(col_attr))
+
+        is_text_table = (
+            mark_type == "Automatic"
+            and bool(rows_text.strip())
+            and not cols_text.strip()
+            and bool(text_enc_fields)
+        )
+        if is_text_table:
+            col_fields = text_enc_fields
+            mark_type = "Text"
+        else:
+            col_fields = _parse_shelf_fields(cols_text)
+
         sheets.append({
             "name": name,
             "datasource": datasource,
             "rows": _parse_shelf_fields(rows_text),
-            "cols": _parse_shelf_fields(cols_text),
+            "cols": col_fields,
             "mark_type": mark_type,
             "mark_orientation": mark_orientation,
             "show_data_labels": show_data_labels,
