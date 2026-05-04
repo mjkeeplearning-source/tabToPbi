@@ -317,3 +317,4 @@ These were discovered through T6 verification against PBI Desktop 2.152 (March 2
 | Filter migration | Migrates Tableau worksheet filters (visual-level) and shared-view filters (report-level) to PBI `filterConfig` JSON; supports categorical (In) and quantitative (Between/Comparison) filter types; date, datetime, integer, decimal literal formatting | Complete |
 | Migration report | Writes `migration_report.json` with translated fields, unsupported items, sheet filters, and table inventory | Complete |
 | PBIR validator | JSON-schema validation + semantic cross-reference checks; integrated into pipeline; exits 1 on errors | Complete |
+| Data labels | Migrates Tableau `mark-labels-show` setting to PBI `objects.labels` in `visual.json`; supported for all chart visual types (bar, column, line, area, pie, scatter, map); skipped for table (`tableEx`) visuals | Complete |

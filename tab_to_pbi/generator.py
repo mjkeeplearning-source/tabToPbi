@@ -568,6 +568,10 @@ def _write_visual(visual_dir: Path, visual_info: dict, x_offset: int = 20) -> No
         "visualType": visual_type,
         "query": {"queryState": query_state},
     }
+    if visual_info.get("show_data_labels") and visual_type != "tableEx":
+        visual_obj["objects"] = {
+            "labels": [{"properties": {"show": {"expr": {"Literal": {"Value": "true"}}}}}]
+        }
     container: dict = {
         "$schema": f"{_SCHEMA_BASE}/definition/visualContainer/1.0.0/schema.json",
         "name": visual_dir.name,

@@ -229,6 +229,7 @@ def _process_sheets(
             for f in sheet.get("filters", [])
         ]
 
+        show_data_labels = sheet.get("show_data_labels", False)
         if len(col_measures) > 1:
             # Multiple measures on cols shelf → one visual per measure on the same page
             for m in col_measures:
@@ -240,6 +241,7 @@ def _process_sheets(
                     "row_fields": row_fields,
                     "col_fields": col_dims + [m],
                     "mark_type": mark_type,
+                    "show_data_labels": show_data_labels,
                     "filters": enriched_filters,
                 })
         else:
@@ -251,6 +253,7 @@ def _process_sheets(
                 "row_fields": row_fields,
                 "col_fields": col_fields,
                 "mark_type": mark_type,
+                "show_data_labels": show_data_labels,
                 "filters": enriched_filters,
             })
     return visuals, unsupported_warnings
