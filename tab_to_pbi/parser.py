@@ -374,6 +374,7 @@ def _parse_sheets(root: ET.Element) -> list[dict]:
             "mark_orientation": mark_orientation,
             "show_data_labels": show_data_labels,
             "filters": _parse_filters(ws),
+            "sorts": _parse_sorts(ws),
         })
     return sheets
 
@@ -416,6 +417,50 @@ def _parse_filters(ws: ET.Element) -> list[dict]:
         if entry is not None:
             filters.append(entry)
     return filters
+
+
+def _parse_sorts(ws: ET.Element) -> list[dict]:
+    """Extract worksheet-level sorts from <computed-sort>, <natural-sort>, <alphabetic-sort>, <manual-sort>."""
+    sorts = []
+    view = ws.find("./table/view")
+    if view is None:
+        return sorts
+
+    for tag, sort_type in [
+        ("computed-sort", "computed"),
+        ("natural-sort", "natural"),
+        ("alphabetic-sort", "alphabetic"),
+        ("manual-sort", "manual"),
+    ]:
+        for el in view.findall(tag):
+            col = el.get("column", "")
+            direction = el.get("direction", "ASC")
+            field_name = _extract_field_name(col)
+            if not field_name:
+                continue
+            entry: dict = {"type": sort_type, "field": field_name, "direction": direction}
+            if sort_type == "computed":
+                using = el.get("using", "")
+                using_ref = _extract_field_ref(using)
+                segs = using_ref.split(":", 2)
+                entry["using_prefix"] = segs[0] if len(segs) == 3 else ""
+                entry["using"] = segs[1] if len(segs) == 3 else using_ref
+            sorts.append(entry)
+    return sorts
+
+
+def _extract_field_name(col_attr: str) -> str:
+    """Extract the middle segment (field name) from a Tableau column attribute."""
+    ref = _extract_field_ref(col_attr)
+    segs = ref.split(":", 2)
+    return segs[1] if len(segs) == 3 else ref
+
+
+def _extract_field_ref(col_attr: str) -> str:
+    """Strip the datasource prefix from a [ds].[prefix:name:suffix] attribute."""
+    if "].[" in col_attr:
+        return col_attr.split("].[", 1)[1].rstrip("]")
+    return col_attr.strip("[]")
 
 
 def _parse_datasource_filters(root: ET.Element) -> list[dict]:

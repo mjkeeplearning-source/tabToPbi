@@ -139,16 +139,27 @@ def translate_calc_fields_in_transformed(transformed: dict) -> dict:
 
     unsupported_names = {cf["name"] for cf in updated_cfs if cf["status"] != "translated"}
     updated_visuals = []
+    pruned_sort_warnings: list[str] = []
     for v in transformed.get("visuals", []):
+        pruned_sorts = []
+        for s in v.get("sorts", []):
+            if s.get("is_measure") and s.get("sort_field") in unsupported_names:
+                pruned_sort_warnings.append(
+                    f"Sort by '{s['sort_field']}' removed: calc field translation unsupported"
+                )
+            else:
+                pruned_sorts.append(s)
         updated_visuals.append({
             **v,
             "row_fields": [f for f in v.get("row_fields", []) if f.get("name") not in unsupported_names],
             "col_fields": [f for f in v.get("col_fields", []) if f.get("name") not in unsupported_names],
+            "sorts": pruned_sorts,
         })
 
+    updated_unsupported = report.get("unsupported", []) + pruned_sort_warnings
     return {
         **transformed,
         "measures": list(measures.values()),
         "visuals": updated_visuals,
-        "report": {**report, "calculated_fields": updated_cfs},
+        "report": {**report, "calculated_fields": updated_cfs, "unsupported": updated_unsupported},
     }

@@ -229,6 +229,9 @@ def _process_sheets(
             for f in sheet.get("filters", [])
         ]
 
+        enriched_sorts, sort_warnings = _enrich_sorts(sheet.get("sorts", []), fmap, cmap, default_table)
+        unsupported_warnings.extend(sort_warnings)
+
         show_data_labels = sheet.get("show_data_labels", False)
         if len(col_measures) > 1:
             # Multiple measures on cols shelf → one visual per measure on the same page
@@ -243,6 +246,7 @@ def _process_sheets(
                     "mark_type": mark_type,
                     "show_data_labels": show_data_labels,
                     "filters": enriched_filters,
+                    "sorts": enriched_sorts,
                 })
         else:
             visuals.append({
@@ -255,8 +259,75 @@ def _process_sheets(
                 "mark_type": mark_type,
                 "show_data_labels": show_data_labels,
                 "filters": enriched_filters,
+                "sorts": enriched_sorts,
             })
     return visuals, unsupported_warnings
+
+
+def _enrich_sorts(
+    sorts: list[dict],
+    fmap: dict[str, str],
+    cmap: dict[str, str],
+    default_table: str,
+) -> tuple[list[dict], list[str]]:
+    """Enrich parsed sorts with table names and resolved field names for PBI sortDefinition.
+
+    Returns (enriched_sorts, warnings). Manual sorts are skipped (unsupported in PBI).
+    For computed-sorts the using field (the measure driving the sort) becomes sort_field.
+    For natural/alphabetic sorts the column itself becomes sort_field.
+    """
+    enriched: list[dict] = []
+    warnings: list[str] = []
+    for s in sorts:
+        sort_type = s["type"]
+        direction = s["direction"]
+        field = s["field"]
+
+        if sort_type == "manual":
+            warnings.append(f"Manual sort on '{field}' is not supported in PBI — skipped")
+            continue
+
+        if sort_type == "computed":
+            using = s.get("using", "")
+            using_prefix = s.get("using_prefix", "")
+            if using_prefix == "usr":
+                # User-defined calc field: resolve internal name → display name
+                if using not in cmap:
+                    warnings.append(
+                        f"Computed sort on '{field}' references unknown calc field '{using}' — skipped"
+                    )
+                    continue
+                sort_field = cmap[using]
+                sort_table = fmap.get(sort_field, default_table)
+                is_measure = True
+            elif using_prefix in _AGG_LABEL:
+                # Regular aggregated column auto-measure: e.g. sum:profit → "Sum profit"
+                sort_field = f"{_AGG_LABEL[using_prefix]} {using}"
+                sort_table = fmap.get(using, default_table)
+                is_measure = True
+            elif using:
+                sort_field = using
+                sort_table = fmap.get(using, default_table)
+                is_measure = True
+            else:
+                warnings.append(f"Computed sort on '{field}': missing using field — skipped")
+                continue
+            enriched.append({
+                "sort_field": sort_field,
+                "sort_table": sort_table,
+                "direction": direction,
+                "is_measure": is_measure,
+            })
+        else:
+            # natural-sort or alphabetic-sort: sort by the column itself
+            table = fmap.get(field, default_table)
+            enriched.append({
+                "sort_field": field,
+                "sort_table": table,
+                "direction": direction,
+                "is_measure": False,
+            })
+    return enriched, warnings
 
 
 def _resolve_field(

@@ -542,6 +542,25 @@ def _make_projection(default_table: str, field: dict | str) -> dict:
     }
 
 
+def _build_sort_definition(sorts: list[dict]) -> dict | None:
+    """Build PBI sortDefinition from enriched sort list. Returns None if no sorts."""
+    if not sorts:
+        return None
+    items = []
+    for s in sorts:
+        expr_key = "Measure" if s["is_measure"] else "Column"
+        items.append({
+            "field": {
+                expr_key: {
+                    "Expression": {"SourceRef": {"Entity": s["sort_table"]}},
+                    "Property": s["sort_field"],
+                }
+            },
+            "direction": "Ascending" if s["direction"] == "ASC" else "Descending",
+        })
+    return {"sort": items, "isDefaultSort": False}
+
+
 def _write_visual(visual_dir: Path, visual_info: dict, x_offset: int = 20) -> None:
     """Write visual.json with role-based field projections per visual type."""
     visual_type = MARK_TO_VISUAL.get(visual_info["mark_type"], "tableEx")
@@ -564,10 +583,12 @@ def _write_visual(visual_dir: Path, visual_info: dict, x_offset: int = 20) -> No
             "Values": {"projections": [_make_projection(table_name, f) for f in all_fields]}
         }
 
-    visual_obj: dict = {
-        "visualType": visual_type,
-        "query": {"queryState": query_state},
-    }
+    query: dict = {"queryState": query_state}
+    sort_def = _build_sort_definition(visual_info.get("sorts", []))
+    if sort_def:
+        query["sortDefinition"] = sort_def
+
+    visual_obj: dict = {"visualType": visual_type, "query": query}
     if visual_info.get("show_data_labels") and visual_type != "tableEx":
         visual_obj["objects"] = {
             "labels": [{"properties": {"show": {"expr": {"Literal": {"Value": "true"}}}}}]
