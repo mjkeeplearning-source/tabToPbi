@@ -360,6 +360,10 @@ def _parse_sheets(root: ET.Element) -> list[dict]:
         mark = ws.find("./table/panes/pane/mark")
         mark_type = mark.get("class", "Automatic") if mark is not None else "Automatic"
         mark_orientation = mark.get("orientation", "") if mark is not None else ""
+        label_fmt = ws.find(
+            "./table/panes/pane/style/style-rule[@element='mark']/format[@attr='mark-labels-show']"
+        )
+        show_data_labels = label_fmt is not None and label_fmt.get("value") == "true"
 
         sheets.append({
             "name": name,
@@ -368,6 +372,7 @@ def _parse_sheets(root: ET.Element) -> list[dict]:
             "cols": _parse_shelf_fields(cols_text),
             "mark_type": mark_type,
             "mark_orientation": mark_orientation,
+            "show_data_labels": show_data_labels,
             "filters": _parse_filters(ws),
         })
     return sheets
