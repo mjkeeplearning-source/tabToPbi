@@ -348,6 +348,53 @@ def _parse_relationships(ds: ET.Element) -> list[dict]:
     return rels
 
 
+def _parse_title(ws: ET.Element) -> dict | None:
+    """Extract worksheet title text and run-level formatting.
+
+    Returns None when no custom <title> element exists (PBI omits the title block).
+    For multi-run titles the text of all static runs is joined; formatting is taken
+    from the first static run.  CDATA dynamic field refs are skipped.
+    Tableau-proprietary fonts (prefix 'Tableau ') are dropped so PBI falls back to
+    its default font; bold/italic weight is preserved as a separate property.
+    """
+    runs = ws.findall("./layout-options/title/formatted-text/run")
+    if not runs:
+        return None
+
+    text_parts: list[str] = []
+    formatting: dict = {}
+
+    for run in runs:
+        text = (run.text or "").strip()
+        is_dynamic = text.startswith("<[")
+
+        # Accumulate static text
+        if text and not is_dynamic:
+            text_parts.append(text)
+
+        # Capture formatting from the first run that carries any style attribute,
+        # regardless of whether it also has text (Tableau sometimes separates them).
+        if not formatting and any(run.get(a) for a in ("fontsize", "fontname", "fontcolor", "bold", "italic", "underline")):
+            if run.get("fontsize"):
+                formatting["font_size"] = int(float(run.get("fontsize")))
+            fontname = run.get("fontname", "")
+            if fontname and not fontname.lower().startswith("tableau "):
+                formatting["font_family"] = fontname
+            if run.get("fontcolor"):
+                formatting["font_color"] = run.get("fontcolor")
+            if run.get("bold") == "true":
+                formatting["bold"] = True
+            if run.get("italic") == "true":
+                formatting["italic"] = True
+            if run.get("underline") == "true":
+                formatting["underline"] = True
+
+    text = " ".join(text_parts).strip()
+    if not text:
+        return None
+    return {"text": text, **formatting}
+
+
 def _parse_sheets(root: ET.Element) -> list[dict]:
     """Extract worksheet definitions."""
     sheets = []
@@ -388,6 +435,7 @@ def _parse_sheets(root: ET.Element) -> list[dict]:
 
         sheets.append({
             "name": name,
+            "title": _parse_title(ws),
             "datasource": datasource,
             "rows": _parse_shelf_fields(rows_text),
             "cols": col_fields,
