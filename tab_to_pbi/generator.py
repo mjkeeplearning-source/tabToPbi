@@ -593,14 +593,43 @@ def _write_visual(visual_dir: Path, visual_info: dict, x_offset: int = 20) -> No
         visual_obj["objects"] = {
             "labels": [{"properties": {"show": {"expr": {"Literal": {"Value": "true"}}}}}]
         }
+    title_info = visual_info.get("title")
+    if title_info:
+        visual_obj["visualContainerObjects"] = _build_title_objects(title_info)
     container: dict = {
         "$schema": f"{_SCHEMA_BASE}/definition/visualContainer/1.0.0/schema.json",
         "name": visual_dir.name,
         "position": {"x": x_offset, "y": 20, "z": 0, "height": 360, "width": 560, "tabOrder": 0},
         "visual": visual_obj,
     }
+
     filter_config = _build_filter_config(visual_info.get("filters", []))
     if filter_config:
         container["filterConfig"] = filter_config
 
     (visual_dir / "visual.json").write_text(json.dumps(container, indent=2))
+
+
+def _build_title_objects(title_info: dict) -> dict:
+    """Build the visualContainerObjects.title block from a parsed title dict."""
+    def lit(value: str) -> dict:
+        return {"expr": {"Literal": {"Value": value}}}
+
+    props: dict = {
+        "show": lit("true"),
+        "text": lit(f"'{title_info['text']}'"),
+    }
+    if "font_size" in title_info:
+        props["fontSize"] = lit(str(title_info["font_size"]))
+    if "font_family" in title_info:
+        props["fontFamily"] = lit(f"'{title_info['font_family']}'")
+    if "font_color" in title_info:
+        props["fontColor"] = lit(f"'{title_info['font_color']}'")
+    if "bold" in title_info:
+        props["bold"] = lit("true")
+    if "italic" in title_info:
+        props["italic"] = lit("true")
+    if "underline" in title_info:
+        props["underline"] = lit("true")
+
+    return {"title": [{"properties": props}]}

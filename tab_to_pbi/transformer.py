@@ -233,12 +233,15 @@ def _process_sheets(
         unsupported_warnings.extend(sort_warnings)
 
         show_data_labels = sheet.get("show_data_labels", False)
+        sheet_title = sheet.get("title")
         if len(col_measures) > 1:
             # Multiple measures on cols shelf → one visual per measure on the same page
+            # Both visuals share the original sheet title (Q2: use parent sheet title)
             for m in col_measures:
                 visuals.append({
                     "name": f"{sheet['name']} - {m['name']}",
                     "page_name": sheet["name"],
+                    "title": sheet_title,
                     "table": default_table,
                     "field_table_map": fmap,
                     "row_fields": row_fields,
@@ -252,6 +255,7 @@ def _process_sheets(
             visuals.append({
                 "name": sheet["name"],
                 "page_name": sheet["name"],
+                "title": sheet_title,
                 "table": default_table,
                 "field_table_map": fmap,
                 "row_fields": row_fields,
