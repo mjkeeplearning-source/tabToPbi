@@ -1,6 +1,7 @@
 """Translate Tableau calculated field formulas to DAX using Claude."""
 
 import os
+import re
 import anthropic
 
 _CLIENT: anthropic.Anthropic | None = None
@@ -25,6 +26,13 @@ Rules:
 - Replace string literals as-is.
 - For simple field references like [Field] → 'TableName'[Field].
 
+Row-level calculations (arithmetic on bare column references with no explicit aggregation):
+- NEVER write 'Table'[Column] directly in a measure — it causes "cannot determine a single value" errors in Power BI because a measure has no row context.
+- When a Tableau formula multiplies, divides, adds, or subtracts bare column references (e.g. [Quantity] * [Price]), it is a row-level calculation. Wrap it in SUMX over the primary table.
+- Pattern: SUMX('PrimaryTable', 'PrimaryTable'[col1] * RELATED('OtherTable'[col2]))
+- Use RELATED() for columns that come from a related lookup table (the one-side of the relationship).
+- Example: [Quantity] * [Price] where Quantity is in OrderItems (fact) and Price is in Products (lookup) → SUMX(OrderItems, OrderItems[Quantity] * RELATED(Products[Price]))
+
 LOD expressions:
 - {FIXED [d1], [d2] : AGG([m])} → CALCULATE(AGG('TableName'[m]), ALLEXCEPT('TableName', 'TableName'[d1], 'TableName'[d2]))
 - {FIXED : AGG([m])} (no dims) → CALCULATE(AGG('TableName'[m]), ALL('TableName'))
@@ -33,6 +41,22 @@ LOD expressions:
 
 - If the formula uses Parameters ([Parameters].*), cross-datasource references ([federated.*]), or table calculations (INDEX(), SIZE()), return exactly: UNSUPPORTED
 - Do not add DEFINE MEASURE or variable wrappers unless needed."""
+
+
+_COLUMN_REF_RE = re.compile(r"'[^']+'\[[^\]]+\]")
+_AGG_RE = re.compile(
+    r'\b(SUM|SUMX|AVERAGE|AVERAGEX|DISTINCTCOUNT|COUNTA|COUNT|MIN|MINX|MAX|MAXX|MEDIAN|MEDIANX|CALCULATE)\s*\(',
+    re.IGNORECASE,
+)
+
+
+def _has_bare_column_reference(dax: str) -> bool:
+    """Return True if DAX has 'Table'[Column] references with no aggregation function.
+
+    Catches the pattern where Claude emits bare column multiplication like
+    'T1'[A] * 'T2'[B] which is invalid in a measure context.
+    """
+    return bool(_COLUMN_REF_RE.search(dax)) and not bool(_AGG_RE.search(dax))
 
 
 def _client() -> anthropic.Anthropic:
@@ -92,6 +116,29 @@ def translate_formula(
         return "", "unsupported"
     if directquery and _blocklist_check(result):
         return "", "unsupported_directquery"
+
+    # Option 1 — static check: detect bare column references with no aggregation
+    if _has_bare_column_reference(result):
+        # Option 5 — ask Claude to self-correct with the specific error identified
+        correction = (
+            f"The DAX you returned has bare column references that will cause "
+            f"'cannot determine a single value' errors in Power BI:\n{result}\n"
+            f"A DAX measure has no row context. Use SUMX over the primary table "
+            f"and RELATED() for columns from related tables.\n"
+            f"Table name: {table_name}{col_hint}{related_hint}\n"
+            f"Tableau formula: {formula}\n"
+            f"Return only the corrected DAX expression."
+        )
+        msg2 = _client().messages.create(
+            model="claude-opus-4-7",
+            max_tokens=256,
+            system=system,
+            messages=[{"role": "user", "content": correction}],
+        )
+        result = msg2.content[0].text.strip()
+        if result.upper() == "UNSUPPORTED":
+            return "", "unsupported"
+
     return result, "translated"
 
 
