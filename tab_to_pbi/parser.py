@@ -68,6 +68,7 @@ def _parse_datasources(root: ET.Element) -> tuple[list[dict], list[str]]:
         all_join_flags.extend(join_flags)
         relationships = logical_rels + physical_rels
         calc_name_map = {cf["internal_name"]: cf["name"] for cf in calculated_fields}
+        column_formats = _parse_column_formats(ds)
 
         results.append({
             "name": name,
@@ -78,6 +79,7 @@ def _parse_datasources(root: ET.Element) -> tuple[list[dict], list[str]]:
             "calculated_fields": calculated_fields,
             "calc_name_map": calc_name_map,
             "relationships": relationships,
+            "column_formats": column_formats,
         })
     return results, all_join_flags
 
@@ -207,7 +209,7 @@ def _parse_columns(ds: ET.Element, connection: dict) -> list[dict]:
         return []
 
     relation = conn.find("relation")
-    if relation is not None and relation.get("type") == "collection":
+    if relation is not None and relation.get("type") in ("collection", "join"):
         # Build logical-name → source_table and → physical column from cols/map
         col_table: dict[str, str] = {}
         col_physical: dict[str, str] = {}
@@ -247,6 +249,21 @@ def _parse_columns(ds: ET.Element, connection: dict) -> list[dict]:
     return cols
 
 
+def _parse_column_formats(ds: ET.Element) -> dict[str, str]:
+    """Return {column_name: format_string} for columns with a default-format attribute."""
+    result: dict[str, str] = {}
+    for col in ds.findall("./column"):
+        fmt = col.get("default-format", "")
+        if fmt:
+            name = col.get("name", "").strip("[]")
+            caption = col.get("caption", "")
+            if name:
+                result[name] = fmt
+            if caption and caption != name:
+                result[caption] = fmt
+    return result
+
+
 def _parse_calculated_fields(ds: ET.Element) -> list[dict]:
     """Extract calculated field definitions with name, formula, datatype, role, and internal_name."""
     fields = []
@@ -265,37 +282,53 @@ def _parse_calculated_fields(ds: ET.Element) -> list[dict]:
 
 
 def _parse_physical_joins(conn: ET.Element) -> tuple[list[dict], list[str]]:
-    """Extract relationships from physical-layer join relations.
+    """Extract relationships from physical-layer join relations (nested tree).
 
-    INNER + LEFT + RIGHT → PBI relationships (RIGHT is flipped to LEFT).
-    FULL OUTER + non-equi → unsupported flags.
+    Recursively walks the join tree. INNER + LEFT + RIGHT → PBI relationships
+    (RIGHT is flipped). FULL OUTER is noted in flags but still extracted — PBI
+    determines join semantics from cardinality, not join type.
     Returns (relationships, unsupported_flags).
     """
-    rels = []
-    flags = []
+    rels: list[dict] = []
+    flags: list[str] = []
     if conn is None:
         return rels, flags
     top_rel = conn.find("relation")
     if top_rel is None or top_rel.get("type") != "join":
         return rels, flags
+    _walk_join(top_rel, rels, flags)
+    return rels, flags
 
-    join_type = top_rel.get("join", "inner").lower().replace(" ", "")
+
+def _split_table_col(op: str) -> tuple[str, str]:
+    """Split a [Table].[Column] expression into (table, column)."""
+    parts = op.strip("[]").split("].[")
+    return (parts[0], parts[1]) if len(parts) == 2 else ("", op)
+
+
+def _walk_join(rel: ET.Element, rels: list[dict], flags: list[str]) -> None:
+    """Recursively extract one relationship per join node in the tree."""
+    # Recurse into child join nodes first (left-subtree joins)
+    for child in rel.findall("relation[@type='join']"):
+        _walk_join(child, rels, flags)
+
+    join_type = rel.get("join", "inner").lower().replace(" ", "")
+
     if join_type in ("full", "fullouter", "fullouterjoin"):
-        child_names = [r.get("name", "") for r in top_rel.findall("relation")]
-        flags.append(f"FULL OUTER join on {child_names} is not supported")
-        return rels, flags
+        right_children = rel.findall("relation")
+        right_name = right_children[-1].get("name", "?") if right_children else "?"
+        flags.append(
+            f"FULL OUTER join involving '{right_name}' — "
+            "migrated as relationship; PBI determines join semantics from cardinality"
+        )
 
-    exprs = top_rel.findall("./clause[@type='join']/expression[@op='=']/expression")
+    exprs = rel.findall("./clause[@type='join']/expression[@op='=']/expression")
     if len(exprs) != 2:
         flags.append("Non-equi join detected — not supported")
-        return rels, flags
+        return
 
-    def _split(op: str) -> tuple[str, str]:
-        parts = op.strip("[]").split("].[")
-        return (parts[0], parts[1]) if len(parts) == 2 else ("", op)
-
-    left_table, left_col = _split(exprs[0].get("op", ""))
-    right_table, right_col = _split(exprs[1].get("op", ""))
+    left_table, left_col = _split_table_col(exprs[0].get("op", ""))
+    right_table, right_col = _split_table_col(exprs[1].get("op", ""))
 
     if join_type in ("right", "rightouter"):
         left_table, left_col, right_table, right_col = right_table, right_col, left_table, left_col
@@ -306,7 +339,6 @@ def _parse_physical_joins(conn: ET.Element) -> tuple[list[dict], list[str]]:
         "to_table": right_table,
         "to_column": right_col,
     })
-    return rels, flags
 
 
 def _parse_relationships(ds: ET.Element) -> list[dict]:
@@ -395,6 +427,125 @@ def _parse_title(ws: ET.Element) -> dict | None:
     return {"text": text, **formatting}
 
 
+def _field_axis(field_attr: str) -> str:
+    """Return 'value' or 'category' based on Tableau field column-instance derivation prefix."""
+    if "].[" in field_attr:
+        field_attr = field_attr.split("].[", 1)[1].rstrip("]")
+    prefix = field_attr.split(":", 1)[0].lower()
+    return "value" if prefix == "usr" else "category"
+
+
+# Tableau line-pattern-only values → PBI gridlineStyle literals
+_GRIDLINE_STYLE_MAP = {
+    "solid": "solid",
+    "dotted": "dotted",
+    "dashed": "dashed",
+}
+
+# Tableau style-rule elements that have no PBI chart equivalent
+_UNSUPPORTED_FORMAT_ELEMENTS = {
+    "cell", "header", "field-labels-decoration", "field-labels-spanner",
+    "dropline", "refline", "zeroline", "table",
+}
+
+
+def _parse_worksheet_format(ws: ET.Element) -> dict:
+    """Parse Tableau <style> rules into a normalized visual_format dict.
+
+    Returns dict with keys: value_axis, category_axis, both_axes_title,
+    plot_area, unsupported_elements.  Each axis dict may contain:
+    label_font_family, label_font_size, axis_color, gridline_show, gridline_style.
+    both_axes_title may contain: font_family, font_size, bold.
+    plot_area may contain: background_color.
+    """
+    style = ws.find("./table/style")
+    if style is None:
+        return {}
+
+    value_axis: dict = {}
+    category_axis: dict = {}
+    both_axes_title: dict = {}
+    plot_area: dict = {}
+    unsupported: list[str] = []
+
+    for rule in style.findall("style-rule"):
+        element = rule.get("element", "")
+
+        if element == "label":
+            for fmt in rule.findall("format"):
+                attr = fmt.get("attr", "")
+                value = fmt.get("value", "")
+                field = fmt.get("field", "")
+                if not attr or not value:
+                    continue
+                axis = value_axis if _field_axis(field) == "value" else category_axis
+                if attr == "font-family" and "label_font_family" not in axis:
+                    if not value.lower().startswith("tableau "):
+                        axis["label_font_family"] = value
+                elif attr == "font-size" and "label_font_size" not in axis:
+                    axis["label_font_size"] = int(float(value))
+
+        elif element == "axis":
+            for fmt in rule.findall("format"):
+                attr = fmt.get("attr", "")
+                value = fmt.get("value", "")
+                scope = fmt.get("scope", "")
+                if attr == "stroke-color":
+                    # rows scope = Y-axis = value axis; cols scope = X-axis = category axis
+                    target = value_axis if scope == "rows" else category_axis
+                    if "axis_color" not in target:
+                        target["axis_color"] = value
+
+        elif element == "field-labels":
+            for fmt in rule.findall("format"):
+                attr = fmt.get("attr", "")
+                value = fmt.get("value", "")
+                if not value:
+                    continue
+                if attr == "font-family" and "font_family" not in both_axes_title:
+                    if not value.lower().startswith("tableau "):
+                        both_axes_title["font_family"] = value
+                elif attr == "font-size" and "font_size" not in both_axes_title:
+                    both_axes_title["font_size"] = int(float(value))
+                elif attr == "font-weight" and value == "bold":
+                    both_axes_title["bold"] = True
+
+        elif element == "pane":
+            for fmt in rule.findall("format"):
+                if fmt.get("attr") == "background-color" and not fmt.get("data-class"):
+                    if "background_color" not in plot_area:
+                        plot_area["background_color"] = fmt.get("value", "")
+
+        elif element == "gridline":
+            for fmt in rule.findall("format"):
+                attr = fmt.get("attr", "")
+                value = fmt.get("value", "")
+                scope = fmt.get("scope", "")
+                target = value_axis if scope == "rows" else category_axis
+                if attr == "line-visibility":
+                    if "gridline_show" not in target:
+                        target["gridline_show"] = value == "on"
+                elif attr == "line-pattern-only":
+                    if "gridline_style" not in target and value in _GRIDLINE_STYLE_MAP:
+                        target["gridline_style"] = _GRIDLINE_STYLE_MAP[value]
+
+        elif element in _UNSUPPORTED_FORMAT_ELEMENTS:
+            unsupported.append(element)
+
+    result: dict = {}
+    if value_axis:
+        result["value_axis"] = value_axis
+    if category_axis:
+        result["category_axis"] = category_axis
+    if both_axes_title:
+        result["both_axes_title"] = both_axes_title
+    if plot_area:
+        result["plot_area"] = plot_area
+    if unsupported:
+        result["unsupported_elements"] = list(dict.fromkeys(unsupported))  # deduplicate, preserve order
+    return result
+
+
 def _parse_sheets(root: ET.Element) -> list[dict]:
     """Extract worksheet definitions."""
     sheets = []
@@ -421,29 +572,55 @@ def _parse_sheets(root: ET.Element) -> list[dict]:
             if col_attr:
                 text_enc_fields.extend(_parse_shelf_fields(col_attr))
 
+        # Color encoding (used by pie charts for legend, and heatmaps for intensity)
+        color_enc_fields = []
+        for enc in ws.findall("./table/panes/pane/encodings/color"):
+            col_attr = enc.get("column", "")
+            if col_attr:
+                color_enc_fields.extend(_parse_shelf_fields(col_attr))
+
+        # Wedge-size encoding (pie chart measure)
+        wedge_enc_fields = []
+        for enc in ws.findall("./table/panes/pane/encodings/wedge-size"):
+            col_attr = enc.get("column", "")
+            if col_attr:
+                wedge_enc_fields.extend(_parse_shelf_fields(col_attr))
+
         is_text_table = (
             mark_type == "Automatic"
             and bool(rows_text.strip())
             and not cols_text.strip()
             and bool(text_enc_fields)
         )
+        rows_parsed = _parse_shelf_fields(rows_text)
         if is_text_table:
             col_fields = text_enc_fields
             mark_type = "Text"
+            encoding_fields: list[dict] = []
+        elif mark_type == "Pie" and color_enc_fields:
+            # Pie uses encodings instead of row/col shelves: color=legend, wedge=values
+            rows_parsed = color_enc_fields
+            col_fields = wedge_enc_fields
+            encoding_fields = []
         else:
             col_fields = _parse_shelf_fields(cols_text)
+            # Color encoding on non-pie marks (e.g. heatmap intensity) — kept separate
+            # so mark-type inference runs on shelf fields only, appended later
+            encoding_fields = color_enc_fields
 
         sheets.append({
             "name": name,
             "title": _parse_title(ws),
             "datasource": datasource,
-            "rows": _parse_shelf_fields(rows_text),
+            "rows": rows_parsed,
             "cols": col_fields,
+            "encoding_fields": encoding_fields,
             "mark_type": mark_type,
             "mark_orientation": mark_orientation,
             "show_data_labels": show_data_labels,
             "filters": _parse_filters(ws),
             "sorts": _parse_sorts(ws),
+            "visual_format": _parse_worksheet_format(ws),
         })
     return sheets
 

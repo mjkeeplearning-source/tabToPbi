@@ -1,5 +1,9 @@
 """Transform parsed workbook dict into PBIR-ready structure."""
 
+import re
+
+_SQL_CONN_TYPES = {"postgres", "sqlserver", "mysql", "bigquery", "redshift", "snowflake", "oracle"}
+
 DATATYPE_MAP = {
     "string": "string",
     "integer": "int64",
@@ -22,6 +26,29 @@ _AGG_LABEL = {
     "STDEV.S": "StDev",
     "STDEV.P": "StDevP",
 }
+
+
+def _best_table_for_calc(formula: str, field_map: dict[str, str], primary_table: str) -> str:
+    """Return the table that owns the most column references in a Tableau formula.
+
+    Extracts [ColumnName] tokens, looks each up in field_map, and picks the table
+    with the highest hit count. Tiebreak: first referenced column wins. Falls back
+    to primary_table when no columns resolve.
+    """
+    refs = re.findall(r'\[([^\]]+)\]', formula)
+    counts: dict[str, int] = {}
+    for ref in refs:
+        t = field_map.get(ref)
+        if t:
+            counts[t] = counts.get(t, 0) + 1
+    if not counts:
+        return primary_table
+    max_count = max(counts.values())
+    for ref in refs:
+        t = field_map.get(ref)
+        if t and counts[t] == max_count:
+            return t
+    return primary_table
 
 
 def _apply_storage_mode(conn: dict) -> dict:
@@ -50,18 +77,22 @@ def transform(workbook: dict) -> dict:
         calc_name_lookup[ds["name"]] = ds.get("calc_name_map", {})
         primary_table = ds_tables[0]["name"] if ds_tables else ""
         for cf in ds.get("calculated_fields", []):
+            best_table = _best_table_for_calc(cf["formula"], ds_fields, primary_table)
             pending_calc_fields.append({
                 "name": cf["name"],
                 "internal_name": cf["internal_name"],
                 "formula": cf["formula"],
                 "datatype": cf["datatype"],
                 "role": cf["role"],
-                "table": primary_table,
+                "table": best_table,
                 "status": "pending_translation",
             })
 
+    # Build display_name → table map so visual field refs stay in sync with TMDL host table
+    calc_table_map: dict[str, str] = {cf["name"]: cf["table"] for cf in pending_calc_fields}
+
     measures: dict[tuple, dict] = {}
-    visuals, visual_warnings = _process_sheets(workbook, tables, field_lookup, calc_name_lookup, measures)
+    visuals, visual_warnings = _process_sheets(workbook, tables, field_lookup, calc_name_lookup, measures, calc_table_map)
 
     sheet_filters = [
         {"sheet": s["name"], "filters": s.get("filters", [])}
@@ -112,8 +143,8 @@ def _map_datasource(ds: dict) -> tuple[list[dict], list[dict], dict[str, str]]:
     ds_tables_meta = ds.get("tables", [])
     columns = ds.get("columns", [])
 
-    if conn_type == "postgres" and len(ds_tables_meta) > 1:
-        return _map_multi_table_postgres(ds, columns, conn, ds_tables_meta)
+    if conn_type in _SQL_CONN_TYPES and len(ds_tables_meta) > 1:
+        return _map_multi_table_sql(ds, columns, conn, ds_tables_meta)
 
     # Single-table path (excel, csv, etc.)
     pbi_table_name = ds["caption"]
@@ -131,7 +162,7 @@ def _map_datasource(ds: dict) -> tuple[list[dict], list[dict], dict[str, str]]:
     return [table], [], field_map
 
 
-def _map_multi_table_postgres(
+def _map_multi_table_sql(
     ds: dict,
     columns: list[dict],
     conn: dict,
@@ -191,10 +222,13 @@ def _process_sheets(
     field_lookup: dict[str, dict[str, str]],
     calc_name_lookup: dict[str, dict[str, str]],
     measures: dict,
+    calc_table_map: dict[str, str] | None = None,
 ) -> tuple[list[dict], list[str]]:
     """Map sheets to visual descriptors. Returns (visuals, unsupported_warnings)."""
     ds_list = workbook.get("datasources", [])
     ds_default_table = {ds["name"]: tables[i]["name"] for i, ds in enumerate(ds_list) if i < len(tables)}
+    # column_formats: ds_name → {col_name: format_string}
+    ds_col_formats = {ds["name"]: ds.get("column_formats", {}) for ds in ds_list}
 
     visuals = []
     unsupported_warnings: list[str] = []
@@ -202,6 +236,7 @@ def _process_sheets(
         ds_name = sheet["datasource"]
         fmap = field_lookup.get(ds_name, {})
         cmap = calc_name_lookup.get(ds_name, {})
+        col_formats = ds_col_formats.get(ds_name, {})
         default_table = ds_default_table.get(ds_name, "")
 
         rows, cols = sheet["rows"], sheet["cols"]
@@ -217,8 +252,26 @@ def _process_sheets(
                 f"Sheet '{sheet['name']}': mark type '{mark_type}' not supported — rendered as table"
             )
 
-        row_fields = [r for f in rows for r in [_resolve_field(f, fmap, cmap, default_table, measures)] if r]
-        col_fields = [r for f in cols for r in [_resolve_field(f, fmap, cmap, default_table, measures)] if r]
+        row_fields = [r for f in rows for r in [_resolve_field(f, fmap, cmap, default_table, measures, calc_table_map)] if r]
+        col_fields = [r for f in cols for r in [_resolve_field(f, fmap, cmap, default_table, measures, calc_table_map)] if r]
+
+        # Bar mark with measure on rows shelf = vertical bars → columnChart in PBI
+        if mark_type == "Bar" and any(f.get("is_measure") for f in row_fields):
+            mark_type = "Column"
+
+        # Resolve color encoding fields (heatmap intensity) and append to col_fields as measures only
+        enc_raw = sheet.get("encoding_fields", [])
+        enc_resolved = [
+            r for f in enc_raw
+            for r in [_resolve_field(f, fmap, cmap, default_table, measures, calc_table_map)]
+            if r and r.get("is_measure")
+        ]
+        if enc_resolved:
+            if mark_type == "Automatic":
+                unsupported_warnings.append(
+                    f"Sheet '{sheet['name']}': heatmap color encoding has no PBI equivalent — color measure added as table column"
+                )
+            col_fields = col_fields + enc_resolved
 
         col_measures = [f for f in col_fields if f and f.get("is_measure")]
         col_dims = [f for f in col_fields if f and not f.get("is_measure")]
@@ -232,11 +285,17 @@ def _process_sheets(
         enriched_sorts, sort_warnings = _enrich_sorts(sheet.get("sorts", []), fmap, cmap, default_table)
         unsupported_warnings.extend(sort_warnings)
 
+        # Collect unsupported format elements for migration report
+        visual_fmt = sheet.get("visual_format", {})
+        for elem in visual_fmt.get("unsupported_elements", []):
+            unsupported_warnings.append(
+                f"Sheet '{sheet['name']}': Tableau style-rule element '{elem}' has no PBI equivalent — skipped"
+            )
+
         show_data_labels = sheet.get("show_data_labels", False)
         sheet_title = sheet.get("title")
         if len(col_measures) > 1:
             # Multiple measures on cols shelf → one visual per measure on the same page
-            # Both visuals share the original sheet title (Q2: use parent sheet title)
             for m in col_measures:
                 visuals.append({
                     "name": f"{sheet['name']} - {m['name']}",
@@ -250,6 +309,8 @@ def _process_sheets(
                     "show_data_labels": show_data_labels,
                     "filters": enriched_filters,
                     "sorts": enriched_sorts,
+                    "visual_format": visual_fmt,
+                    "col_formats": col_formats,
                 })
         else:
             visuals.append({
@@ -264,6 +325,8 @@ def _process_sheets(
                 "show_data_labels": show_data_labels,
                 "filters": enriched_filters,
                 "sorts": enriched_sorts,
+                "visual_format": visual_fmt,
+                "col_formats": col_formats,
             })
     return visuals, unsupported_warnings
 
@@ -340,11 +403,14 @@ def _resolve_field(
     calc_name_map: dict[str, str],
     default_table: str,
     measures: dict,
+    calc_table_map: dict[str, str] | None = None,
 ) -> dict | None:
     """Return {name, is_measure, table} ref, or None if field is a pending calc field."""
+    ctmap = calc_table_map or {}
     if not isinstance(field, dict):
         if field in calc_name_map:
-            return {"name": calc_name_map[field], "is_measure": True, "table": default_table}
+            display_name = calc_name_map[field]
+            return {"name": display_name, "is_measure": True, "table": ctmap.get(display_name, default_table)}
         tname = field_table_map.get(field, default_table)
         return {"name": field, "is_measure": False, "table": tname}
 
@@ -353,7 +419,7 @@ def _resolve_field(
 
     if name in calc_name_map:
         display_name = calc_name_map[name]
-        return {"name": display_name, "is_measure": True, "table": default_table}
+        return {"name": display_name, "is_measure": True, "table": ctmap.get(display_name, default_table)}
 
     tname = field_table_map.get(name, default_table)
 

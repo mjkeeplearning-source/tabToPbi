@@ -513,15 +513,19 @@ _VISUAL_ROLES = {
     "columnChart": ("Category", "Y",        "col", "row"),
     "lineChart":   ("Category", "Y",        "col", "row"),
     "areaChart":   ("Category", "Y",        "col", "row"),
-    "pieChart":    ("Legend",   "Values",   "row", "col"),
+    "pieChart":    ("Category", "Y",        "row", "col"),
     "scatterChart":("X",        "Y",        "col", "row"),
     "map":         ("Location", "Size",     "row", "col"),
     "filledMap":   ("Location", "Size",     "row", "col"),
 }
 
 
-def _make_projection(default_table: str, field: dict | str) -> dict:
-    """Build a field projection, using per-field table when available."""
+def _make_projection(default_table: str, field: dict | str, col_formats: dict | None = None) -> dict:
+    """Build a field projection, using per-field table when available.
+
+    col_formats is an optional {field_name: format_string} dict; when present a
+    matching entry is written as the projection's format property.
+    """
     if isinstance(field, dict):
         name = field["name"]
         field_type = "Measure" if field.get("is_measure") else "Column"
@@ -530,7 +534,7 @@ def _make_projection(default_table: str, field: dict | str) -> dict:
         name = field
         field_type = "Column"
         table_name = default_table
-    return {
+    proj: dict = {
         "field": {
             field_type: {
                 "Expression": {"SourceRef": {"Entity": table_name}},
@@ -540,6 +544,11 @@ def _make_projection(default_table: str, field: dict | str) -> dict:
         "queryRef": f"{table_name}.{name}",
         "active": True,
     }
+    if col_formats:
+        fmt_str = col_formats.get(name, "")
+        if fmt_str:
+            proj["format"] = fmt_str
+    return proj
 
 
 def _build_sort_definition(sorts: list[dict]) -> dict | None:
@@ -568,19 +577,20 @@ def _write_visual(visual_dir: Path, visual_info: dict, x_offset: int = 20) -> No
     row_fields = visual_info.get("row_fields", [])
     col_fields = visual_info.get("col_fields", [])
 
+    col_formats = visual_info.get("col_formats") or {}
     if visual_type in _VISUAL_ROLES:
         cat_role, val_role, cat_shelf, val_shelf = _VISUAL_ROLES[visual_type]
         cat_fields = row_fields if cat_shelf == "row" else col_fields
         val_fields = col_fields if val_shelf == "col" else row_fields
         query_state = {
-            cat_role: {"projections": [_make_projection(table_name, f) for f in cat_fields]},
-            val_role: {"projections": [_make_projection(table_name, f) for f in val_fields]},
+            cat_role: {"projections": [_make_projection(table_name, f, col_formats) for f in cat_fields]},
+            val_role: {"projections": [_make_projection(table_name, f, col_formats) for f in val_fields]},
         }
     else:
         # tableEx and fallback: all fields under Values
         all_fields = row_fields + [f for f in col_fields if f not in row_fields]
         query_state = {
-            "Values": {"projections": [_make_projection(table_name, f) for f in all_fields]}
+            "Values": {"projections": [_make_projection(table_name, f, col_formats) for f in all_fields]}
         }
 
     query: dict = {"queryState": query_state}
@@ -589,10 +599,9 @@ def _write_visual(visual_dir: Path, visual_info: dict, x_offset: int = 20) -> No
         query["sortDefinition"] = sort_def
 
     visual_obj: dict = {"visualType": visual_type, "query": query}
-    if visual_info.get("show_data_labels") and visual_type != "tableEx":
-        visual_obj["objects"] = {
-            "labels": [{"properties": {"show": {"expr": {"Literal": {"Value": "true"}}}}}]
-        }
+    objects = _build_objects(visual_info, visual_type)
+    if objects:
+        visual_obj["objects"] = objects
     title_info = visual_info.get("title")
     if title_info:
         visual_obj["visualContainerObjects"] = _build_title_objects(title_info)
@@ -608,6 +617,66 @@ def _write_visual(visual_dir: Path, visual_info: dict, x_offset: int = 20) -> No
         container["filterConfig"] = filter_config
 
     (visual_dir / "visual.json").write_text(json.dumps(container, indent=2))
+
+
+# Visual types that support axis formatting
+_AXIS_VISUAL_TYPES = {"barChart", "columnChart", "lineChart", "areaChart", "pieChart", "scatterChart"}
+
+
+def _build_objects(visual_info: dict, visual_type: str) -> dict:
+    """Build the visual.objects dict from data-labels flag and visual_format."""
+    def lit(v: str) -> dict:
+        return {"expr": {"Literal": {"Value": v}}}
+
+    objects: dict = {}
+
+    if visual_info.get("show_data_labels") and visual_type != "tableEx":
+        objects["labels"] = [{"properties": {"show": lit("true")}}]
+
+    fmt = visual_info.get("visual_format", {})
+    if not fmt or visual_type not in _AXIS_VISUAL_TYPES:
+        return objects
+
+    raw_value_axis = fmt.get("value_axis", {})
+    raw_category_axis = fmt.get("category_axis", {})
+    both_title = fmt.get("both_axes_title", {})
+
+    cat_props = _build_axis_props(raw_category_axis, both_title, lit)
+    val_props = _build_axis_props(raw_value_axis, both_title, lit)
+
+    if cat_props:
+        objects["categoryAxis"] = [{"properties": cat_props}]
+    if val_props:
+        objects["valueAxis"] = [{"properties": val_props}]
+
+    plot_area = fmt.get("plot_area", {})
+    if plot_area.get("background_color"):
+        objects["plotArea"] = [{"properties": {"color": lit(f"'{plot_area['background_color']}'")}}]
+
+    return objects
+
+
+def _build_axis_props(axis_fmt: dict, title_fmt: dict, lit) -> dict:
+    """Build PBI axis formatting properties dict from parsed axis and title format dicts."""
+    props: dict = {}
+    if axis_fmt.get("label_font_family"):
+        props["fontFamily"] = lit(f"'{axis_fmt['label_font_family']}'")
+    if axis_fmt.get("label_font_size"):
+        props["fontSize"] = lit(str(axis_fmt["label_font_size"]))
+    if axis_fmt.get("axis_color"):
+        props["axisColor"] = lit(f"'{axis_fmt['axis_color']}'")
+    if axis_fmt.get("gridline_show") is not None:
+        props["gridlineShow"] = lit("true" if axis_fmt["gridline_show"] else "false")
+    if axis_fmt.get("gridline_style"):
+        props["gridlineStyle"] = lit(f"'{axis_fmt['gridline_style']}'")
+    # Axis title formatting from field-labels style-rule
+    if title_fmt.get("font_family"):
+        props["titleFontFamily"] = lit(f"'{title_fmt['font_family']}'")
+    if title_fmt.get("font_size"):
+        props["titleFontSize"] = lit(str(title_fmt["font_size"]))
+    if title_fmt.get("bold"):
+        props["titleBold"] = lit("true")
+    return props
 
 
 def _build_title_objects(title_info: dict) -> dict:
