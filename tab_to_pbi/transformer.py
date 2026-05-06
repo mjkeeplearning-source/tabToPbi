@@ -99,11 +99,22 @@ def transform(workbook: dict) -> dict:
         for s in workbook.get("sheets", [])
         if s.get("filters")
     ]
+    relationship_warnings = [
+        (
+            f"Relationship {r['from_table']}.{r['from_column']} -> "
+            f"{r['to_table']}.{r['to_column']} "
+            f"({r['from_cardinality']}:{r['to_cardinality']}, method={r['cardinality_method']}): "
+            "cardinality inferred — verify in PBI Desktop Model View after opening"
+        )
+        for r in relationships
+        if "from_cardinality" in r
+    ]
     report = {
         "calculated_fields": pending_calc_fields,
         "unsupported": workbook.get("unsupported", []) + visual_warnings,
         "tables_generated": [t["name"] for t in tables],
         "sheet_filters": sheet_filters,
+        "relationship_cardinality_warnings": relationship_warnings,
     }
 
     # Merge all datasource calc_name_maps into one for the translator
@@ -133,24 +144,78 @@ def transform(workbook: dict) -> dict:
     }
 
 
-# Maps Tableau join type → (fromCardinality, toCardinality) TMDL values.
-# LEFT/RIGHT → many:one  (LEFT OUTER semantics; RIGHT already flipped by parser)
-# INNER      → many:many (INNER JOIN semantics)
-# FULL       → one:one   (closest PBI equivalent; flagged unsupported by parser)
-_JOIN_CARDINALITY: dict[str, tuple[str, str]] = {
-    "left": ("many", "one"),
-    "inner": ("many", "many"),
-    "full": ("one", "one"),
-    "fullouter": ("one", "one"),
-    "fullouterjoin": ("one", "one"),
-}
-_DEFAULT_CARDINALITY = ("many", "one")
+def _col_matches_table(col: str, table: str) -> bool:
+    """True if col is likely the PK of table: strip suffix, singularize, exact match.
+
+    e.g. CustomerID / Customers → True; CustomerID / Orders → False.
+    """
+    base = re.sub(r"(ID|Id|Key|Code|No)$", "", col).lower().rstrip("s")
+    tname = table.lower().rstrip("s")
+    return bool(base) and base == tname
+
+
+def _infer_cardinality(
+    join_type: str, from_table: str, from_col: str, to_table: str, to_col: str
+) -> tuple[str, str, str]:
+    """Return (from_cardinality, to_cardinality, method) using Signal 2 + Signal 1 + fallback.
+
+    Convention matches parser output:
+      from_table = LEFT clause expression table (accumulated / preserved side for LEFT JOIN)
+      to_table   = RIGHT clause expression table (new RIGHT-child table)
+
+    Signal 2 — structural (LEFT JOIN definitive; INNER JOIN primary):
+      LEFT  JOIN: from_table (preserved LEFT child) = one side — no override.
+      INNER JOIN: from_table (accumulated LEFT expression) = one side — Signal 1 can override.
+
+    Signal 1 — naming convention (FULL OUTER primary; INNER confirmation/override):
+      Strip PK suffix, singularize, exact-match col base against table name.
+      Whichever side matches owns the PK = one side.
+
+    Fallback: to_table = one (RIGHT child = new/added table = typically dimension/lookup).
+    Always produces one:many or many:one — never one:one or many:many.
+    """
+    from_is_pk = _col_matches_table(from_col, from_table)
+    to_is_pk = _col_matches_table(to_col, to_table)
+
+    if join_type == "left":
+        # Signal 2 definitive: LEFT child (from_table) is preserved = one side.
+        return ("one", "many", "signal2_left")
+
+    if join_type == "inner":
+        # Signal 2 extended primary: from_table (accumulated LEFT expression) = one side.
+        # Signal 1 overrides when naming convention contradicts Signal 2.
+        if to_is_pk and not from_is_pk:
+            return ("many", "one", "signal1_override_inner")
+        if from_is_pk and not to_is_pk:
+            return ("one", "many", "signal2_confirmed_signal1_inner")
+        # Signal 1 silent or ambiguous — Signal 2 default stands.
+        return ("one", "many", "signal2_inner")
+
+    # FULL OUTER JOIN — Signal 2 unreliable; Signal 1 primary.
+    if from_is_pk and not to_is_pk:
+        return ("one", "many", "signal1_full")
+    if to_is_pk and not from_is_pk:
+        return ("many", "one", "signal1_full")
+    # Fallback: to_table (RIGHT child, new/added table) = one (dimension convention).
+    return ("many", "one", "fallback")
 
 
 def _map_relationship(r: dict) -> dict:
-    """Convert a parsed relationship to a PBI relationship dict with cardinality."""
-    join_type = r.get("join_type", "left")
-    from_card, to_card = _JOIN_CARDINALITY.get(join_type, _DEFAULT_CARDINALITY)
+    """Convert a parsed relationship to a PBI relationship dict with cardinality.
+
+    Logical relationships (no join_type) get no explicit cardinality — PBI defaults (many:one) apply.
+    Physical joins get cardinality inferred from join type + naming signals.
+    """
+    if "join_type" not in r:
+        return {
+            "from_table": r["from_table"],
+            "from_column": r["from_column"],
+            "to_table": r["to_table"],
+            "to_column": r["to_column"],
+        }
+    from_card, to_card, method = _infer_cardinality(
+        r["join_type"], r["from_table"], r["from_column"], r["to_table"], r["to_column"]
+    )
     return {
         "from_table": r["from_table"],
         "from_column": r["from_column"],
@@ -158,6 +223,7 @@ def _map_relationship(r: dict) -> dict:
         "to_column": r["to_column"],
         "from_cardinality": from_card,
         "to_cardinality": to_card,
+        "cardinality_method": method,
     }
 
 
