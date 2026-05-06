@@ -1,10 +1,21 @@
-"""Translate Tableau calculated field formulas to DAX using Claude."""
+"""Translate Tableau calculated field formulas to DAX using Claude (direct API or Bedrock)."""
 
 import os
 import re
 import anthropic
 
-_CLIENT: anthropic.Anthropic | None = None
+_CLIENT: anthropic.Anthropic | anthropic.AnthropicBedrock | None = None
+
+_MODEL_DIRECT = "claude-opus-4-7"
+_MODEL_BEDROCK = "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+
+
+def _get_provider() -> str:
+    return os.environ.get("LLM_PROVIDER", "anthropic").lower()
+
+
+def _model() -> str:
+    return _MODEL_BEDROCK if _get_provider() == "bedrock" else _MODEL_DIRECT
 
 _DIRECTQUERY_BLOCKLIST = {
     "MEDIAN", "PERCENTILE.INC", "PERCENTILE.EXC", "PERCENTILE",
@@ -59,10 +70,17 @@ def _has_bare_column_reference(dax: str) -> bool:
     return bool(_COLUMN_REF_RE.search(dax)) and not bool(_AGG_RE.search(dax))
 
 
-def _client() -> anthropic.Anthropic:
+def _client() -> anthropic.Anthropic | anthropic.AnthropicBedrock:
     global _CLIENT
     if _CLIENT is None:
-        _CLIENT = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+        if _get_provider() == "bedrock":
+            _CLIENT = anthropic.AnthropicBedrock(
+                aws_access_key=os.environ.get("AWS_ACCESS_KEY_ID"),
+                aws_secret_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
+                aws_region="us-east-1",
+            )
+        else:
+            _CLIENT = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
     return _CLIENT
 
 
@@ -106,7 +124,7 @@ def translate_formula(
         )
     prompt = f"Table name: {table_name}{col_hint}{related_hint}\nTableau formula: {formula}"
     msg = _client().messages.create(
-        model="claude-opus-4-7",
+        model=_model(),
         max_tokens=256,
         system=system,
         messages=[{"role": "user", "content": prompt}],
@@ -130,7 +148,7 @@ def translate_formula(
             f"Return only the corrected DAX expression."
         )
         msg2 = _client().messages.create(
-            model="claude-opus-4-7",
+            model=_model(),
             max_tokens=256,
             system=system,
             messages=[{"role": "user", "content": correction}],
