@@ -234,14 +234,22 @@ def _write_tmdl_model(model_dir: Path, transformed: dict, data_dir: Path) -> Non
     if rels:
         rel_lines = []
         for r in rels:
-            rel_name = f"{r['from_table']}_{r['from_column']} -> {r['to_table']}_{r['to_column']}"
-            lines = [
-                f"relationship '{rel_name}'",
-                f"\tfromColumn: {r['from_table']}.{r['from_column']}",
-                f"\ttoColumn: {r['to_table']}.{r['to_column']}",
-            ]
             from_card = r.get("from_cardinality", "many")
             to_card = r.get("to_cardinality", "one")
+            # PBI TMDL requires fromColumn = MANY side; swap if our inference put ONE side as from
+            if from_card == "one" and to_card == "many":
+                from_tbl, from_col = r["to_table"], r["to_column"]
+                to_tbl, to_col = r["from_table"], r["from_column"]
+                from_card, to_card = "many", "one"
+            else:
+                from_tbl, from_col = r["from_table"], r["from_column"]
+                to_tbl, to_col = r["to_table"], r["to_column"]
+            rel_name = f"{from_tbl}_{from_col} -> {to_tbl}_{to_col}"
+            lines = [
+                f"relationship '{rel_name}'",
+                f"\tfromColumn: {from_tbl}.{from_col}",
+                f"\ttoColumn: {to_tbl}.{to_col}",
+            ]
             if (from_card, to_card) != ("many", "one"):
                 lines.append(f"\tfromCardinality: {from_card}")
                 lines.append(f"\ttoCardinality: {to_card}")

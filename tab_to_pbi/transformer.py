@@ -107,6 +107,7 @@ def transform(workbook: dict) -> dict:
             "cardinality inferred — verify in PBI Desktop Model View after opening"
         )
         for r in relationships
+        if "from_cardinality" in r
     ]
     report = {
         "calculated_fields": pending_calc_fields,
@@ -200,10 +201,20 @@ def _infer_cardinality(
 
 
 def _map_relationship(r: dict) -> dict:
-    """Convert a parsed relationship to a PBI relationship dict with cardinality."""
-    join_type = r.get("join_type", "left")
+    """Convert a parsed relationship to a PBI relationship dict with cardinality.
+
+    Logical relationships (no join_type) get no explicit cardinality — PBI defaults (many:one) apply.
+    Physical joins get cardinality inferred from join type + naming signals.
+    """
+    if "join_type" not in r:
+        return {
+            "from_table": r["from_table"],
+            "from_column": r["from_column"],
+            "to_table": r["to_table"],
+            "to_column": r["to_column"],
+        }
     from_card, to_card, method = _infer_cardinality(
-        join_type, r["from_table"], r["from_column"], r["to_table"], r["to_column"]
+        r["join_type"], r["from_table"], r["from_column"], r["to_table"], r["to_column"]
     )
     return {
         "from_table": r["from_table"],
