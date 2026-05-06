@@ -133,6 +133,34 @@ def transform(workbook: dict) -> dict:
     }
 
 
+# Maps Tableau join type → (fromCardinality, toCardinality) TMDL values.
+# LEFT/RIGHT → many:one  (LEFT OUTER semantics; RIGHT already flipped by parser)
+# INNER      → many:many (INNER JOIN semantics)
+# FULL       → one:one   (closest PBI equivalent; flagged unsupported by parser)
+_JOIN_CARDINALITY: dict[str, tuple[str, str]] = {
+    "left": ("many", "one"),
+    "inner": ("many", "many"),
+    "full": ("one", "one"),
+    "fullouter": ("one", "one"),
+    "fullouterjoin": ("one", "one"),
+}
+_DEFAULT_CARDINALITY = ("many", "one")
+
+
+def _map_relationship(r: dict) -> dict:
+    """Convert a parsed relationship to a PBI relationship dict with cardinality."""
+    join_type = r.get("join_type", "left")
+    from_card, to_card = _JOIN_CARDINALITY.get(join_type, _DEFAULT_CARDINALITY)
+    return {
+        "from_table": r["from_table"],
+        "from_column": r["from_column"],
+        "to_table": r["to_table"],
+        "to_column": r["to_column"],
+        "from_cardinality": from_card,
+        "to_cardinality": to_card,
+    }
+
+
 def _map_datasource(ds: dict) -> tuple[list[dict], list[dict], dict[str, str]]:
     """Map a parsed datasource to PBI tables, relationships, and field→table lookup.
 
@@ -197,12 +225,7 @@ def _map_multi_table_sql(
         })
 
     relationships = [
-        {
-            "from_table": r["from_table"],
-            "from_column": r["from_column"],
-            "to_table": r["to_table"],
-            "to_column": r["to_column"],
-        }
+        _map_relationship(r)
         for r in ds.get("relationships", [])
     ]
 

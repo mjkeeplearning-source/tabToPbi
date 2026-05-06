@@ -6,8 +6,8 @@ import anthropic
 
 _CLIENT: anthropic.Anthropic | anthropic.AnthropicBedrock | None = None
 
-_MODEL_DIRECT = "claude-opus-4-7"
-_MODEL_BEDROCK = "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+_MODEL_DIRECT = "claude-haiku-4-5"
+_MODEL_BEDROCK = "us.anthropic.claude-opus-4-5-20251101-v1:0"
 
 
 def _get_provider() -> str:

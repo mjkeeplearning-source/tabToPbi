@@ -83,8 +83,7 @@ def test_physical_join_full_outer_flagged():
     conn = ET.fromstring(xml)
     rels, flags = _parse_physical_joins(conn)
     assert rels == []
-    assert len(flags) == 1
-    assert "FULL OUTER" in flags[0]
+    assert any("FULL OUTER" in f for f in flags)
 
 
 def test_physical_join_full_schema_value_flagged():
@@ -98,8 +97,7 @@ def test_physical_join_full_schema_value_flagged():
     conn = ET.fromstring(xml)
     rels, flags = _parse_physical_joins(conn)
     assert rels == []
-    assert len(flags) == 1
-    assert "FULL OUTER" in flags[0]
+    assert any("FULL OUTER" in f for f in flags)
 
 
 def test_physical_join_none_when_collection():

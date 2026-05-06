@@ -235,12 +235,20 @@ def _write_tmdl_model(model_dir: Path, transformed: dict, data_dir: Path) -> Non
         rel_lines = []
         for r in rels:
             rel_name = f"{r['from_table']}_{r['from_column']} -> {r['to_table']}_{r['to_column']}"
-            rel_lines += [
+            lines = [
                 f"relationship '{rel_name}'",
                 f"\tfromColumn: {r['from_table']}.{r['from_column']}",
                 f"\ttoColumn: {r['to_table']}.{r['to_column']}",
-                "",
             ]
+            from_card = r.get("from_cardinality", "many")
+            to_card = r.get("to_cardinality", "one")
+            if (from_card, to_card) != ("many", "one"):
+                lines.append(f"\tfromCardinality: {from_card}")
+                lines.append(f"\ttoCardinality: {to_card}")
+            if (from_card, to_card) == ("one", "one"):
+                lines.append("\tcrossFilteringBehavior: bothDirections")
+            lines.append("")
+            rel_lines += lines
         rel_path.write_text("\n".join(rel_lines), encoding="utf-8")
     elif rel_path.exists():
         rel_path.unlink()

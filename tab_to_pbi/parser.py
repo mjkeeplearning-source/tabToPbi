@@ -319,7 +319,7 @@ def _walk_join(rel: ET.Element, rels: list[dict], flags: list[str]) -> None:
         right_name = right_children[-1].get("name", "?") if right_children else "?"
         flags.append(
             f"FULL OUTER join involving '{right_name}' — "
-            "migrated as relationship; PBI determines join semantics from cardinality"
+            "migrated as oneToOne relationship; FULL OUTER semantics not supported in PBI"
         )
 
     exprs = rel.findall("./clause[@type='join']/expression[@op='=']/expression")
@@ -338,6 +338,7 @@ def _walk_join(rel: ET.Element, rels: list[dict], flags: list[str]) -> None:
         "from_column": left_col,
         "to_table": right_table,
         "to_column": right_col,
+        "join_type": join_type,
     })
 
 
