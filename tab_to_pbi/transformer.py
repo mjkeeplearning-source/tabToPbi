@@ -283,7 +283,13 @@ def _map_multi_table_sql(
     pbi_tables = []
     for t in tables_meta:
         tname = t["name"]
-        table_conn = _apply_storage_mode({**conn, "schema": t["schema"], "table": t["table"], "table_name": tname})
+        table_conn = _apply_storage_mode({
+            **conn,
+            "schema": t["schema"],
+            "table": t["table"],
+            "table_name": tname,
+            "custom_sql": t.get("custom_sql", ""),
+        })
         pbi_tables.append({
             "name": tname,
             "connection": table_conn,

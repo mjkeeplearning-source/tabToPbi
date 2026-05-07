@@ -112,6 +112,8 @@ def translate_formula(
     """
     system = _SYSTEM + (_DQ_CONSTRAINT if directquery else "")
     col_hint = f"\nPrimary table columns: {', '.join(columns)}" if columns else ""
+    # Reinforce: Claude must use the exact provided table name, not infer one from the SQL or column names
+    table_hint = f"\nIMPORTANT: Use exactly '{table_name}' as the table name in all DAX references — do not use any other name."
     related_hint = ""
     if all_tables and len(all_tables) > 1:
         others = {t: cols for t, cols in all_tables.items() if t != table_name}
@@ -122,7 +124,7 @@ def translate_formula(
             "\nNote: Tableau disambiguates duplicate column names with a (TableName) suffix, "
             "e.g. [order_id (returns)] refers to the 'order_id' column in the 'returns' table."
         )
-    prompt = f"Table name: {table_name}{col_hint}{related_hint}\nTableau formula: {formula}"
+    prompt = f"Table name: {table_name}{col_hint}{related_hint}{table_hint}\nTableau formula: {formula}"
     msg = _client().messages.create(
         model=_model(),
         max_tokens=256,

@@ -173,6 +173,12 @@ def _parse_tables(ds: ET.Element, connection: dict) -> list[dict]:
                 "schema": schema,
                 "table": table,
             })
+        if not tables:
+            # Collection of custom SQL queries — each child is type="text"
+            for child in relation.findall("relation[@type='text']"):
+                name = child.get("name", "Custom SQL Query")
+                sql = (child.text or "").strip()
+                tables.append({"name": name, "schema": "", "table": name, "custom_sql": sql})
         return tables
 
     if relation.get("type") == "join":
@@ -235,6 +241,22 @@ def _parse_columns(ds: ET.Element, connection: dict) -> list[dict]:
                     "remote_name": remote_name,
                     "datatype": local_type,
                     "source_table": source_table,
+                })
+        return cols
+
+    # Custom SQL: columns are in metadata-records on the connection element
+    if relation is not None and relation.get("type") == "text":
+        table_name = connection.get("table_name", "Custom SQL Query")
+        cols = []
+        for mr in conn.findall("./metadata-records/metadata-record[@class='column']"):
+            local_name = mr.findtext("local-name", "").strip("[]")
+            local_type = mr.findtext("local-type", "string")
+            if local_name:
+                cols.append({
+                    "name": local_name,
+                    "remote_name": local_name,
+                    "datatype": local_type,
+                    "source_table": table_name,
                 })
         return cols
 
@@ -366,6 +388,14 @@ def _parse_relationships(ds: ET.Element) -> list[dict]:
                 if len(parts) == 2:
                     col_table[key] = parts[0]
                     col_physical[key] = parts[1]
+            # Fallback for custom SQL collections: no cols/map, resolve via metadata-records parent-name
+            if not col_table:
+                for mr in conn.findall("./metadata-records/metadata-record[@class='column']"):
+                    local_name = mr.findtext("local-name", "").strip("[]")
+                    parent_name = mr.findtext("parent-name", "").strip("[]")
+                    if local_name and parent_name:
+                        col_table[local_name] = parent_name
+                        col_physical[local_name] = local_name
 
         left_table = col_table.get(left_logical, "")
         left_col = col_physical.get(left_logical, left_logical)
@@ -800,11 +830,14 @@ def _detect_unsupported(root: ET.Element, datasources: list[dict]) -> list[str]:
                 f"Datasource '{ds['name']}': live SQL connection — generated as DirectQuery mode"
             )
 
+    seen_custom_sql: set[str] = set()
     for rel in root.iter("relation"):
         rtype = rel.get("type", "")
         if rtype == "text":
             name = rel.get("name", "unnamed")
-            issues.append(f"Custom SQL relation '{name}' detected — wrapped in Value.NativeQuery for SQL sources")
+            if name not in seen_custom_sql:
+                seen_custom_sql.add(name)
+                issues.append(f"Custom SQL relation '{name}' detected — wrapped in Value.NativeQuery for SQL sources")
         elif rtype in _UNSUPPORTED_RELATION_TYPES:
             name = rel.get("name", rtype)
             issues.append(f"Relation type '{rtype}' ('{name}') is not supported")
