@@ -21,7 +21,6 @@ MARK_TO_VISUAL = {
 
 _SCHEMA_BASE = "https://developer.microsoft.com/json-schemas/fabric/item/report"
 
-# Maps Tableau aggregation prefix → PBI semantic query Aggregation.Function integer
 _PBI_AGG_FUNC = {
     "sum": 0,
     "avg": 1,
@@ -34,7 +33,6 @@ _PBI_AGG_FUNC = {
     "median": 6,
 }
 
-# Maps PBI/TMDL dataType → Power Query M type literal
 _M_TYPE_MAP = {
     "string":   "type text",
     "int64":    "Int64.Type",
@@ -68,8 +66,6 @@ def generate(transformed: dict, output_dir: Path, data_dir: Path = Path("data"))
 def _format_literal(value: str) -> str:
     """Format a Tableau filter value string as a PBI semantic query literal."""
     v = value.strip()
-    # Tableau date-only: #2023-01-03#  → date'2023-01-03'
-    # Tableau datetime:  #2023-01-03 12:00:00#  → datetime'2023-01-03T12:00:00'
     if v.startswith("#") and v.endswith("#"):
         inner = v.strip("#").strip()
         if " " in inner:
@@ -109,7 +105,7 @@ def _build_filter_entry(f: dict, idx: int) -> dict | None:
     if cls == "categorical":
         values = f.get("values", [])
         if not values:
-            return None  # level-members only — no restriction to migrate
+            return None
         condition = {
             "In": {
                 "Expressions": [col_expr],
@@ -123,7 +119,6 @@ def _build_filter_entry(f: dict, idx: int) -> dict | None:
         min_val = f.get("min", "")
         max_val = f.get("max", "")
         if agg_prefix and agg_prefix in _PBI_AGG_FUNC:
-            # Post-aggregation filter: use Aggregation expression + Advanced type
             agg_func = _PBI_AGG_FUNC[agg_prefix]
             agg_expr = {
                 "Aggregation": {
@@ -152,7 +147,6 @@ def _build_filter_entry(f: dict, idx: int) -> dict | None:
             filter_type = "Advanced"
             field_ref = agg_field_ref
         else:
-            # Row-level filter: use raw Column expression + Range type
             if min_val and max_val:
                 where = [{"Condition": {"Between": {"Expression": col_expr, "LowerBound": {"Literal": {"Value": _format_literal(min_val)}}, "UpperBound": {"Literal": {"Value": _format_literal(max_val)}}}}}]
             elif min_val:
@@ -206,12 +200,10 @@ def _write_tmdl_model(model_dir: Path, transformed: dict, data_dir: Path) -> Non
     defn_dir.mkdir(exist_ok=True)
     tables_dir.mkdir(exist_ok=True)
 
-    # Remove legacy TMSL file if present
     legacy_bim = model_dir / "model.bim"
     if legacy_bim.exists():
         legacy_bim.unlink()
 
-    # Remove stale table files from prior runs before writing new ones
     for stale in tables_dir.glob("*.tmdl"):
         stale.unlink()
 
@@ -232,7 +224,6 @@ def _write_tmdl_model(model_dir: Path, transformed: dict, data_dir: Path) -> Non
         model_tmdl += "\tdefaultMode: directQuery\n"
     (defn_dir / "model.tmdl").write_text(model_tmdl, encoding="utf-8")
 
-    # Write relationships as a standalone file (PBI Desktop format)
     rels = transformed.get("relationships", [])
     rel_path = defn_dir / "relationships.tmdl"
     if rels:
@@ -240,7 +231,6 @@ def _write_tmdl_model(model_dir: Path, transformed: dict, data_dir: Path) -> Non
         for r in rels:
             from_card = r.get("from_cardinality", "many")
             to_card = r.get("to_cardinality", "one")
-            # PBI TMDL requires fromColumn = MANY side; swap if our inference put ONE side as from
             if from_card == "one" and to_card == "many":
                 from_tbl, from_col = r["to_table"], r["to_column"]
                 to_tbl, to_col = r["from_table"], r["from_column"]
@@ -273,6 +263,25 @@ def _write_tmdl_model(model_dir: Path, transformed: dict, data_dir: Path) -> Non
         _write_tmdl_table(tables_dir, table, data_dir, measures_by_table.get(table["name"], []))
 
 
+def _tmdl_measure_lines(name_q: str, dax: str) -> list[str]:
+    """Return TMDL lines for a measure declaration.
+
+    Single-line DAX: written inline after '='.
+    Multiline DAX: expression starts on the next line at Level 3 (3 tabs),
+    per TMDL spec — each 2-space Claude indent level maps to one extra tab.
+    """
+    if "\n" not in dax:
+        return [f"\tmeasure {name_q} = {dax}"]
+    result = [f"\tmeasure {name_q} ="]
+    for line in dax.splitlines():
+        if not line.strip():
+            result.append("")
+        else:
+            leading = len(line) - len(line.lstrip(" "))
+            result.append("\t" * (3 + leading // 2) + line.lstrip(" "))
+    return result
+
+
 def _write_tmdl_table(tables_dir: Path, table: dict, data_dir: Path, measures: list | None = None) -> None:
     """Write one TMDL table file."""
     name = table["name"]
@@ -286,7 +295,7 @@ def _write_tmdl_table(tables_dir: Path, table: dict, data_dir: Path, measures: l
         lines.append("")
 
     for m in measures:
-        lines.append(f"\tmeasure {_tmdl_id(m['name'])} = {m['dax']}")
+        lines.extend(_tmdl_measure_lines(_tmdl_id(m['name']), m['dax']))
         lines.append("")
 
     if measures is None:
@@ -312,23 +321,14 @@ def _write_tmdl_table(tables_dir: Path, table: dict, data_dir: Path, measures: l
 
 
 def _build_m_expression(conn: dict, data_dir: Path, columns: list[dict] | None = None) -> tuple[list[str], bool]:
-    """Build Power Query M expression lines from connection info.
-
-    Returns (lines, use_backtick). use_backtick is True when the expression contains
-    a multi-line SQL string that requires TMDL triple-backtick wrapping to avoid
-    indentation parse errors (per TMDL spec — backticks disable indentation rules).
-
-    For file-based sources (Excel, CSV), appends an explicit Table.TransformColumnTypes
-    step derived from Tableau column metadata so PBI doesn't mistype numeric columns.
-    """
+    """Build Power Query M expression lines from connection info."""
     conn_type = conn.get("type", "")
 
     def _type_step(prev: str) -> list[str]:
-        """Return lines for Table.TransformColumnTypes, or empty list if no columns."""
         if not columns:
             return []
         pairs = [
-            f'        {{"{col["name"].replace(chr(34), chr(34)*2)}", {_M_TYPE_MAP[col["dataType"]]}}}'
+            f'        {"{"}"{col["name"].replace(chr(34), chr(34)*2)}", {_M_TYPE_MAP[col["dataType"]]}{"}"}'
             for col in columns
             if col["dataType"] in _M_TYPE_MAP
         ]
@@ -378,7 +378,6 @@ def _build_m_expression(conn: dict, data_dir: Path, columns: list[dict] | None =
             f"    {last_step}",
         ], False
 
-    # SQL-based connections share the same structure; only the M connector function differs
     _SQL_CONNECTOR = {
         "postgres":  "PostgreSQL.Database",
         "sqlserver": "Sql.Database",
@@ -396,9 +395,6 @@ def _build_m_expression(conn: dict, data_dir: Path, columns: list[dict] | None =
         custom_sql = conn.get("custom_sql", "")
         if custom_sql:
             escaped_sql = custom_sql.replace('"', '""')
-            # use_backtick=True: the SQL string spans multiple lines, so the TMDL
-            # source expression is wrapped in triple backticks per the TMDL spec to
-            # exempt it from indentation rules (see tmdl-overview#expressions).
             return [
                 "let",
                 f'    Source = {fn}("{server}", "{dbname}"),',
@@ -486,7 +482,6 @@ def _write_pages(definition_dir: Path, transformed: dict) -> None:
     pages_dir = definition_dir / "pages"
     pages_dir.mkdir(exist_ok=True)
 
-    # Group visuals by page_name (sheet), preserving insertion order
     pages: dict[str, list[dict]] = {}
     for v in transformed.get("visuals", []):
         key = v.get("page_name", v["name"])
@@ -516,7 +511,7 @@ def _write_pages_manifest(pages_dir: Path, section_ids: list[str]) -> None:
 
 
 def _write_page(page_dir: Path, page_visuals: list[dict], base_visual_idx: int) -> None:
-    """Write page.json and visuals for this sheet. Multiple visuals are laid out side-by-side."""
+    """Write page.json and visuals for this sheet."""
     display_name = page_visuals[0].get("page_name", page_visuals[0]["name"])
     page = {
         "$schema": f"{_SCHEMA_BASE}/definition/page/2.1.0/schema.json",
@@ -539,8 +534,6 @@ def _write_page(page_dir: Path, page_visuals: list[dict], base_visual_idx: int) 
             slot += 1
 
 
-# Maps visual type to (role1, role2, shelf_for_role1, shelf_for_role2)
-# shelf values: "row" or "col" — which Tableau shelf feeds each PBI role
 _VISUAL_ROLES = {
     "barChart":    ("Category", "Y",        "row", "col"),
     "columnChart": ("Category", "Y",        "col", "row"),
@@ -554,11 +547,7 @@ _VISUAL_ROLES = {
 
 
 def _make_projection(default_table: str, field: dict | str, col_formats: dict | None = None) -> dict:
-    """Build a field projection, using per-field table when available.
-
-    col_formats is an optional {field_name: format_string} dict; when present a
-    matching entry is written as the projection's format property.
-    """
+    """Build a field projection, using per-field table when available."""
     if isinstance(field, dict):
         name = field["name"]
         field_type = "Measure" if field.get("is_measure") else "Column"
@@ -620,7 +609,6 @@ def _write_visual(visual_dir: Path, visual_info: dict, x_offset: int = 20) -> No
             val_role: {"projections": [_make_projection(table_name, f, col_formats) for f in val_fields]},
         }
     else:
-        # tableEx and fallback: all fields under Values
         all_fields = row_fields + [f for f in col_fields if f not in row_fields]
         query_state = {
             "Values": {"projections": [_make_projection(table_name, f, col_formats) for f in all_fields]}
@@ -652,7 +640,6 @@ def _write_visual(visual_dir: Path, visual_info: dict, x_offset: int = 20) -> No
     (visual_dir / "visual.json").write_text(json.dumps(container, indent=2))
 
 
-# Visual types that support axis formatting
 _AXIS_VISUAL_TYPES = {"barChart", "columnChart", "lineChart", "areaChart", "pieChart", "scatterChart"}
 
 
@@ -684,7 +671,7 @@ def _build_objects(visual_info: dict, visual_type: str) -> dict:
 
     plot_area = fmt.get("plot_area", {})
     if plot_area.get("background_color"):
-        objects["plotArea"] = [{"properties": {"color": lit(f"'{plot_area['background_color']}'")}}]
+        objects["plotArea"] = [{"properties": {"color": lit(f"'{plot_area['background_color']}'" )}}]
 
     return objects
 
@@ -702,7 +689,6 @@ def _build_axis_props(axis_fmt: dict, title_fmt: dict, lit) -> dict:
         props["gridlineShow"] = lit("true" if axis_fmt["gridline_show"] else "false")
     if axis_fmt.get("gridline_style"):
         props["gridlineStyle"] = lit(f"'{axis_fmt['gridline_style']}'")
-    # Axis title formatting from field-labels style-rule
     if title_fmt.get("font_family"):
         props["titleFontFamily"] = lit(f"'{title_fmt['font_family']}'")
     if title_fmt.get("font_size"):
