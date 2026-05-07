@@ -211,6 +211,10 @@ def _write_tmdl_model(model_dir: Path, transformed: dict, data_dir: Path) -> Non
     if legacy_bim.exists():
         legacy_bim.unlink()
 
+    # Remove stale table files from prior runs before writing new ones
+    for stale in tables_dir.glob("*.tmdl"):
+        stale.unlink()
+
     name = transformed["name"]
     database_tmdl = f"database '{name}'\n\tcompatibilityLevel: 1600\n"
     (defn_dir / "database.tmdl").write_text(database_tmdl, encoding="utf-8")
@@ -247,8 +251,8 @@ def _write_tmdl_model(model_dir: Path, transformed: dict, data_dir: Path) -> Non
             rel_name = f"{from_tbl}_{from_col} -> {to_tbl}_{to_col}"
             lines = [
                 f"relationship '{rel_name}'",
-                f"\tfromColumn: {from_tbl}.{from_col}",
-                f"\ttoColumn: {to_tbl}.{to_col}",
+                f"\tfromColumn: {_tmdl_id(from_tbl)}.{_tmdl_id(from_col)}",
+                f"\ttoColumn: {_tmdl_id(to_tbl)}.{_tmdl_id(to_col)}",
             ]
             if (from_card, to_card) != ("many", "one"):
                 lines.append(f"\tfromCardinality: {from_card}")
@@ -289,20 +293,30 @@ def _write_tmdl_table(tables_dir: Path, table: dict, data_dir: Path, measures: l
         measures = []
     conn = table["connection"]
     storage_mode = conn.get("storage_mode", "import")
-    expr_lines = _build_m_expression(conn, data_dir, table["columns"])
+    expr_lines, use_backtick = _build_m_expression(conn, data_dir, table["columns"])
     lines.append(f"\tpartition {qname} = m")
     lines.append(f"\t\tmode: {storage_mode}")
-    lines.append("\t\tsource =")
-    for line in expr_lines:
-        lines.append(f"\t\t\t{line}")
+    if use_backtick:
+        lines.append("\t\tsource = ```")
+        for line in expr_lines:
+            lines.append(f"\t\t\t{line}")
+        lines.append("\t\t\t```")
+    else:
+        lines.append("\t\tsource =")
+        for line in expr_lines:
+            lines.append(f"\t\t\t{line}")
     lines.append("")
 
     safe_name = name.replace("/", "_").replace("\\", "_").replace(":", "_")
     (tables_dir / f"{safe_name}.tmdl").write_text("\n".join(lines), encoding="utf-8")
 
 
-def _build_m_expression(conn: dict, data_dir: Path, columns: list[dict] | None = None) -> list[str]:
+def _build_m_expression(conn: dict, data_dir: Path, columns: list[dict] | None = None) -> tuple[list[str], bool]:
     """Build Power Query M expression lines from connection info.
+
+    Returns (lines, use_backtick). use_backtick is True when the expression contains
+    a multi-line SQL string that requires TMDL triple-backtick wrapping to avoid
+    indentation parse errors (per TMDL spec — backticks disable indentation rules).
 
     For file-based sources (Excel, CSV), appends an explicit Table.TransformColumnTypes
     step derived from Tableau column metadata so PBI doesn't mistype numeric columns.
@@ -348,7 +362,7 @@ def _build_m_expression(conn: dict, data_dir: Path, columns: list[dict] | None =
             *type_lines,
             "in",
             f"    {last_step}",
-        ]
+        ], False
 
     if conn_type == "textscan":
         csv_path = (data_dir / conn.get("filename", "")).resolve().as_posix()
@@ -362,7 +376,7 @@ def _build_m_expression(conn: dict, data_dir: Path, columns: list[dict] | None =
             *type_lines,
             "in",
             f"    {last_step}",
-        ]
+        ], False
 
     # SQL-based connections share the same structure; only the M connector function differs
     _SQL_CONNECTOR = {
@@ -382,13 +396,16 @@ def _build_m_expression(conn: dict, data_dir: Path, columns: list[dict] | None =
         custom_sql = conn.get("custom_sql", "")
         if custom_sql:
             escaped_sql = custom_sql.replace('"', '""')
+            # use_backtick=True: the SQL string spans multiple lines, so the TMDL
+            # source expression is wrapped in triple backticks per the TMDL spec to
+            # exempt it from indentation rules (see tmdl-overview#expressions).
             return [
                 "let",
                 f'    Source = {fn}("{server}", "{dbname}"),',
                 f'    nav = Value.NativeQuery(Source, "{escaped_sql}", null, [EnableFolding=true])',
                 "in",
                 "    nav",
-            ]
+            ], True
         schema = conn.get("schema", "")
         table = conn.get("table", "")
         return [
@@ -397,9 +414,9 @@ def _build_m_expression(conn: dict, data_dir: Path, columns: list[dict] | None =
             f'    nav = Source{{[Schema="{schema}", Item="{table}"]}}[Data]',
             "in",
             "    nav",
-        ]
+        ], False
 
-    return [f'error "Unsupported connection type: {conn_type}"']
+    return [f'error "Unsupported connection type: {conn_type}"'], False
 
 
 def _write_definition_pbir(report_dir: Path, model_name: str) -> None:
