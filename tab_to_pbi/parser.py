@@ -50,6 +50,23 @@ def extract_twbx_data(path: Path, dest_dir: Path) -> Path:
     return dest_dir
 
 
+def _build_query_caption_map(ds: ET.Element) -> dict[str, str]:
+    """Build {relation_name → logical_caption} from the object-graph.
+
+    e.g. {"Custom SQL Query" → "Customers", "Custom SQL Query1" → "Orders"}
+    Used to replace generic Tableau-internal query aliases with user-facing names.
+    """
+    result: dict[str, str] = {}
+    for obj in ds.findall("./object-graph/objects/object"):
+        caption = obj.get("caption", "")
+        rel = obj.find("./properties/relation")
+        if caption and rel is not None:
+            qname = rel.get("name", "")
+            if qname:
+                result[qname] = caption
+    return result
+
+
 def _parse_datasources(root: ET.Element) -> tuple[list[dict], list[str]]:
     """Extract datasource info. Returns (datasources, physical_join_flags)."""
     results = []
@@ -59,16 +76,18 @@ def _parse_datasources(root: ET.Element) -> tuple[list[dict], list[str]]:
         if name in ("Parameters",) or not name:
             continue
 
-        connection = _parse_connection(ds)
-        tables = _parse_tables(ds, connection)
-        columns = _parse_columns(ds, connection)
+        query_caption_map = _build_query_caption_map(ds)
+        connection = _parse_connection(ds, query_caption_map)
+        tables = _parse_tables(ds, connection, query_caption_map)
+        columns = _parse_columns(ds, connection, query_caption_map)
         calculated_fields = _parse_calculated_fields(ds)
-        logical_rels = _parse_relationships(ds)
+        logical_rels = _parse_relationships(ds, query_caption_map)
         physical_rels, join_flags = _parse_physical_joins(ds.find("connection"))
         all_join_flags.extend(join_flags)
         relationships = logical_rels + physical_rels
         calc_name_map = {cf["internal_name"]: cf["name"] for cf in calculated_fields}
         column_formats = _parse_column_formats(ds)
+        object_id_map = _parse_object_id_map(ds)
 
         results.append({
             "name": name,
@@ -80,12 +99,14 @@ def _parse_datasources(root: ET.Element) -> tuple[list[dict], list[str]]:
             "calc_name_map": calc_name_map,
             "relationships": relationships,
             "column_formats": column_formats,
+            "object_id_map": object_id_map,
         })
     return results, all_join_flags
 
 
-def _parse_connection(ds: ET.Element) -> dict:
+def _parse_connection(ds: ET.Element, query_caption_map: dict | None = None) -> dict:
     """Extract connection details."""
+    qcmap = query_caption_map or {}
     conn = ds.find("connection")
     if conn is None:
         return {}
@@ -111,7 +132,8 @@ def _parse_connection(ds: ET.Element) -> dict:
         custom_sql = ""
         if relation is not None and rel_type == "text":
             custom_sql = (relation.text or "").strip()
-            table_name = relation.get("name", "Custom SQL Query")
+            raw_name = relation.get("name", "Custom SQL Query")
+            table_name = qcmap.get(raw_name, raw_name)
         elif relation is not None and rel_type not in ("collection", "join"):
             table = relation.get("table", "").strip("[]")
             table_name = relation.get("name", "")
@@ -127,7 +149,8 @@ def _parse_connection(ds: ET.Element) -> dict:
         if relation is not None and relation.get("type") == "text":
             custom_sql = (relation.text or "").strip()
             table = ""
-            table_name = relation.get("name", "Custom SQL Query")
+            raw_name = relation.get("name", "Custom SQL Query")
+            table_name = qcmap.get(raw_name, raw_name)
         else:
             table = relation.get("table", "").strip("[]") if relation is not None else ""
             table_name = relation.get("name", "") if relation is not None else ""
@@ -151,8 +174,9 @@ def _parse_connection(ds: ET.Element) -> dict:
     }
 
 
-def _parse_tables(ds: ET.Element, connection: dict) -> list[dict]:
+def _parse_tables(ds: ET.Element, connection: dict, query_caption_map: dict | None = None) -> list[dict]:
     """Extract physical table list. For collection relations returns all child tables."""
+    qcmap = query_caption_map or {}
     conn = ds.find("connection")
     if conn is None:
         return []
@@ -176,7 +200,8 @@ def _parse_tables(ds: ET.Element, connection: dict) -> list[dict]:
         if not tables:
             # Collection of custom SQL queries — each child is type="text"
             for child in relation.findall("relation[@type='text']"):
-                name = child.get("name", "Custom SQL Query")
+                raw_name = child.get("name", "Custom SQL Query")
+                name = qcmap.get(raw_name, raw_name)
                 sql = (child.text or "").strip()
                 tables.append({"name": name, "schema": "", "table": name, "custom_sql": sql})
         return tables
@@ -194,6 +219,14 @@ def _parse_tables(ds: ET.Element, connection: dict) -> list[dict]:
                     "schema": schema,
                     "table": table_name,
                 })
+        if not tables:
+            # Join of custom SQL queries — each direct child is type="text"
+            for child in relation.iter("relation"):
+                if child.get("type") == "text":
+                    raw_name = child.get("name", "Custom SQL Query")
+                    name = qcmap.get(raw_name, raw_name)
+                    sql = (child.text or "").strip()
+                    tables.append({"name": name, "schema": "", "table": name, "custom_sql": sql})
         return tables
 
     # Single table
@@ -203,13 +236,14 @@ def _parse_tables(ds: ET.Element, connection: dict) -> list[dict]:
     return []
 
 
-def _parse_columns(ds: ET.Element, connection: dict) -> list[dict]:
+def _parse_columns(ds: ET.Element, connection: dict, query_caption_map: dict | None = None) -> list[dict]:
     """Extract columns with source_table info.
 
     For collection (multi-table): uses metadata-records (has parent-name) and
     cols/map to build source_table assignment.
     For single-table: uses relation/columns/column elements.
     """
+    qcmap = query_caption_map or {}
     conn = ds.find("connection")
     if conn is None:
         return []
@@ -233,7 +267,8 @@ def _parse_columns(ds: ET.Element, connection: dict) -> list[dict]:
             local_name = mr.findtext("local-name", "").strip("[]")
             local_type = mr.findtext("local-type", "string")
             parent_name = mr.findtext("parent-name", "").strip("[]")
-            source_table = col_table.get(local_name, "") or parent_name
+            resolved_parent = qcmap.get(parent_name, parent_name)
+            source_table = col_table.get(local_name, "") or resolved_parent
             remote_name = col_physical.get(local_name, local_name)
             if local_name:
                 cols.append({
@@ -364,8 +399,9 @@ def _walk_join(rel: ET.Element, rels: list[dict], flags: list[str]) -> None:
     })
 
 
-def _parse_relationships(ds: ET.Element) -> list[dict]:
+def _parse_relationships(ds: ET.Element, query_caption_map: dict | None = None) -> list[dict]:
     """Extract relationships from object-graph (Tableau logical layer)."""
+    qcmap = query_caption_map or {}
     rels = []
     for rel in ds.findall("./object-graph/relationships/relationship"):
         expr = rel.find("expression[@op='=']")
@@ -394,7 +430,7 @@ def _parse_relationships(ds: ET.Element) -> list[dict]:
                     local_name = mr.findtext("local-name", "").strip("[]")
                     parent_name = mr.findtext("parent-name", "").strip("[]")
                     if local_name and parent_name:
-                        col_table[local_name] = parent_name
+                        col_table[local_name] = qcmap.get(parent_name, parent_name)
                         col_physical[local_name] = local_name
 
         left_table = col_table.get(left_logical, "")
@@ -409,6 +445,21 @@ def _parse_relationships(ds: ET.Element) -> list[dict]:
             "to_column": right_col,
         })
     return rels
+
+
+def _parse_object_id_map(ds: ET.Element) -> dict[str, str]:
+    """Build {object_id → logical_table_name} from the object-graph.
+
+    Uses the object caption (e.g. "Customers") rather than the relation name
+    (e.g. "Custom SQL Query") so the map stays consistent with PBI table names.
+    """
+    result = {}
+    for obj in ds.findall("./object-graph/objects/object"):
+        oid = obj.get("id", "")
+        rel = obj.find("./properties/relation")
+        if oid and rel is not None:
+            result[oid] = obj.get("caption", "") or rel.get("name", "")
+    return result
 
 
 def _parse_title(ws: ET.Element) -> dict | None:
@@ -665,10 +716,14 @@ def _parse_filter_element(f: ET.Element) -> dict | None:
     else:
         field_ref = col.strip("[]")
     segments = field_ref.split(":", 2)
+    prefix = segments[0] if len(segments) == 3 else ""
     name = segments[1] if len(segments) == 3 else field_ref
     if name.startswith(":"):
         return None
     entry: dict = {"field": name, "class": cls}
+    date_part = _DATE_PART_MAP.get(prefix)
+    if date_part:
+        entry["date_part"] = date_part
     if cls == "categorical":
         # member attribute is encoded as '"value"' in Tableau XML
         members = [
@@ -792,6 +847,17 @@ def _parse_shelf_fields(shelf: str) -> list[dict]:
             field_ref = part.split("].[", 1)[1].rstrip("]")
         else:
             field_ref = part.strip("[]")
+
+        # Tableau logical table pill: __tableau_internal_object_id__].[agg:object_id:suffix
+        if field_ref.startswith("__tableau_internal_object_id__"):
+            inner = field_ref.split("].[", 1)[1] if "].[" in field_ref else ""
+            inner_parts = inner.split(":", 2)
+            if len(inner_parts) == 3:
+                agg, object_id, _ = inner_parts
+                if agg and object_id:
+                    fields.append({"name": object_id, "object_id": True, "aggregation": agg, "continuous": True, "date_part": None})
+            continue
+
         segments = field_ref.split(":", 2)
         if len(segments) == 3:
             prefix, name, _ = segments
@@ -808,8 +874,8 @@ def _parse_shelf_fields(shelf: str) -> list[dict]:
     return fields
 
 
-_SUPPORTED_CONN_TYPES = {"excel-direct", "textscan", "csv", "postgres", "sqlserver", "mysql", "bigquery", "redshift", "snowflake", "oracle", ""}
-_SQL_CONN_TYPES = {"postgres", "sqlserver", "mysql", "bigquery", "redshift", "snowflake", "oracle"}
+_SUPPORTED_CONN_TYPES = {"excel-direct", "textscan", "csv", "postgres", "sqlserver", "mysql", "bigquery", "redshift", "snowflake", "oracle", "teradata", ""}
+_SQL_CONN_TYPES = {"postgres", "sqlserver", "mysql", "bigquery", "redshift", "snowflake", "oracle", "teradata"}
 _UNSUPPORTED_RELATION_TYPES = {"union", "batch-union", "subquery", "stored-proc", "pivot", "project"}
 
 

@@ -43,6 +43,113 @@ _M_TYPE_MAP = {
     "boolean":  "type logical",
 }
 
+# SQL date-part extraction per dialect (DirectQuery mode).
+# All expressions are sourced from official vendor documentation.
+_DATE_PART_SQL: dict[str, dict[str, str]] = {
+    "postgres": {
+        "YEAR":    "EXTRACT(YEAR FROM {col})",
+        "QUARTER": "EXTRACT(QUARTER FROM {col})",
+        "MONTH":   "EXTRACT(MONTH FROM {col})",
+        "WEEKNUM": "EXTRACT(WEEK FROM {col})",
+        "DAY":     "EXTRACT(DAY FROM {col})",
+        "HOUR":    "EXTRACT(HOUR FROM {col})",
+        "MINUTE":  "EXTRACT(MINUTE FROM {col})",
+        "SECOND":  "EXTRACT(SECOND FROM {col})",
+    },
+    "redshift": {   # AWS Redshift: PostgreSQL-dialect EXTRACT
+        "YEAR":    "EXTRACT(YEAR FROM {col})",
+        "QUARTER": "EXTRACT(QUARTER FROM {col})",
+        "MONTH":   "EXTRACT(MONTH FROM {col})",
+        "WEEKNUM": "EXTRACT(WEEK FROM {col})",
+        "DAY":     "EXTRACT(DAY FROM {col})",
+        "HOUR":    "EXTRACT(HOUR FROM {col})",
+        "MINUTE":  "EXTRACT(MINUTE FROM {col})",
+        "SECOND":  "EXTRACT(SECOND FROM {col})",
+    },
+    "mysql": {
+        "YEAR":    "YEAR({col})",
+        "QUARTER": "QUARTER({col})",
+        "MONTH":   "MONTH({col})",
+        "WEEKNUM": "WEEK({col})",
+        "DAY":     "DAY({col})",
+        "HOUR":    "HOUR({col})",
+        "MINUTE":  "MINUTE({col})",
+        "SECOND":  "SECOND({col})",
+    },
+    "sqlserver": {
+        "YEAR":    "YEAR({col})",
+        "QUARTER": "DATEPART(quarter, {col})",
+        "MONTH":   "MONTH({col})",
+        "WEEKNUM": "DATEPART(week, {col})",
+        "DAY":     "DAY({col})",
+        "HOUR":    "DATEPART(hour, {col})",
+        "MINUTE":  "DATEPART(minute, {col})",
+        "SECOND":  "DATEPART(second, {col})",
+    },
+    "snowflake": {
+        "YEAR":    "YEAR({col})",
+        "QUARTER": "QUARTER({col})",
+        "MONTH":   "MONTH({col})",
+        "WEEKNUM": "WEEKOFYEAR({col})",
+        "DAY":     "DAY({col})",
+        "HOUR":    "HOUR({col})",
+        "MINUTE":  "MINUTE({col})",
+        "SECOND":  "SECOND({col})",
+    },
+    "bigquery": {
+        "YEAR":    "EXTRACT(YEAR FROM {col})",
+        "QUARTER": "EXTRACT(QUARTER FROM {col})",
+        "MONTH":   "EXTRACT(MONTH FROM {col})",
+        "WEEKNUM": "EXTRACT(WEEK FROM {col})",
+        "DAY":     "EXTRACT(DAY FROM {col})",
+        "HOUR":    "EXTRACT(HOUR FROM {col})",
+        "MINUTE":  "EXTRACT(MINUTE FROM {col})",
+        "SECOND":  "EXTRACT(SECOND FROM {col})",
+    },
+    "oracle": {
+        "YEAR":    "EXTRACT(YEAR FROM {col})",
+        "QUARTER": "TO_NUMBER(TO_CHAR({col}, 'Q'))",
+        "MONTH":   "EXTRACT(MONTH FROM {col})",
+        "WEEKNUM": "TO_NUMBER(TO_CHAR({col}, 'IW'))",  # ISO week
+        "DAY":     "EXTRACT(DAY FROM {col})",
+        "HOUR":    "TO_NUMBER(TO_CHAR({col}, 'HH24'))",
+        "MINUTE":  "TO_NUMBER(TO_CHAR({col}, 'MI'))",
+        "SECOND":  "TO_NUMBER(TO_CHAR({col}, 'SS'))",
+    },
+    "teradata": {
+        "YEAR":    "EXTRACT(YEAR FROM {col})",
+        "QUARTER": "CAST((EXTRACT(MONTH FROM {col}) + 2) / 3 AS INTEGER)",
+        "MONTH":   "EXTRACT(MONTH FROM {col})",
+        # TD_WEEK_OF_YEAR requires TD_SYSFNLIB to be installed on the Teradata instance
+        "WEEKNUM": "TD_WEEK_OF_YEAR({col})",
+        "DAY":     "EXTRACT(DAY FROM {col})",
+        "HOUR":    "EXTRACT(HOUR FROM {col})",
+        "MINUTE":  "EXTRACT(MINUTE FROM {col})",
+        "SECOND":  "EXTRACT(SECOND FROM {col})",
+    },
+}
+
+# Power Query M functions for date-part extraction (Import mode).
+# Format: {part: (m_function_template, m_type_literal)}
+# {col} placeholder is replaced with the actual column name at generation time.
+_DATE_PART_M: dict[str, tuple[str, str]] = {
+    "YEAR":    ('Date.Year([#"{col}"])',          "Int64.Type"),
+    "QUARTER": ('Date.QuarterOfYear([#"{col}"])', "Int64.Type"),
+    "MONTH":   ('Date.Month([#"{col}"])',         "Int64.Type"),
+    "WEEKNUM": ('Date.WeekOfYear([#"{col}"])',    "Int64.Type"),
+    "DAY":     ('Date.Day([#"{col}"])',           "Int64.Type"),
+    "HOUR":    ('Time.Hour([#"{col}"])',          "Int64.Type"),
+    "MINUTE":  ('Time.Minute([#"{col}"])',        "Int64.Type"),
+    "SECOND":  ('Time.Second([#"{col}"])',        "Int64.Type"),
+}
+
+# Canonical coarse-to-fine ordering for hierarchy level emission
+_PART_ORDER = ["YEAR", "QUARTER", "MONTH", "WEEKNUM", "DAY", "HOUR", "MINUTE", "SECOND"]
+_PART_LABEL = {
+    "YEAR": "Year", "QUARTER": "Quarter", "MONTH": "Month", "WEEKNUM": "Week",
+    "DAY": "Day", "HOUR": "Hour", "MINUTE": "Minute", "SECOND": "Second",
+}
+
 
 def generate(transformed: dict, output_dir: Path, data_dir: Path = Path("data")) -> Path:
     """Write PBIR SemanticModel and Report files. Returns the Report folder path."""
@@ -199,6 +306,32 @@ def _tmdl_id(name: str) -> str:
     return name
 
 
+def _m_sql_alias(conn_type: str, name: str) -> str:
+    """SQL column alias pre-escaped for embedding inside an M text literal (double-quote delimited)."""
+    if conn_type == "mysql":
+        return f"`{name.replace('`', '``')}`"
+    if conn_type == "sqlserver":
+        return f"[{name.replace(']', ']]')}]"
+    # ANSI double-quote identifiers; each " becomes "" inside an M string literal
+    esc = name.replace('"', '""')
+    return f'""{ esc }""'
+
+
+def _m_sql_table(conn_type: str, schema: str, table_name: str) -> str:
+    """Qualified table reference for embedding inside an M NativeQuery SQL string."""
+    if conn_type == "mysql":
+        s = f"`{schema}`." if schema else ""
+        return f"{s}`{table_name}`"
+    if conn_type == "sqlserver":
+        s = f"[{schema.replace(']', ']]')}]." if schema else ""
+        return f"{s}[{table_name.replace(']', ']]')}]"
+    # ANSI: each " becomes "" for M string embedding
+    esc_s = schema.replace('"', '""')
+    esc_t = table_name.replace('"', '""')
+    s = f'""{ esc_s }"".' if schema else ""
+    return f'{s}""{ esc_t }""'
+
+
 def _write_tmdl_model(model_dir: Path, transformed: dict, data_dir: Path) -> None:
     """Write TMDL semantic model: definition/model.tmdl + definition/tables/<name>.tmdl."""
     defn_dir = model_dir / "definition"
@@ -273,6 +406,25 @@ def _write_tmdl_model(model_dir: Path, transformed: dict, data_dir: Path) -> Non
         _write_tmdl_table(tables_dir, table, data_dir, measures_by_table.get(table["name"], []))
 
 
+def _tmdl_measure_lines(name_q: str, dax: str) -> list[str]:
+    """Return TMDL lines for a measure declaration.
+
+    Single-line DAX: written inline after '='.
+    Multiline DAX: expression starts on the next line at Level 3 (3 tabs),
+    per TMDL spec — each 2-space Claude indent level maps to one extra tab.
+    """
+    if "\n" not in dax:
+        return [f"\tmeasure {name_q} = {dax}"]
+    result = [f"\tmeasure {name_q} ="]
+    for line in dax.splitlines():
+        if not line.strip():
+            result.append("")
+        else:
+            leading = len(line) - len(line.lstrip(" "))
+            result.append("\t" * (3 + leading // 2) + line.lstrip(" "))
+    return result
+
+
 def _write_tmdl_table(tables_dir: Path, table: dict, data_dir: Path, measures: list | None = None) -> None:
     """Write one TMDL table file."""
     name = table["name"]
@@ -286,14 +438,38 @@ def _write_tmdl_table(tables_dir: Path, table: dict, data_dir: Path, measures: l
         lines.append("")
 
     for m in measures:
-        lines.append(f"\tmeasure {_tmdl_id(m['name'])} = {m['dax']}")
+        lines.extend(_tmdl_measure_lines(_tmdl_id(m['name']), m['dax']))
+        lines.append("")
+
+    # Derived date-part columns (added via M expression; regular columns in TMDL)
+    dpc = table.get("date_part_columns", [])
+    for dp in dpc:
+        lines.append(f"\tcolumn {_tmdl_id(dp['derived'])}")
+        lines.append(f"\t\tdataType: int64")
+        lines.append(f"\t\tsourceColumn: {dp['derived']}")
+        lines.append("")
+
+    # Hierarchy block: emitted when 2+ date-part levels exist for the same base column
+    by_base: dict[str, list] = {}
+    for dp in dpc:
+        by_base.setdefault(dp["base_col"], []).append(dp)
+    for base_col, parts in by_base.items():
+        if len(parts) < 2:
+            continue
+        hier_name = " ".join(w.capitalize() for w in base_col.replace("_", " ").split())
+        sorted_parts = sorted(parts, key=lambda p: _PART_ORDER.index(p["part"]) if p["part"] in _PART_ORDER else 99)
+        lines.append(f"\thierarchy {_tmdl_id(hier_name)}")
+        for p in sorted_parts:
+            level_label = _PART_LABEL.get(p["part"], p["part"].capitalize())
+            lines.append(f"\t\tlevel {_tmdl_id(level_label)}")
+            lines.append(f"\t\t\tcolumn: {_tmdl_id(p['derived'])}")
         lines.append("")
 
     if measures is None:
         measures = []
     conn = table["connection"]
     storage_mode = conn.get("storage_mode", "import")
-    expr_lines, use_backtick = _build_m_expression(conn, data_dir, table["columns"])
+    expr_lines, use_backtick = _build_m_expression(conn, data_dir, table["columns"], dpc)
     lines.append(f"\tpartition {qname} = m")
     lines.append(f"\t\tmode: {storage_mode}")
     if use_backtick:
@@ -311,7 +487,38 @@ def _write_tmdl_table(tables_dir: Path, table: dict, data_dir: Path, measures: l
     (tables_dir / f"{safe_name}.tmdl").write_text("\n".join(lines), encoding="utf-8")
 
 
-def _build_m_expression(conn: dict, data_dir: Path, columns: list[dict] | None = None) -> tuple[list[str], bool]:
+def _chain_add_columns(lines: list[str], prev: str, dpc: list[dict]) -> tuple[list[str], str]:
+    """Append Table.AddColumn steps for date-part columns (Import mode).
+
+    Expects lines to end with ["in", "    {prev}"]. Removes those, adds a trailing
+    comma to the last let-binding, chains AddColumn steps, then re-appends "in / last".
+    Returns (new_lines, new_last_step_name).
+    """
+    if not dpc:
+        return lines, prev
+    result = list(lines[:-2])
+    result[-1] += ","
+    curr = prev
+    for i, dp in enumerate(dpc):
+        if dp["part"] not in _DATE_PART_M:
+            continue
+        m_fn, m_type = _DATE_PART_M[dp["part"]]
+        m_expr = m_fn.format(col=dp["base_col"])
+        var = f"add_dp_{i}"
+        result.append(f'    {var} = Table.AddColumn({curr}, "{dp["derived"]}", each {m_expr}, {m_type}),')
+        curr = var
+    # Remove trailing comma from the last step
+    result[-1] = result[-1].rstrip(",")
+    result.extend(["in", f"    {curr}"])
+    return result, curr
+
+
+def _build_m_expression(
+    conn: dict,
+    data_dir: Path,
+    columns: list[dict] | None = None,
+    date_part_columns: list[dict] | None = None,
+) -> tuple[list[str], bool]:
     """Build Power Query M expression lines from connection info.
 
     Returns (lines, use_backtick). use_backtick is True when the expression contains
@@ -320,6 +527,7 @@ def _build_m_expression(conn: dict, data_dir: Path, columns: list[dict] | None =
 
     For file-based sources (Excel, CSV), appends an explicit Table.TransformColumnTypes
     step derived from Tableau column metadata so PBI doesn't mistype numeric columns.
+    date_part_columns: list of {base_col, part, derived} dicts for date-part extraction.
     """
     conn_type = conn.get("type", "")
 
@@ -350,10 +558,12 @@ def _build_m_expression(conn: dict, data_dir: Path, columns: list[dict] | None =
     safe_var = table_name.replace(" ", "_").replace("-", "_")
     escaped_table = table_name.replace('"', '""')
 
+    dpc = date_part_columns or []
+
     if conn_type == "excel-direct":
         type_lines = _type_step('#"Promoted Headers"')
         last_step = '#"Changed Types"' if type_lines else '#"Promoted Headers"'
-        return [
+        base_lines = [
             "let",
             f'    Source = Excel.Workbook(File.Contents("{filename}"), null, true),',
             f'    {safe_var}_Sheet = Source{{[Item="{escaped_table}",Kind="Sheet"]}}[Data],',
@@ -362,13 +572,15 @@ def _build_m_expression(conn: dict, data_dir: Path, columns: list[dict] | None =
             *type_lines,
             "in",
             f"    {last_step}",
-        ], False
+        ]
+        lines, _ = _chain_add_columns(base_lines, last_step, dpc)
+        return lines, False
 
     if conn_type == "textscan":
         csv_path = (data_dir / conn.get("filename", "")).resolve().as_posix()
         type_lines = _type_step('#"Promoted Headers"')
         last_step = '#"Changed Types"' if type_lines else '#"Promoted Headers"'
-        return [
+        base_lines = [
             "let",
             f'    Source = Csv.Document(File.Contents("{csv_path}"), [Delimiter=",", Encoding=65001, QuoteStyle=QuoteStyle.None]),',
             f'    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars=true])'
@@ -376,7 +588,9 @@ def _build_m_expression(conn: dict, data_dir: Path, columns: list[dict] | None =
             *type_lines,
             "in",
             f"    {last_step}",
-        ], False
+        ]
+        lines, _ = _chain_add_columns(base_lines, last_step, dpc)
+        return lines, False
 
     # SQL-based connections share the same structure; only the M connector function differs
     _SQL_CONNECTOR = {
@@ -387,6 +601,7 @@ def _build_m_expression(conn: dict, data_dir: Path, columns: list[dict] | None =
         "snowflake": "Snowflake.Databases",
         "oracle":    "Oracle.Database",
         "bigquery":  "GoogleBigQuery.Database",
+        "teradata":  "Teradata.Database",
     }
 
     if conn_type in _SQL_CONNECTOR:
@@ -394,6 +609,8 @@ def _build_m_expression(conn: dict, data_dir: Path, columns: list[dict] | None =
         server = conn.get("server", "")
         dbname = conn.get("dbname", "")
         custom_sql = conn.get("custom_sql", "")
+        storage_mode = conn.get("storage_mode", "import")
+
         if custom_sql:
             escaped_sql = custom_sql.replace('"', '""')
             # use_backtick=True: the SQL string spans multiple lines, so the TMDL
@@ -406,15 +623,43 @@ def _build_m_expression(conn: dict, data_dir: Path, columns: list[dict] | None =
                 "in",
                 "    nav",
             ], True
+
         schema = conn.get("schema", "")
         table = conn.get("table", "")
-        return [
+
+        if dpc and storage_mode == "directQuery":
+            # DirectQuery with date-part columns: use NativeQuery with per-dialect SQL
+            # so the expressions are guaranteed to execute (no M-folding dependency).
+            dialect = _DATE_PART_SQL.get(conn_type, {})
+            select_parts = []
+            for dp in dpc:
+                sql_expr = dialect.get(dp["part"], "").format(col=dp["base_col"])
+                if not sql_expr:
+                    continue
+                alias = _m_sql_alias(conn_type, dp["derived"])
+                select_parts.append(f"{sql_expr} AS {alias}")
+            if select_parts:
+                qual = _m_sql_table(conn_type, schema, table)
+                sql = f"SELECT *, {', '.join(select_parts)} FROM {qual}"
+                return [
+                    "let",
+                    f'    Source = {fn}("{server}", "{dbname}"),',
+                    f'    nav = Value.NativeQuery(Source, "{sql}", null, [EnableFolding=true])',
+                    "in",
+                    "    nav",
+                ], False
+
+        # Import mode (or DirectQuery with no date-part columns)
+        base_lines = [
             "let",
             f'    Source = {fn}("{server}", "{dbname}"),',
             f'    nav = Source{{[Schema="{schema}", Item="{table}"]}}[Data]',
             "in",
             "    nav",
-        ], False
+        ]
+        if dpc and storage_mode != "directQuery":
+            base_lines, _ = _chain_add_columns(base_lines, "nav", dpc)
+        return base_lines, False
 
     return [f'error "Unsupported connection type: {conn_type}"'], False
 
