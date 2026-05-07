@@ -51,9 +51,9 @@ def extract_twbx_data(path: Path, dest_dir: Path) -> Path:
 
 
 def _build_query_caption_map(ds: ET.Element) -> dict[str, str]:
-    """Build {relation_name -> logical_caption} from the object-graph.
+    """Build {relation_name → logical_caption} from the object-graph.
 
-    e.g. {"Custom SQL Query" -> "Customers", "Custom SQL Query1" -> "Orders"}
+    e.g. {"Custom SQL Query" → "Customers", "Custom SQL Query1" → "Orders"}
     Used to replace generic Tableau-internal query aliases with user-facing names.
     """
     result: dict[str, str] = {}
@@ -198,7 +198,7 @@ def _parse_tables(ds: ET.Element, connection: dict, query_caption_map: dict | No
                 "table": table,
             })
         if not tables:
-            # Collection of custom SQL queries - each child is type="text"
+            # Collection of custom SQL queries — each child is type="text"
             for child in relation.findall("relation[@type='text']"):
                 raw_name = child.get("name", "Custom SQL Query")
                 name = qcmap.get(raw_name, raw_name)
@@ -220,7 +220,7 @@ def _parse_tables(ds: ET.Element, connection: dict, query_caption_map: dict | No
                     "table": table_name,
                 })
         if not tables:
-            # Join of custom SQL queries - each direct child is type="text"
+            # Join of custom SQL queries — each direct child is type="text"
             for child in relation.iter("relation"):
                 if child.get("type") == "text":
                     raw_name = child.get("name", "Custom SQL Query")
@@ -250,7 +250,7 @@ def _parse_columns(ds: ET.Element, connection: dict, query_caption_map: dict | N
 
     relation = conn.find("relation")
     if relation is not None and relation.get("type") in ("collection", "join"):
-        # Build logical-name -> source_table and -> physical column from cols/map
+        # Build logical-name → source_table and → physical column from cols/map
         col_table: dict[str, str] = {}
         col_physical: dict[str, str] = {}
         for m in conn.findall("./cols/map"):
@@ -341,8 +341,9 @@ def _parse_calculated_fields(ds: ET.Element) -> list[dict]:
 def _parse_physical_joins(conn: ET.Element) -> tuple[list[dict], list[str]]:
     """Extract relationships from physical-layer join relations (nested tree).
 
-    Recursively walks the join tree. INNER + LEFT + RIGHT -> PBI relationships
-    (RIGHT is flipped). FULL OUTER is noted in flags but still extracted.
+    Recursively walks the join tree. INNER + LEFT + RIGHT → PBI relationships
+    (RIGHT is flipped). FULL OUTER is noted in flags but still extracted — PBI
+    determines join semantics from cardinality, not join type.
     Returns (relationships, unsupported_flags).
     """
     rels: list[dict] = []
@@ -364,6 +365,7 @@ def _split_table_col(op: str) -> tuple[str, str]:
 
 def _walk_join(rel: ET.Element, rels: list[dict], flags: list[str]) -> None:
     """Recursively extract one relationship per join node in the tree."""
+    # Recurse into child join nodes first (left-subtree joins)
     for child in rel.findall("relation[@type='join']"):
         _walk_join(child, rels, flags)
 
@@ -446,7 +448,7 @@ def _parse_relationships(ds: ET.Element, query_caption_map: dict | None = None) 
 
 
 def _parse_object_id_map(ds: ET.Element) -> dict[str, str]:
-    """Build {object_id -> logical_table_name} from the object-graph.
+    """Build {object_id → logical_table_name} from the object-graph.
 
     Uses the object caption (e.g. "Customers") rather than the relation name
     (e.g. "Custom SQL Query") so the map stays consistent with PBI table names.
@@ -463,9 +465,11 @@ def _parse_object_id_map(ds: ET.Element) -> dict[str, str]:
 def _parse_title(ws: ET.Element) -> dict | None:
     """Extract worksheet title text and run-level formatting.
 
-    Returns None when no custom <title> element exists.
-    For multi-run titles the text of all static runs is joined.
-    Tableau-proprietary fonts (prefix 'Tableau ') are dropped.
+    Returns None when no custom <title> element exists (PBI omits the title block).
+    For multi-run titles the text of all static runs is joined; formatting is taken
+    from the first static run.  CDATA dynamic field refs are skipped.
+    Tableau-proprietary fonts (prefix 'Tableau ') are dropped so PBI falls back to
+    its default font; bold/italic weight is preserved as a separate property.
     """
     runs = ws.findall("./layout-options/title/formatted-text/run")
     if not runs:
@@ -478,9 +482,12 @@ def _parse_title(ws: ET.Element) -> dict | None:
         text = (run.text or "").strip()
         is_dynamic = text.startswith("<[")
 
+        # Accumulate static text
         if text and not is_dynamic:
             text_parts.append(text)
 
+        # Capture formatting from the first run that carries any style attribute,
+        # regardless of whether it also has text (Tableau sometimes separates them).
         if not formatting and any(run.get(a) for a in ("fontsize", "fontname", "fontcolor", "bold", "italic", "underline")):
             if run.get("fontsize"):
                 formatting["font_size"] = int(float(run.get("fontsize")))
@@ -510,12 +517,14 @@ def _field_axis(field_attr: str) -> str:
     return "value" if prefix == "usr" else "category"
 
 
+# Tableau line-pattern-only values → PBI gridlineStyle literals
 _GRIDLINE_STYLE_MAP = {
     "solid": "solid",
     "dotted": "dotted",
     "dashed": "dashed",
 }
 
+# Tableau style-rule elements that have no PBI chart equivalent
 _UNSUPPORTED_FORMAT_ELEMENTS = {
     "cell", "header", "field-labels-decoration", "field-labels-spanner",
     "dropline", "refline", "zeroline", "table",
@@ -523,7 +532,14 @@ _UNSUPPORTED_FORMAT_ELEMENTS = {
 
 
 def _parse_worksheet_format(ws: ET.Element) -> dict:
-    """Parse Tableau <style> rules into a normalized visual_format dict."""
+    """Parse Tableau <style> rules into a normalized visual_format dict.
+
+    Returns dict with keys: value_axis, category_axis, both_axes_title,
+    plot_area, unsupported_elements.  Each axis dict may contain:
+    label_font_family, label_font_size, axis_color, gridline_show, gridline_style.
+    both_axes_title may contain: font_family, font_size, bold.
+    plot_area may contain: background_color.
+    """
     style = ws.find("./table/style")
     if style is None:
         return {}
@@ -557,6 +573,7 @@ def _parse_worksheet_format(ws: ET.Element) -> dict:
                 value = fmt.get("value", "")
                 scope = fmt.get("scope", "")
                 if attr == "stroke-color":
+                    # rows scope = Y-axis = value axis; cols scope = X-axis = category axis
                     target = value_axis if scope == "rows" else category_axis
                     if "axis_color" not in target:
                         target["axis_color"] = value
@@ -607,7 +624,7 @@ def _parse_worksheet_format(ws: ET.Element) -> dict:
     if plot_area:
         result["plot_area"] = plot_area
     if unsupported:
-        result["unsupported_elements"] = list(dict.fromkeys(unsupported))
+        result["unsupported_elements"] = list(dict.fromkeys(unsupported))  # deduplicate, preserve order
     return result
 
 
@@ -628,18 +645,23 @@ def _parse_sheets(root: ET.Element) -> list[dict]:
         )
         show_data_labels = label_fmt is not None and label_fmt.get("value") == "true"
 
+        # Tableau text tables (crosstabs) encode their measures in <encodings><text>,
+        # not on the cols shelf. Gate: only treat as text table when cols is empty,
+        # rows is non-empty, mark is Automatic, and text encoding fields exist.
         text_enc_fields = []
         for text_enc in ws.findall("./table/panes/pane/encodings/text"):
             col_attr = text_enc.get("column", "")
             if col_attr:
                 text_enc_fields.extend(_parse_shelf_fields(col_attr))
 
+        # Color encoding (used by pie charts for legend, and heatmaps for intensity)
         color_enc_fields = []
         for enc in ws.findall("./table/panes/pane/encodings/color"):
             col_attr = enc.get("column", "")
             if col_attr:
                 color_enc_fields.extend(_parse_shelf_fields(col_attr))
 
+        # Wedge-size encoding (pie chart measure)
         wedge_enc_fields = []
         for enc in ws.findall("./table/panes/pane/encodings/wedge-size"):
             col_attr = enc.get("column", "")
@@ -658,11 +680,14 @@ def _parse_sheets(root: ET.Element) -> list[dict]:
             mark_type = "Text"
             encoding_fields: list[dict] = []
         elif mark_type == "Pie" and color_enc_fields:
+            # Pie uses encodings instead of row/col shelves: color=legend, wedge=values
             rows_parsed = color_enc_fields
             col_fields = wedge_enc_fields
             encoding_fields = []
         else:
             col_fields = _parse_shelf_fields(cols_text)
+            # Color encoding on non-pie marks (e.g. heatmap intensity) — kept separate
+            # so mark-type inference runs on shelf fields only, appended later
             encoding_fields = color_enc_fields
 
         sheets.append({
@@ -691,11 +716,16 @@ def _parse_filter_element(f: ET.Element) -> dict | None:
     else:
         field_ref = col.strip("[]")
     segments = field_ref.split(":", 2)
+    prefix = segments[0] if len(segments) == 3 else ""
     name = segments[1] if len(segments) == 3 else field_ref
     if name.startswith(":"):
         return None
     entry: dict = {"field": name, "class": cls}
+    date_part = _DATE_PART_MAP.get(prefix)
+    if date_part:
+        entry["date_part"] = date_part
     if cls == "categorical":
+        # member attribute is encoded as '"value"' in Tableau XML
         members = [
             gf.get("member", "").strip('"')
             for gf in f.iter("groupfilter")
@@ -722,7 +752,7 @@ def _parse_filters(ws: ET.Element) -> list[dict]:
 
 
 def _parse_sorts(ws: ET.Element) -> list[dict]:
-    """Extract worksheet-level sorts."""
+    """Extract worksheet-level sorts from <computed-sort>, <natural-sort>, <alphabetic-sort>, <manual-sort>."""
     sorts = []
     view = ws.find("./table/view")
     if view is None:
@@ -807,6 +837,7 @@ def _parse_shelf_fields(shelf: str) -> list[dict]:
     if not shelf.strip():
         return []
     text = shelf.strip()
+    # Tableau wraps compound measure lists in parens: (field1 + field2)
     if text.startswith("(") and text.endswith(")"):
         text = text[1:-1]
     parts = [p.strip() for p in text.replace(" + ", ",").replace(" / ", ",").split(",")]
@@ -817,6 +848,7 @@ def _parse_shelf_fields(shelf: str) -> list[dict]:
         else:
             field_ref = part.strip("[]")
 
+        # Tableau logical table pill: __tableau_internal_object_id__].[agg:object_id:suffix
         if field_ref.startswith("__tableau_internal_object_id__"):
             inner = field_ref.split("].[", 1)[1] if "].[" in field_ref else ""
             inner_parts = inner.split(":", 2)
@@ -836,14 +868,14 @@ def _parse_shelf_fields(shelf: str) -> list[dict]:
             continuous = False
             aggregation = None
         if name.startswith(":"):
-            continue
+            continue  # Tableau virtual field (e.g. :Measure Names, :Measure Values)
         date_part = _DATE_PART_MAP.get(prefix) if len(segments) == 3 else None
         fields.append({"name": name, "continuous": continuous, "aggregation": aggregation, "date_part": date_part})
     return fields
 
 
-_SUPPORTED_CONN_TYPES = {"excel-direct", "textscan", "csv", "postgres", "sqlserver", "mysql", "bigquery", "redshift", "snowflake", "oracle", ""}
-_SQL_CONN_TYPES = {"postgres", "sqlserver", "mysql", "bigquery", "redshift", "snowflake", "oracle"}
+_SUPPORTED_CONN_TYPES = {"excel-direct", "textscan", "csv", "postgres", "sqlserver", "mysql", "bigquery", "redshift", "snowflake", "oracle", "teradata", ""}
+_SQL_CONN_TYPES = {"postgres", "sqlserver", "mysql", "bigquery", "redshift", "snowflake", "oracle", "teradata"}
 _UNSUPPORTED_RELATION_TYPES = {"union", "batch-union", "subquery", "stored-proc", "pivot", "project"}
 
 
@@ -858,6 +890,7 @@ def _detect_unsupported(root: ET.Element, datasources: list[dict]) -> list[str]:
             issues.append(
                 f"Datasource '{ds['name']}': unsupported connection type '{conn_type}'"
             )
+        # Live connections use DirectQuery — note in report for user awareness
         if conn.get("live_connection"):
             issues.append(
                 f"Datasource '{ds['name']}': live SQL connection — generated as DirectQuery mode"
@@ -875,6 +908,7 @@ def _detect_unsupported(root: ET.Element, datasources: list[dict]) -> list[str]:
             name = rel.get("name", rtype)
             issues.append(f"Relation type '{rtype}' ('{name}') is not supported")
 
+    # Data blending: sheet referencing more than one non-Parameters datasource
     for ws in root.findall("./worksheets/worksheet"):
         sheet_name = ws.get("name", "")
         deps = [

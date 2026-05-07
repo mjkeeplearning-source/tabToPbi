@@ -2,7 +2,7 @@
 
 import re
 
-_SQL_CONN_TYPES = {"postgres", "sqlserver", "mysql", "bigquery", "redshift", "snowflake", "oracle"}
+_SQL_CONN_TYPES = {"postgres", "sqlserver", "mysql", "bigquery", "redshift", "snowflake", "oracle", "teradata"}
 
 DATATYPE_MAP = {
     "string": "string",
@@ -29,7 +29,12 @@ _AGG_LABEL = {
 
 
 def _best_table_for_calc(formula: str, field_map: dict[str, str], primary_table: str) -> str:
-    """Return the table that owns the most column references in a Tableau formula."""
+    """Return the table that owns the most column references in a Tableau formula.
+
+    Extracts [ColumnName] tokens, looks each up in field_map, and picks the table
+    with the highest hit count. Tiebreak: first referenced column wins. Falls back
+    to primary_table when no columns resolve.
+    """
     refs = re.findall(r'\[([^\]]+)\]', formula)
     counts: dict[str, int] = {}
     for ref in refs:
@@ -57,9 +62,14 @@ def transform(workbook: dict) -> dict:
     """Return transformed dict with tables, measures, visuals, relationships, and report."""
     tables = []
     relationships = []
+    # field_lookup: ds_name → {field_name: pbi_table_name}
     field_lookup: dict[str, dict[str, str]] = {}
     pending_calc_fields: list[dict] = []
+
+    # calc_name_lookup: ds_name → {internal_name: display_name}
     calc_name_lookup: dict[str, dict[str, str]] = {}
+
+    # object_id_lookup: ds_name → {object_id: pbi_table_name}
     object_id_lookup: dict[str, dict[str, str]] = {}
 
     for ds in workbook.get("datasources", []):
@@ -82,6 +92,7 @@ def transform(workbook: dict) -> dict:
                 "status": "pending_translation",
             })
 
+    # Build display_name → table map so visual field refs stay in sync with TMDL host table
     calc_table_map: dict[str, str] = {cf["name"]: cf["table"] for cf in pending_calc_fields}
 
     measures: dict[tuple, dict] = {}
@@ -110,10 +121,12 @@ def transform(workbook: dict) -> dict:
         "relationship_cardinality_warnings": relationship_warnings,
     }
 
+    # Merge all datasource calc_name_maps into one for the translator
     merged_calc_name_map: dict[str, str] = {}
     for ds in workbook.get("datasources", []):
         merged_calc_name_map.update(ds.get("calc_name_map", {}))
 
+    # Enrich datasource_filters with table names for report-level filter generation
     all_field_map: dict[str, str] = {}
     for fmap in field_lookup.values():
         all_field_map.update(fmap)
@@ -136,7 +149,10 @@ def transform(workbook: dict) -> dict:
 
 
 def _col_matches_table(col: str, table: str) -> bool:
-    """True if col is likely the PK of table: strip suffix, singularize, exact match."""
+    """True if col is likely the PK of table: strip suffix, singularize, exact match.
+
+    e.g. CustomerID / Customers → True; CustomerID / Orders → False.
+    """
     base = re.sub(r"(ID|Id|Key|Code|No)$", "", col).lower().rstrip("s")
     tname = table.lower().rstrip("s")
     return bool(base) and base == tname
@@ -145,29 +161,55 @@ def _col_matches_table(col: str, table: str) -> bool:
 def _infer_cardinality(
     join_type: str, from_table: str, from_col: str, to_table: str, to_col: str
 ) -> tuple[str, str, str]:
-    """Return (from_cardinality, to_cardinality, method) using Signal 2 + Signal 1 + fallback."""
+    """Return (from_cardinality, to_cardinality, method) using Signal 2 + Signal 1 + fallback.
+
+    Convention matches parser output:
+      from_table = LEFT clause expression table (accumulated / preserved side for LEFT JOIN)
+      to_table   = RIGHT clause expression table (new RIGHT-child table)
+
+    Signal 2 — structural (LEFT JOIN definitive; INNER JOIN primary):
+      LEFT  JOIN: from_table (preserved LEFT child) = one side — no override.
+      INNER JOIN: from_table (accumulated LEFT expression) = one side — Signal 1 can override.
+
+    Signal 1 — naming convention (FULL OUTER primary; INNER confirmation/override):
+      Strip PK suffix, singularize, exact-match col base against table name.
+      Whichever side matches owns the PK = one side.
+
+    Fallback: to_table = one (RIGHT child = new/added table = typically dimension/lookup).
+    Always produces one:many or many:one — never one:one or many:many.
+    """
     from_is_pk = _col_matches_table(from_col, from_table)
     to_is_pk = _col_matches_table(to_col, to_table)
 
     if join_type == "left":
+        # Signal 2 definitive: LEFT child (from_table) is preserved = one side.
         return ("one", "many", "signal2_left")
 
     if join_type == "inner":
+        # Signal 2 extended primary: from_table (accumulated LEFT expression) = one side.
+        # Signal 1 overrides when naming convention contradicts Signal 2.
         if to_is_pk and not from_is_pk:
             return ("many", "one", "signal1_override_inner")
         if from_is_pk and not to_is_pk:
             return ("one", "many", "signal2_confirmed_signal1_inner")
+        # Signal 1 silent or ambiguous — Signal 2 default stands.
         return ("one", "many", "signal2_inner")
 
+    # FULL OUTER JOIN — Signal 2 unreliable; Signal 1 primary.
     if from_is_pk and not to_is_pk:
         return ("one", "many", "signal1_full")
     if to_is_pk and not from_is_pk:
         return ("many", "one", "signal1_full")
+    # Fallback: to_table (RIGHT child, new/added table) = one (dimension convention).
     return ("many", "one", "fallback")
 
 
 def _map_relationship(r: dict) -> dict:
-    """Convert a parsed relationship to a PBI relationship dict with cardinality."""
+    """Convert a parsed relationship to a PBI relationship dict with cardinality.
+
+    Logical relationships (no join_type) get no explicit cardinality — PBI defaults (many:one) apply.
+    Physical joins get cardinality inferred from join type + naming signals.
+    """
     if "join_type" not in r:
         return {
             "from_table": r["from_table"],
@@ -190,7 +232,10 @@ def _map_relationship(r: dict) -> dict:
 
 
 def _map_datasource(ds: dict) -> tuple[list[dict], list[dict], dict[str, str]]:
-    """Map a parsed datasource to PBI tables, relationships, and field->table lookup."""
+    """Map a parsed datasource to PBI tables, relationships, and field→table lookup.
+
+    Returns (tables, relationships, field_table_map).
+    """
     conn = ds["connection"]
     conn_type = conn.get("type", "")
     ds_tables_meta = ds.get("tables", [])
@@ -223,6 +268,7 @@ def _map_multi_table_sql(
     tables_meta: list[dict],
 ) -> tuple[list[dict], list[dict], dict[str, str]]:
     """Map a multi-table postgres datasource to separate PBI tables."""
+    # Group columns by source_table
     by_table: dict[str, list[dict]] = {t["name"]: [] for t in tables_meta}
     field_map: dict[str, str] = {}
 
@@ -235,6 +281,7 @@ def _map_multi_table_sql(
                 "dataType": DATATYPE_MAP.get(col["datatype"], "string"),
                 "sourceColumn": physical,
             })
+            # map both logical name and physical name to the source table
             field_map[col["name"]] = src
             field_map[physical] = src
 
@@ -281,7 +328,11 @@ def _process_sheets(
     """Map sheets to visual descriptors. Returns (visuals, unsupported_warnings)."""
     ds_list = workbook.get("datasources", [])
     ds_default_table = {ds["name"]: tables[i]["name"] for i, ds in enumerate(ds_list) if i < len(tables)}
+    # column_formats: ds_name → {col_name: format_string}
     ds_col_formats = {ds["name"]: ds.get("column_formats", {}) for ds in ds_list}
+
+    # Accumulate date-part derived columns per table across all sheets and filters
+    date_part_columns: dict[str, list] = {}
 
     visuals = []
     unsupported_warnings: list[str] = []
@@ -306,16 +357,18 @@ def _process_sheets(
                 f"Sheet '{sheet['name']}': mark type '{mark_type}' not supported — rendered as table"
             )
 
-        row_fields = [r for f in rows for r in [_resolve_field(f, fmap, cmap, default_table, measures, calc_table_map, oid_map)] if r]
-        col_fields = [r for f in cols for r in [_resolve_field(f, fmap, cmap, default_table, measures, calc_table_map, oid_map)] if r]
+        row_fields = [r for f in rows for r in [_resolve_field(f, fmap, cmap, default_table, measures, calc_table_map, oid_map, date_part_columns)] if r]
+        col_fields = [r for f in cols for r in [_resolve_field(f, fmap, cmap, default_table, measures, calc_table_map, oid_map, date_part_columns)] if r]
 
+        # Bar mark with measure on rows shelf = vertical bars → columnChart in PBI
         if mark_type == "Bar" and any(f.get("is_measure") for f in row_fields):
             mark_type = "Column"
 
+        # Resolve color encoding fields (heatmap intensity) and append to col_fields as measures only
         enc_raw = sheet.get("encoding_fields", [])
         enc_resolved = [
             r for f in enc_raw
-            for r in [_resolve_field(f, fmap, cmap, default_table, measures, calc_table_map, oid_map)]
+            for r in [_resolve_field(f, fmap, cmap, default_table, measures, calc_table_map, oid_map, date_part_columns)]
             if r and r.get("is_measure")
         ]
         if enc_resolved:
@@ -328,14 +381,25 @@ def _process_sheets(
         col_measures = [f for f in col_fields if f and f.get("is_measure")]
         col_dims = [f for f in col_fields if f and not f.get("is_measure")]
 
-        enriched_filters = [
-            {**f, "table": fmap.get(f["field"], default_table)}
-            for f in sheet.get("filters", [])
-        ]
+        # Enrich filters with table names; remap date-part filter fields to derived column names
+        enriched_filters = []
+        for f in sheet.get("filters", []):
+            table = fmap.get(f["field"], default_table)
+            ef = {**f, "table": table}
+            if ef.get("date_part"):
+                part = ef["date_part"]
+                derived = f"{ef['field']} {part.capitalize()}"
+                ef = {**ef, "field": derived}
+                bucket = date_part_columns.setdefault(table, [])
+                entry = {"base_col": f["field"], "part": part, "derived": derived}
+                if entry not in bucket:
+                    bucket.append(entry)
+            enriched_filters.append(ef)
 
         enriched_sorts, sort_warnings = _enrich_sorts(sheet.get("sorts", []), fmap, cmap, default_table)
         unsupported_warnings.extend(sort_warnings)
 
+        # Collect unsupported format elements for migration report
         visual_fmt = sheet.get("visual_format", {})
         for elem in visual_fmt.get("unsupported_elements", []):
             unsupported_warnings.append(
@@ -345,6 +409,7 @@ def _process_sheets(
         show_data_labels = sheet.get("show_data_labels", False)
         sheet_title = sheet.get("title")
         if len(col_measures) > 1:
+            # Multiple measures on cols shelf → one visual per measure on the same page
             for m in col_measures:
                 visuals.append({
                     "name": f"{sheet['name']} - {m['name']}",
@@ -377,6 +442,8 @@ def _process_sheets(
                 "visual_format": visual_fmt,
                 "col_formats": col_formats,
             })
+    for table in tables:
+        table["date_part_columns"] = date_part_columns.get(table["name"], [])
     return visuals, unsupported_warnings
 
 
@@ -386,7 +453,12 @@ def _enrich_sorts(
     cmap: dict[str, str],
     default_table: str,
 ) -> tuple[list[dict], list[str]]:
-    """Enrich parsed sorts with table names and resolved field names for PBI sortDefinition."""
+    """Enrich parsed sorts with table names and resolved field names for PBI sortDefinition.
+
+    Returns (enriched_sorts, warnings). Manual sorts are skipped (unsupported in PBI).
+    For computed-sorts the using field (the measure driving the sort) becomes sort_field.
+    For natural/alphabetic sorts the column itself becomes sort_field.
+    """
     enriched: list[dict] = []
     warnings: list[str] = []
     for s in sorts:
@@ -402,6 +474,7 @@ def _enrich_sorts(
             using = s.get("using", "")
             using_prefix = s.get("using_prefix", "")
             if using_prefix == "usr":
+                # User-defined calc field: resolve internal name → display name
                 if using not in cmap:
                     warnings.append(
                         f"Computed sort on '{field}' references unknown calc field '{using}' — skipped"
@@ -411,6 +484,7 @@ def _enrich_sorts(
                 sort_table = fmap.get(sort_field, default_table)
                 is_measure = True
             elif using_prefix in _AGG_LABEL:
+                # Regular aggregated column auto-measure: e.g. sum:profit → "Sum profit"
                 sort_field = f"{_AGG_LABEL[using_prefix]} {using}"
                 sort_table = fmap.get(using, default_table)
                 is_measure = True
@@ -428,6 +502,7 @@ def _enrich_sorts(
                 "is_measure": is_measure,
             })
         else:
+            # natural-sort or alphabetic-sort: sort by the column itself
             table = fmap.get(field, default_table)
             enriched.append({
                 "sort_field": field,
@@ -446,16 +521,18 @@ def _resolve_field(
     measures: dict,
     calc_table_map: dict[str, str] | None = None,
     object_id_map: dict[str, str] | None = None,
+    date_part_columns: dict | None = None,
 ) -> dict | None:
     """Return {name, is_measure, table} ref, or None if field is a pending calc field."""
     ctmap = calc_table_map or {}
 
+    # Tableau logical table pill (e.g. COUNT of an entire table object)
     if isinstance(field, dict) and field.get("object_id"):
         oid = field["name"]
         agg = field.get("aggregation", "")
         pbi_table = (object_id_map or {}).get(oid, "")
         if not pbi_table or agg != "cnt":
-            return None
+            return None  # unsupported — skip field
         tname_q = f"'{pbi_table}'" if any(c in pbi_table for c in " ()/-.,") else pbi_table
         measure_name = f"Count {pbi_table}"
         key = (pbi_table, measure_name)
@@ -480,7 +557,15 @@ def _resolve_field(
     tname = field_table_map.get(name, default_table)
 
     if field.get("date_part"):
-        return {"name": name, "is_measure": False, "table": tname or default_table}
+        part = field["date_part"]
+        derived = f"{name} {part.capitalize()}"
+        if date_part_columns is not None:
+            tkey = tname or default_table
+            bucket = date_part_columns.setdefault(tkey, [])
+            entry = {"base_col": name, "part": part, "derived": derived}
+            if entry not in bucket:
+                bucket.append(entry)
+        return {"name": derived, "is_measure": False, "table": tname or default_table}
 
     if not agg or not tname:
         return {"name": name, "is_measure": False, "table": tname or default_table}
