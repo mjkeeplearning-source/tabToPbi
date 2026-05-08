@@ -150,6 +150,27 @@ _PART_LABEL = {
     "DAY": "Day", "HOUR": "Hour", "MINUTE": "Minute", "SECOND": "Second",
 }
 
+# Standard drill-down levels emitted for DirectQuery custom SQL date columns.
+# Matches the 4 levels PBI Auto date/time creates for Import mode (disabled for DQ).
+_HIERARCHY_PARTS = ["YEAR", "QUARTER", "MONTH", "DAY"]
+
+
+def _expand_to_hierarchy(dpc: list[dict]) -> list[dict]:
+    """Expand date-part columns to full YEAR/QUARTER/MONTH/DAY per unique base column.
+
+    For DirectQuery custom SQL, Auto date/time is disabled so we must emit all
+    four standard levels explicitly to enable drill-down in PBI visuals.
+    """
+    base_cols: list[str] = []
+    for dp in dpc:
+        if dp["base_col"] not in base_cols:
+            base_cols.append(dp["base_col"])
+    return [
+        {"base_col": bc, "part": part, "derived": f"{bc} {_PART_LABEL[part]}"}
+        for bc in base_cols
+        for part in _HIERARCHY_PARTS
+    ]
+
 
 def generate(transformed: dict, output_dir: Path, data_dir: Path = Path("data")) -> Path:
     """Write PBIR SemanticModel and Report files. Returns the Report folder path."""
@@ -441,8 +462,15 @@ def _write_tmdl_table(tables_dir: Path, table: dict, data_dir: Path, measures: l
         lines.extend(_tmdl_measure_lines(_tmdl_id(m['name']), m['dax']))
         lines.append("")
 
+    conn = table["connection"]
+    storage_mode = conn.get("storage_mode", "import")
+
     # Derived date-part columns (added via M expression; regular columns in TMDL)
     dpc = table.get("date_part_columns", [])
+    # For custom SQL DirectQuery, PBI's Auto date/time is disabled — expand to full
+    # YEAR/QUARTER/MONTH/DAY hierarchy so drill-down works like Import mode.
+    if conn.get("custom_sql") and storage_mode == "directQuery" and dpc:
+        dpc = _expand_to_hierarchy(dpc)
     for dp in dpc:
         lines.append(f"\tcolumn {_tmdl_id(dp['derived'])}")
         lines.append(f"\t\tdataType: int64")
@@ -453,10 +481,14 @@ def _write_tmdl_table(tables_dir: Path, table: dict, data_dir: Path, measures: l
     by_base: dict[str, list] = {}
     for dp in dpc:
         by_base.setdefault(dp["base_col"], []).append(dp)
+    col_names_lower = {c["name"].lower() for c in table["columns"]}
     for base_col, parts in by_base.items():
         if len(parts) < 2:
             continue
         hier_name = " ".join(w.capitalize() for w in base_col.replace("_", " ").split())
+        # PBI names are case-insensitive within a table — avoid collision with the base column
+        if hier_name.lower() in col_names_lower:
+            hier_name = f"{base_col} Hierarchy"
         sorted_parts = sorted(parts, key=lambda p: _PART_ORDER.index(p["part"]) if p["part"] in _PART_ORDER else 99)
         lines.append(f"\thierarchy {_tmdl_id(hier_name)}")
         for p in sorted_parts:
@@ -467,8 +499,6 @@ def _write_tmdl_table(tables_dir: Path, table: dict, data_dir: Path, measures: l
 
     if measures is None:
         measures = []
-    conn = table["connection"]
-    storage_mode = conn.get("storage_mode", "import")
     expr_lines, use_backtick = _build_m_expression(conn, data_dir, table["columns"], dpc)
     lines.append(f"\tpartition {qname} = m")
     lines.append(f"\t\tmode: {storage_mode}")
@@ -612,10 +642,50 @@ def _build_m_expression(
         storage_mode = conn.get("storage_mode", "import")
 
         if custom_sql:
+            # use_backtick=True: multi-line SQL requires TMDL triple-backtick wrapping.
+            if dpc and storage_mode == "directQuery":
+                # Wrap custom SQL as subquery so EXTRACT columns exist in the result.
+                # PBI DirectQuery folding generates SELECT t0."col" FROM (<query>) t0 —
+                # the derived column must be present in the subquery SELECT list.
+                dialect = _DATE_PART_SQL.get(conn_type, {})
+                select_parts = []
+                for dp in dpc:
+                    if dp["part"] not in dialect:
+                        continue
+                    sql_fn = dialect[dp["part"]].format(col=f't0.{dp["base_col"]}')
+                    # Raw SQL alias (no M-escaping yet; whole string is escaped after)
+                    if conn_type == "mysql":
+                        alias = f"`{dp['derived'].replace('`', '``')}`"
+                    elif conn_type == "sqlserver":
+                        alias = f"[{dp['derived'].replace(']', ']]')}]"
+                    else:
+                        alias = f'"{dp["derived"]}"'
+                    select_parts.append(f"{sql_fn} AS {alias}")
+                if select_parts:
+                    wrapped = f'SELECT t0.*, {", ".join(select_parts)} FROM ({custom_sql}) t0'
+                    escaped = wrapped.replace('"', '""')
+                    return [
+                        "let",
+                        f'    Source = {fn}("{server}", "{dbname}"),',
+                        f'    nav = Value.NativeQuery(Source, "{escaped}", null, [EnableFolding=true])',
+                        "in",
+                        "    nav",
+                    ], True
+
+            if dpc and storage_mode != "directQuery":
+                # Import mode: chain Table.AddColumn steps after NativeQuery
+                escaped_sql = custom_sql.replace('"', '""')
+                base_lines = [
+                    "let",
+                    f'    Source = {fn}("{server}", "{dbname}"),',
+                    f'    nav = Value.NativeQuery(Source, "{escaped_sql}", null, [EnableFolding=true])',
+                    "in",
+                    "    nav",
+                ]
+                lines, _ = _chain_add_columns(base_lines, "nav", dpc)
+                return lines, True
+
             escaped_sql = custom_sql.replace('"', '""')
-            # use_backtick=True: the SQL string spans multiple lines, so the TMDL
-            # source expression is wrapped in triple backticks per the TMDL spec to
-            # exempt it from indentation rules (see tmdl-overview#expressions).
             return [
                 "let",
                 f'    Source = {fn}("{server}", "{dbname}"),',
