@@ -35,6 +35,18 @@ This MVP is intentionally constrained. The goal is to produce a valid PBIR outpu
 
 ---
 
+## Implementation Tracking
+
+When starting a new implementation, pick the next ACTIVE plan from this table and use `superpowers:executing-plans` to execute it task by task.
+
+| Plan | Title | Status | Spec |
+|------|-------|--------|------|
+| 1 | Dashboard Migration | 🔄 ACTIVE | `docs/superpowers/plans/2026-05-08-dashboard-migration.md` |
+
+**Statuses:** 🔄 ACTIVE — in progress · ✅ DONE — complete · ⏸ PAUSED — blocked/deferred
+
+---
+
 ## Progress
 
 ### Decisions confirmed (2026-04-07)
