@@ -1,6 +1,6 @@
 # Dashboard Migration Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **Execution:** Inline execution using superpowers:executing-plans. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Migrate Tableau dashboards to PBI pages — each dashboard becomes a new PBI report page containing repositioned chart visuals, slicer visuals for filter zones, and textbox visuals for text/title zones.
 
