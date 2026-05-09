@@ -190,3 +190,134 @@ def test_transform_page_dimensions():
     assert pages[0]["display_name"] == "My Dashboard"
     assert pages[0]["width"] == 1280
     assert pages[0]["height"] == 720
+
+
+# --- Task 4: filter zone → slicer + visual interactions ---
+
+def test_transform_filter_zone_becomes_slicer():
+    dashboards = [{
+        "name": "TestDash", "width": 1000, "height": 620, "title": "Test",
+        "zones": [{
+            "zone_type": "filter", "name": "Sheet1",
+            "param_field": "Region",
+            "param_datasource_id": "federated.abc",
+            "mode": "dropdown",
+            "x": 0, "y": 0, "w": 10000, "h": 10000,
+        }],
+    }]
+    pages = transform_dashboards(dashboards, _make_workbook_stub(), _make_transformed_stub())
+    v = pages[0]["visuals"][0]
+    assert v["visual_type"] == "slicer"
+    assert v["field_entity"] == "orders"
+    assert v["field_property"] == "Region"
+    assert v["slicer_mode"] == "Dropdown"
+    assert v["scoped_to_sheet"] == "Sheet1"
+
+
+def test_transform_slicer_mode_radiolist():
+    dashboards = [{
+        "name": "TestDash", "width": 1000, "height": 620, "title": "Test",
+        "zones": [{
+            "zone_type": "filter", "name": "Sheet1",
+            "param_field": "Region",
+            "param_datasource_id": "federated.abc",
+            "mode": "radiolist",
+            "x": 0, "y": 0, "w": 10000, "h": 10000,
+        }],
+    }]
+    pages = transform_dashboards(dashboards, _make_workbook_stub(), _make_transformed_stub())
+    assert pages[0]["visuals"][0]["slicer_mode"] == "Basic"
+
+
+def test_transform_filter_unresolved_field_skipped():
+    dashboards = [{
+        "name": "TestDash", "width": 1000, "height": 620, "title": "Test",
+        "zones": [{
+            "zone_type": "filter", "name": "Sheet1",
+            "param_field": "UnknownField",
+            "param_datasource_id": "federated.abc",
+            "mode": "dropdown",
+            "x": 0, "y": 0, "w": 10000, "h": 10000,
+        }],
+    }]
+    pages = transform_dashboards(dashboards, _make_workbook_stub(), _make_transformed_stub())
+    assert pages[0]["visuals"] == []
+
+
+def test_transform_visual_interactions_nofilter():
+    """Slicer scoped to Sheet1 must NoFilter all charts that are NOT Sheet1."""
+    dashboards = [{
+        "name": "TestDash", "width": 1000, "height": 620, "title": "Test",
+        "zones": [
+            {
+                "zone_type": "sheet", "name": "Sheet1",
+                "x": 0, "y": 0, "w": 50000, "h": 100000,
+            },
+            {
+                "zone_type": "sheet", "name": "Sheet2",
+                "x": 50000, "y": 0, "w": 50000, "h": 100000,
+            },
+            {
+                "zone_type": "filter", "name": "Sheet1",
+                "param_field": "Region",
+                "param_datasource_id": "federated.abc",
+                "mode": "dropdown",
+                "x": 0, "y": 0, "w": 10000, "h": 10000,
+            },
+        ],
+    }]
+    workbook = {
+        "datasources": [{
+            "name": "federated.abc",
+            "columns": [{"name": "Region", "source_table": "orders"}],
+        }]
+    }
+    transformed = {
+        "visuals": [
+            {"name": "Sheet1", "page_name": "Sheet1", "mark_type": "Bar",
+             "table": "orders", "row_fields": [], "col_fields": []},
+            {"name": "Sheet2", "page_name": "Sheet2", "mark_type": "Bar",
+             "table": "orders", "row_fields": [], "col_fields": []},
+        ]
+    }
+    pages = transform_dashboards(dashboards, workbook, transformed)
+    interactions = pages[0]["visual_interactions"]
+    # slicer (dash_visual_3) should NoFilter Sheet2 chart (dash_visual_2) only
+    assert len(interactions) == 1
+    assert interactions[0]["source"] == "dash_visual_3"
+    assert interactions[0]["target"] == "dash_visual_2"
+    assert interactions[0]["type"] == "NoFilter"
+
+
+def test_transform_no_interactions_when_slicer_matches_all_charts():
+    """When all charts are scoped to the same sheet as the slicer -> no interactions needed."""
+    dashboards = [{
+        "name": "TestDash", "width": 1000, "height": 620, "title": "Test",
+        "zones": [
+            {
+                "zone_type": "sheet", "name": "Sheet1",
+                "x": 0, "y": 0, "w": 100000, "h": 80000,
+            },
+            {
+                "zone_type": "filter", "name": "Sheet1",
+                "param_field": "Region",
+                "param_datasource_id": "federated.abc",
+                "mode": "dropdown",
+                "x": 0, "y": 80000, "w": 20000, "h": 20000,
+            },
+        ],
+    }]
+    workbook = {
+        "datasources": [{
+            "name": "federated.abc",
+            "columns": [{"name": "Region", "source_table": "orders"}],
+        }]
+    }
+    transformed = {
+        "visuals": [
+            {"name": "Sheet1", "page_name": "Sheet1", "mark_type": "Bar",
+             "table": "orders", "row_fields": [], "col_fields": []},
+        ]
+    }
+    pages = transform_dashboards(dashboards, workbook, transformed)
+    assert pages[0]["visual_interactions"] == []
