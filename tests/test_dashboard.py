@@ -445,3 +445,83 @@ def test_write_returns_report_entries():
         assert result[0]["status"] == "migrated"
         assert "Sale Map" in result[0]["sheets_placed"]
         assert "Region" in result[0]["slicers_placed"]
+
+
+# --- Task 6: visual.json content tests ---
+
+def _write_single_visual(visual_dict):
+    """Helper: run write_dashboard_pages with one visual, return its visual.json content."""
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = Path(tmp)
+        pages_dir = tmp / "Test.Report" / "definition" / "pages"
+        _make_empty_pages_json(pages_dir)
+        pages = [{
+            "page_name": "Dashboard_Test", "display_name": "Test",
+            "width": 1280, "height": 720,
+            "visuals": [visual_dict],
+            "visual_interactions": [], "unsupported": [],
+        }]
+        write_dashboard_pages(pages, tmp, "Test")
+        visual_path = pages_dir / "DashboardSection1" / "visuals" / visual_dict["visual_id"] / "visual.json"
+        return json.loads(visual_path.read_text())
+
+
+def test_chart_visual_json_structure():
+    visual = {
+        "visual_id": "dash_visual_1", "visual_type": "chart",
+        "x": 10, "y": 20, "width": 500, "height": 300,
+        "source_sheet": "Sheet1", "mark_type": "Bar", "table": "orders",
+        "row_fields": [{"name": "Region", "is_measure": False, "table": "orders"}],
+        "col_fields": [{"name": "Sum Sales", "is_measure": True, "table": "orders"}],
+    }
+    v = _write_single_visual(visual)
+    assert v["name"] == "dash_visual_1"
+    assert v["position"]["x"] == 10
+    assert v["position"]["y"] == 20
+    assert v["position"]["width"] == 500
+    assert v["position"]["height"] == 300
+    assert v["visual"]["visualType"] == "barChart"
+    assert "Category" in v["visual"]["query"]["queryState"]
+    assert "Y" in v["visual"]["query"]["queryState"]
+
+
+def test_slicer_visual_json_structure():
+    visual = {
+        "visual_id": "dash_visual_2", "visual_type": "slicer",
+        "x": 100, "y": 50, "width": 200, "height": 60,
+        "field_entity": "orders", "field_property": "Region",
+        "slicer_mode": "Dropdown", "scoped_to_sheet": "Sheet1",
+    }
+    v = _write_single_visual(visual)
+    assert v["visual"]["visualType"] == "slicer"
+    assert v["position"]["x"] == 100
+    proj = v["visual"]["query"]["queryState"]["Values"]["projections"][0]
+    assert proj["field"]["Column"]["Expression"]["SourceRef"]["Entity"] == "orders"
+    assert proj["field"]["Column"]["Property"] == "Region"
+    mode_val = v["visual"]["objects"]["data"][0]["properties"]["mode"]["expr"]["Literal"]["Value"]
+    assert mode_val == "'Dropdown'"
+    assert v["visual"]["drillFilterOtherVisuals"] is True
+
+
+def test_textbox_visual_json_structure():
+    visual = {
+        "visual_id": "dash_visual_3", "visual_type": "textbox",
+        "x": 5, "y": 5, "width": 1270, "height": 30,
+        "text": "Executive Overview",
+    }
+    v = _write_single_visual(visual)
+    assert v["visual"]["visualType"] == "textbox"
+    paras = v["visual"]["objects"]["general"][0]["properties"]["paragraphs"]
+    assert paras[0]["textRuns"][0]["value"] == "Executive Overview"
+
+
+def test_slicer_between_mode():
+    visual = {
+        "visual_id": "dash_visual_1", "visual_type": "slicer",
+        "x": 0, "y": 0, "width": 200, "height": 60,
+        "field_entity": "orders", "field_property": "Order Date",
+        "slicer_mode": "Between", "scoped_to_sheet": "ShippingTrend",
+    }
+    v = _write_single_visual(visual)
+    mode_val = v["visual"]["objects"]["data"][0]["properties"]["mode"]["expr"]["Literal"]["Value"]
+    assert mode_val == "'Between'"
