@@ -321,3 +321,127 @@ def test_transform_no_interactions_when_slicer_matches_all_charts():
     }
     pages = transform_dashboards(dashboards, workbook, transformed)
     assert pages[0]["visual_interactions"] == []
+
+
+# --- Task 5: write_dashboard_pages() ---
+
+import json
+import tempfile
+from tab_to_pbi.dashboard import write_dashboard_pages
+
+
+def _make_empty_pages_json(pages_dir):
+    """Seed a pages.json as the existing generate() would have written it."""
+    pages_dir.mkdir(parents=True, exist_ok=True)
+    content = {
+        "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/pagesMetadata/1.0.0/schema.json",
+        "pageOrder": ["ReportSection1"],
+        "activePageName": "ReportSection1",
+    }
+    (pages_dir / "pages.json").write_text(json.dumps(content))
+
+
+def test_write_creates_page_folder():
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = Path(tmp)
+        pages_dir = tmp / "Test.Report" / "definition" / "pages"
+        _make_empty_pages_json(pages_dir)
+
+        pages = [{
+            "page_name": "Dashboard_Overview", "display_name": "Overview",
+            "width": 1280, "height": 720,
+            "visuals": [], "visual_interactions": [], "unsupported": [],
+        }]
+        write_dashboard_pages(pages, tmp, "Test")
+        assert (pages_dir / "DashboardSection1").is_dir()
+
+
+def test_write_page_json_content():
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = Path(tmp)
+        pages_dir = tmp / "Test.Report" / "definition" / "pages"
+        _make_empty_pages_json(pages_dir)
+
+        pages = [{
+            "page_name": "Dashboard_Overview", "display_name": "Overview",
+            "width": 1280, "height": 720,
+            "visuals": [], "visual_interactions": [], "unsupported": [],
+        }]
+        write_dashboard_pages(pages, tmp, "Test")
+        page_json = json.loads((pages_dir / "DashboardSection1" / "page.json").read_text())
+        assert page_json["displayName"] == "Overview"
+        assert page_json["width"] == 1280
+        assert page_json["height"] == 720
+        assert page_json["displayOption"] == "FitToPage"
+
+
+def test_write_page_json_with_interactions():
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = Path(tmp)
+        pages_dir = tmp / "Test.Report" / "definition" / "pages"
+        _make_empty_pages_json(pages_dir)
+
+        pages = [{
+            "page_name": "Dashboard_Overview", "display_name": "Overview",
+            "width": 1280, "height": 720, "unsupported": [],
+            "visuals": [],
+            "visual_interactions": [
+                {"source": "dash_visual_2", "target": "dash_visual_3", "type": "NoFilter"}
+            ],
+        }]
+        write_dashboard_pages(pages, tmp, "Test")
+        page_json = json.loads((pages_dir / "DashboardSection1" / "page.json").read_text())
+        assert "visualInteractions" in page_json
+        assert page_json["visualInteractions"][0]["type"] == "NoFilter"
+
+
+def test_write_updates_pages_json():
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = Path(tmp)
+        pages_dir = tmp / "Test.Report" / "definition" / "pages"
+        _make_empty_pages_json(pages_dir)
+
+        pages = [
+            {
+                "page_name": "Dashboard_A", "display_name": "A",
+                "width": 1280, "height": 720,
+                "visuals": [], "visual_interactions": [], "unsupported": [],
+            },
+            {
+                "page_name": "Dashboard_B", "display_name": "B",
+                "width": 1280, "height": 720,
+                "visuals": [], "visual_interactions": [], "unsupported": [],
+            },
+        ]
+        write_dashboard_pages(pages, tmp, "Test")
+        pages_json = json.loads((pages_dir / "pages.json").read_text())
+        assert "DashboardSection1" in pages_json["pageOrder"]
+        assert "DashboardSection2" in pages_json["pageOrder"]
+        assert "ReportSection1" in pages_json["pageOrder"]
+        assert pages_json["activePageName"] == "ReportSection1"
+
+
+def test_write_returns_report_entries():
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = Path(tmp)
+        pages_dir = tmp / "Test.Report" / "definition" / "pages"
+        _make_empty_pages_json(pages_dir)
+
+        pages = [{
+            "page_name": "Dashboard_Overview", "display_name": "Overview",
+            "width": 1280, "height": 720, "unsupported": [],
+            "visuals": [
+                {"visual_type": "chart", "source_sheet": "Sale Map",
+                 "visual_id": "dash_visual_1", "x": 0, "y": 0, "width": 100, "height": 100,
+                 "mark_type": "Bar", "table": "orders", "row_fields": [], "col_fields": []},
+                {"visual_type": "slicer", "field_property": "Region",
+                 "visual_id": "dash_visual_2", "x": 0, "y": 0, "width": 50, "height": 30,
+                 "field_entity": "orders", "slicer_mode": "Dropdown", "scoped_to_sheet": "Sale Map"},
+            ],
+            "visual_interactions": [],
+        }]
+        result = write_dashboard_pages(pages, tmp, "Test")
+        assert result[0]["name"] == "Overview"
+        assert result[0]["status"] == "migrated"
+        assert "Sale Map" in result[0]["sheets_placed"]
+        assert "Region" in result[0]["slicers_placed"]

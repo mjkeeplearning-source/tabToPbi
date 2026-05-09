@@ -248,5 +248,150 @@ def transform_dashboards(
     return pages
 
 
-def write_dashboard_pages(dashboard_pages: list[dict], output_dir: Path, stem: str) -> list[dict]:
-    return []
+def write_dashboard_pages(
+    dashboard_pages: list[dict],
+    output_dir: Path,
+    stem: str,
+) -> list[dict]:
+    """Write dashboard pages to PBIR output. Returns migration report entries."""
+    if not dashboard_pages:
+        return []
+
+    report_dir = output_dir / f"{stem}.Report"
+    pages_dir = report_dir / "definition" / "pages"
+    report_entries = []
+    new_section_ids = []
+
+    for i, page in enumerate(dashboard_pages):
+        section_id = f"DashboardSection{i + 1}"
+        new_section_ids.append(section_id)
+        page_dir = pages_dir / section_id
+        page_dir.mkdir(exist_ok=True)
+
+        _write_dashboard_page_json(page_dir, page)
+
+        for visual in page["visuals"]:
+            visual_dir = page_dir / "visuals" / visual["visual_id"]
+            visual_dir.mkdir(parents=True, exist_ok=True)
+            _write_dashboard_visual_json(visual_dir, visual)
+
+        sheets_placed = [v["source_sheet"] for v in page["visuals"] if v["visual_type"] == "chart"]
+        slicers_placed = [v["field_property"] for v in page["visuals"] if v["visual_type"] == "slicer"]
+        report_entries.append({
+            "name": page["display_name"],
+            "status": "migrated" if not page.get("unsupported") else "partial",
+            "sheets_placed": sheets_placed,
+            "slicers_placed": slicers_placed,
+            "unsupported": page.get("unsupported", []),
+        })
+
+    _update_pages_manifest(pages_dir, new_section_ids)
+    return report_entries
+
+
+def _write_dashboard_page_json(page_dir: Path, page: dict) -> None:
+    content: dict = {
+        "$schema": f"{_SCHEMA_BASE}/definition/page/2.1.0/schema.json",
+        "name": page_dir.name,
+        "displayName": page["display_name"],
+        "displayOption": "FitToPage",
+        "height": page["height"],
+        "width": page["width"],
+    }
+    if page.get("visual_interactions"):
+        content["visualInteractions"] = page["visual_interactions"]
+    (page_dir / "page.json").write_text(json.dumps(content, indent=2))
+
+
+def _write_dashboard_visual_json(visual_dir: Path, visual: dict) -> None:
+    if visual["visual_type"] == "chart":
+        content = _build_chart_visual(visual_dir.name, visual)
+    elif visual["visual_type"] == "slicer":
+        content = _build_slicer_visual(visual_dir.name, visual)
+    else:
+        content = _build_textbox_visual(visual_dir.name, visual)
+    (visual_dir / "visual.json").write_text(json.dumps(content, indent=2))
+
+
+def _update_pages_manifest(pages_dir: Path, new_section_ids: list[str]) -> None:
+    pages_json = pages_dir / "pages.json"
+    content = json.loads(pages_json.read_text())
+    content["pageOrder"].extend(new_section_ids)
+    pages_json.write_text(json.dumps(content, indent=2))
+
+
+def _base_container(name: str, visual: dict) -> dict:
+    return {
+        "$schema": f"{_SCHEMA_BASE}/definition/visualContainer/1.0.0/schema.json",
+        "name": name,
+        "position": {
+            "x": visual["x"],
+            "y": visual["y"],
+            "z": 0,
+            "width": visual["width"],
+            "height": visual["height"],
+        },
+    }
+
+
+def _build_chart_visual(name: str, visual: dict) -> dict:
+    visual_type = MARK_TO_VISUAL.get(visual["mark_type"], "tableEx")
+    table = visual["table"]
+    row_fields = visual.get("row_fields", [])
+    col_fields = visual.get("col_fields", [])
+
+    if visual_type in _VISUAL_ROLES:
+        cat_role, val_role, cat_shelf, val_shelf = _VISUAL_ROLES[visual_type]
+        cat_fields = row_fields if cat_shelf == "row" else col_fields
+        val_fields = col_fields if val_shelf == "col" else row_fields
+        query_state = {
+            cat_role: {"projections": [_make_projection(table, f) for f in cat_fields]},
+            val_role: {"projections": [_make_projection(table, f) for f in val_fields]},
+        }
+    else:
+        all_fields = row_fields + [f for f in col_fields if f not in row_fields]
+        query_state = {
+            "Values": {"projections": [_make_projection(table, f) for f in all_fields]}
+        }
+
+    container = _base_container(name, visual)
+    container["visual"] = {"visualType": visual_type, "query": {"queryState": query_state}}
+    return container
+
+
+def _build_slicer_visual(name: str, visual: dict) -> dict:
+    projection = {
+        "field": {
+            "Column": {
+                "Expression": {"SourceRef": {"Entity": visual["field_entity"]}},
+                "Property": visual["field_property"],
+            }
+        },
+        "queryRef": f"{visual['field_entity']}.{visual['field_property']}",
+        "active": True,
+    }
+    container = _base_container(name, visual)
+    container["visual"] = {
+        "visualType": "slicer",
+        "query": {"queryState": {"Values": {"projections": [projection]}}},
+        "objects": {
+            "data": [{"properties": {
+                "mode": {"expr": {"Literal": {"Value": f"'{visual['slicer_mode']}'"}}},
+            }}]
+        },
+        "drillFilterOtherVisuals": True,
+    }
+    return container
+
+
+def _build_textbox_visual(name: str, visual: dict) -> dict:
+    container = _base_container(name, visual)
+    container["visual"] = {
+        "visualType": "textbox",
+        "objects": {
+            "general": [{"properties": {
+                "paragraphs": [{"textRuns": [{"value": visual["text"]}]}]
+            }}]
+        },
+    }
+    return container
