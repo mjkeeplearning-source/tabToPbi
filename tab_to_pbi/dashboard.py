@@ -144,9 +144,108 @@ def _extract_text_zone(zone: ET.Element) -> dict | None:
     }
 
 
-# Stubs — implemented in later tasks
-def transform_dashboards(dashboards: list[dict], workbook: dict, transformed: dict) -> list[dict]:
-    return []
+def _scale(tab_val: int, pbi_dim: int) -> int:
+    return round((tab_val / 100000) * pbi_dim)
+
+
+def _resolve_field_entity(datasource_id: str, field_name: str, workbook: dict) -> str:
+    """Return PBI table name for a field in a given datasource."""
+    for ds in workbook.get("datasources", []):
+        if ds["name"] == datasource_id:
+            for col in ds.get("columns", []):
+                if col["name"] == field_name:
+                    return col.get("source_table", "")
+    return ""
+
+
+def _find_visual_for_sheet(sheet_name: str, transformed: dict) -> dict | None:
+    """Return first visual dict from transformed output matching the sheet page name."""
+    for v in transformed.get("visuals", []):
+        if v.get("page_name") == sheet_name or v.get("name") == sheet_name:
+            return v
+    return None
+
+
+def transform_dashboards(
+    dashboards: list[dict],
+    workbook: dict,
+    transformed: dict,
+) -> list[dict]:
+    """Convert dashboard dicts into PBI page dicts with positioned visuals."""
+    pages = []
+    for dash in dashboards:
+        visuals: list[dict] = []
+        unsupported: list[str] = []
+        visual_idx = 0
+
+        for zone in dash["zones"]:
+            visual_id = f"dash_visual_{visual_idx + 1}"
+            px = _scale(zone["x"], _PBI_W)
+            py = _scale(zone["y"], _PBI_H)
+            pw = _scale(zone["w"], _PBI_W)
+            ph = _scale(zone["h"], _PBI_H)
+
+            if zone["zone_type"] == "sheet":
+                source = _find_visual_for_sheet(zone["name"], transformed)
+                if source is None:
+                    continue
+                visuals.append({
+                    "visual_id": visual_id,
+                    "visual_type": "chart",
+                    "x": px, "y": py, "width": pw, "height": ph,
+                    "source_sheet": zone["name"],
+                    "mark_type": source["mark_type"],
+                    "table": source["table"],
+                    "row_fields": source.get("row_fields", []),
+                    "col_fields": source.get("col_fields", []),
+                })
+                visual_idx += 1
+
+            elif zone["zone_type"] == "filter":
+                entity = _resolve_field_entity(
+                    zone["param_datasource_id"], zone["param_field"], workbook
+                )
+                if not entity:
+                    continue
+                visuals.append({
+                    "visual_id": visual_id,
+                    "visual_type": "slicer",
+                    "x": px, "y": py, "width": pw, "height": ph,
+                    "field_entity": entity,
+                    "field_property": zone["param_field"],
+                    "slicer_mode": _SLICER_MODE_MAP.get(zone["mode"], "Basic"),
+                    "scoped_to_sheet": zone["name"],
+                })
+                visual_idx += 1
+
+            elif zone["zone_type"] in ("text", "title"):
+                visuals.append({
+                    "visual_id": visual_id,
+                    "visual_type": "textbox",
+                    "x": px, "y": py, "width": pw, "height": ph,
+                    "text": zone["text"],
+                })
+                visual_idx += 1
+
+        chart_visuals = [v for v in visuals if v["visual_type"] == "chart"]
+        slicer_visuals = [v for v in visuals if v["visual_type"] == "slicer"]
+        interactions = [
+            {"source": s["visual_id"], "target": c["visual_id"], "type": "NoFilter"}
+            for s in slicer_visuals
+            for c in chart_visuals
+            if c["source_sheet"] != s["scoped_to_sheet"]
+        ]
+
+        pages.append({
+            "page_name": f"Dashboard_{dash['name'].replace(' ', '_')}",
+            "display_name": dash["title"],
+            "width": _PBI_W,
+            "height": _PBI_H,
+            "visuals": visuals,
+            "visual_interactions": interactions,
+            "unsupported": unsupported,
+        })
+    return pages
 
 
 def write_dashboard_pages(dashboard_pages: list[dict], output_dir: Path, stem: str) -> list[dict]:

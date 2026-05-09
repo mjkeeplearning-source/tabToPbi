@@ -100,3 +100,93 @@ def test_sheet_zone_has_coordinates():
     assert trend["y"] == 14915
     assert trend["w"] == 86935
     assert trend["h"] == 32743
+
+
+# --- Task 3: transform_dashboards() ---
+
+from tab_to_pbi.dashboard import transform_dashboards
+
+
+def _make_workbook_stub():
+    return {
+        "datasources": [{
+            "name": "federated.abc",
+            "columns": [
+                {"name": "Region", "source_table": "orders"},
+                {"name": "Sales", "source_table": "orders"},
+            ],
+        }]
+    }
+
+
+def _make_transformed_stub():
+    return {
+        "visuals": [{
+            "name": "Sheet1",
+            "page_name": "Sheet1",
+            "mark_type": "Bar",
+            "table": "orders",
+            "row_fields": [{"name": "Region", "is_measure": False, "table": "orders"}],
+            "col_fields": [{"name": "Sum Sales", "is_measure": True, "table": "orders"}],
+        }]
+    }
+
+
+def test_transform_coordinate_scaling():
+    dashboards = [{
+        "name": "TestDash",
+        "width": 1000, "height": 620, "title": "Test",
+        "zones": [{
+            "zone_type": "sheet", "name": "Sheet1",
+            "x": 50000, "y": 50000, "w": 50000, "h": 50000,
+        }],
+    }]
+    pages = transform_dashboards(dashboards, _make_workbook_stub(), _make_transformed_stub())
+    assert len(pages) == 1
+    v = pages[0]["visuals"][0]
+    assert v["x"] == 640     # round(50000/100000 * 1280)
+    assert v["y"] == 360     # round(50000/100000 * 720)
+    assert v["width"] == 640
+    assert v["height"] == 360
+
+
+def test_transform_sheet_zone_becomes_chart_visual():
+    dashboards = [{
+        "name": "TestDash",
+        "width": 1000, "height": 620, "title": "Test",
+        "zones": [{
+            "zone_type": "sheet", "name": "Sheet1",
+            "x": 0, "y": 0, "w": 100000, "h": 100000,
+        }],
+    }]
+    pages = transform_dashboards(dashboards, _make_workbook_stub(), _make_transformed_stub())
+    v = pages[0]["visuals"][0]
+    assert v["visual_type"] == "chart"
+    assert v["source_sheet"] == "Sheet1"
+    assert v["mark_type"] == "Bar"
+    assert v["table"] == "orders"
+
+
+def test_transform_unknown_sheet_skipped():
+    dashboards = [{
+        "name": "TestDash",
+        "width": 1000, "height": 620, "title": "Test",
+        "zones": [{
+            "zone_type": "sheet", "name": "NonExistentSheet",
+            "x": 0, "y": 0, "w": 50000, "h": 50000,
+        }],
+    }]
+    pages = transform_dashboards(dashboards, _make_workbook_stub(), _make_transformed_stub())
+    assert pages[0]["visuals"] == []
+
+
+def test_transform_page_dimensions():
+    dashboards = [{
+        "name": "MyDash", "width": 1000, "height": 620, "title": "My Dashboard",
+        "zones": [],
+    }]
+    pages = transform_dashboards(dashboards, _make_workbook_stub(), _make_transformed_stub())
+    assert pages[0]["page_name"] == "Dashboard_MyDash"
+    assert pages[0]["display_name"] == "My Dashboard"
+    assert pages[0]["width"] == 1280
+    assert pages[0]["height"] == 720
