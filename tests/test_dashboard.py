@@ -244,49 +244,66 @@ def test_transform_filter_unresolved_field_skipped():
     assert pages[0]["visuals"] == []
 
 
-def test_transform_visual_interactions_nofilter():
-    """Slicer scoped to Sheet1 must NoFilter all charts that are NOT Sheet1."""
+def test_transform_nofilter_only_when_filter_policy_present():
+    """NoFilter is generated only when slicer has filter_policy_sheets restricting scope."""
     dashboards = [{
         "name": "TestDash", "width": 1000, "height": 620, "title": "Test",
         "zones": [
-            {
-                "zone_type": "sheet", "name": "Sheet1",
-                "x": 0, "y": 0, "w": 50000, "h": 100000,
-            },
-            {
-                "zone_type": "sheet", "name": "Sheet2",
-                "x": 50000, "y": 0, "w": 50000, "h": 100000,
-            },
-            {
-                "zone_type": "filter", "name": "Sheet1",
-                "param_field": "Region",
-                "param_datasource_id": "federated.abc",
-                "mode": "dropdown",
-                "x": 0, "y": 0, "w": 10000, "h": 10000,
-            },
+            {"zone_type": "sheet", "name": "Sheet1",
+             "x": 0, "y": 0, "w": 50000, "h": 100000},
+            {"zone_type": "sheet", "name": "Sheet2",
+             "x": 50000, "y": 0, "w": 50000, "h": 100000},
+            {"zone_type": "filter", "name": "Sheet1",
+             "param_field": "Region", "param_datasource_id": "federated.abc",
+             "mode": "dropdown", "x": 0, "y": 0, "w": 10000, "h": 10000,
+             "filter_policy_sheets": ["Sheet1"]},  # explicit scope restriction
         ],
     }]
-    workbook = {
-        "datasources": [{
-            "name": "federated.abc",
-            "columns": [{"name": "Region", "source_table": "orders"}],
-        }]
-    }
+    workbook = {"datasources": [{"name": "federated.abc",
+                                  "columns": [{"name": "Region", "source_table": "orders"}]}]}
     transformed = {
+        "tables": [{"name": "orders", "columns": [{"name": "Region"}]}],
         "visuals": [
             {"name": "Sheet1", "page_name": "Sheet1", "mark_type": "Bar",
              "table": "orders", "row_fields": [], "col_fields": []},
             {"name": "Sheet2", "page_name": "Sheet2", "mark_type": "Bar",
              "table": "orders", "row_fields": [], "col_fields": []},
-        ]
+        ],
     }
     pages = transform_dashboards(dashboards, workbook, transformed)
     interactions = pages[0]["visual_interactions"]
-    # slicer (dash_visual_3) should NoFilter Sheet2 chart (dash_visual_2) only
     assert len(interactions) == 1
-    assert interactions[0]["source"] == "dash_visual_3"
-    assert interactions[0]["target"] == "dash_visual_2"
+    assert interactions[0]["target"] == "dash_visual_2"  # Sheet2 is out of scope
     assert interactions[0]["type"] == "NoFilter"
+
+
+def test_no_nofilter_when_sheets_differ_without_filter_policy():
+    """Without explicit <filter-policy>, slicer applies to all sheets — no NoFilter interactions."""
+    dashboards = [{
+        "name": "TestDash", "width": 1000, "height": 620, "title": "Test",
+        "zones": [
+            {"zone_type": "sheet", "name": "Sheet1",
+             "x": 0, "y": 0, "w": 50000, "h": 100000},
+            {"zone_type": "sheet", "name": "Sheet2",
+             "x": 50000, "y": 0, "w": 50000, "h": 100000},
+            {"zone_type": "filter", "name": "Sheet1",
+             "param_field": "Region", "param_datasource_id": "federated.abc",
+             "mode": "dropdown", "x": 0, "y": 0, "w": 10000, "h": 10000},
+        ],
+    }]
+    workbook = {"datasources": [{"name": "federated.abc",
+                                  "columns": [{"name": "Region", "source_table": "orders"}]}]}
+    transformed = {
+        "tables": [{"name": "orders", "columns": [{"name": "Region"}]}],
+        "visuals": [
+            {"name": "Sheet1", "page_name": "Sheet1", "mark_type": "Bar",
+             "table": "orders", "row_fields": [], "col_fields": []},
+            {"name": "Sheet2", "page_name": "Sheet2", "mark_type": "Bar",
+             "table": "orders", "row_fields": [], "col_fields": []},
+        ],
+    }
+    pages = transform_dashboards(dashboards, workbook, transformed)
+    assert pages[0]["visual_interactions"] == []
 
 
 def test_transform_no_interactions_when_slicer_matches_all_charts():
@@ -314,6 +331,7 @@ def test_transform_no_interactions_when_slicer_matches_all_charts():
         }]
     }
     transformed = {
+        "tables": [{"name": "orders", "columns": [{"name": "Region"}]}],
         "visuals": [
             {"name": "Sheet1", "page_name": "Sheet1", "mark_type": "Bar",
              "table": "orders", "row_fields": [], "col_fields": []},
@@ -525,3 +543,298 @@ def test_slicer_between_mode():
     v = _write_single_visual(visual)
     mode_val = v["visual"]["objects"]["data"][0]["properties"]["mode"]["expr"]["Literal"]["Value"]
     assert mode_val == "'Between'"
+
+
+# --- multi_select / singleSelect tests ---
+
+def test_multi_select_slicer_writes_single_select_false():
+    """multi_select=True must write singleSelect=false in objects.selection (not objects.data)."""
+    visual = {
+        "visual_id": "dash_visual_1", "visual_type": "slicer",
+        "x": 0, "y": 0, "width": 200, "height": 60,
+        "field_entity": "orders", "field_property": "Region",
+        "slicer_mode": "Basic", "scoped_to_sheet": "Sheet1",
+        "multi_select": True,
+    }
+    v = _write_single_visual(visual)
+    sel_props = v["visual"]["objects"]["selection"][0]["properties"]
+    assert sel_props["singleSelect"]["expr"]["Literal"]["Value"] == "false"
+
+
+def test_multi_select_slicer_writes_strict_single_select_false():
+    """multi_select=True must write strictSingleSelect=false so CTRL is not required."""
+    visual = {
+        "visual_id": "dash_visual_1", "visual_type": "slicer",
+        "x": 0, "y": 0, "width": 200, "height": 60,
+        "field_entity": "orders", "field_property": "Region",
+        "slicer_mode": "Basic", "scoped_to_sheet": "Sheet1",
+        "multi_select": True,
+    }
+    v = _write_single_visual(visual)
+    sel_props = v["visual"]["objects"]["selection"][0]["properties"]
+    assert sel_props["strictSingleSelect"]["expr"]["Literal"]["Value"] == "false"
+
+
+def test_multi_select_slicer_writes_select_all_enabled():
+    """multi_select=True must write selectAllCheckboxEnabled=true (Tableau 'All' option)."""
+    visual = {
+        "visual_id": "dash_visual_1", "visual_type": "slicer",
+        "x": 0, "y": 0, "width": 200, "height": 60,
+        "field_entity": "orders", "field_property": "Region",
+        "slicer_mode": "Basic", "scoped_to_sheet": "Sheet1",
+        "multi_select": True,
+    }
+    v = _write_single_visual(visual)
+    sel_props = v["visual"]["objects"]["selection"][0]["properties"]
+    assert sel_props["selectAllCheckboxEnabled"]["expr"]["Literal"]["Value"] == "true"
+
+
+def test_multi_select_slicer_no_single_select_in_data_props():
+    """singleSelect must NOT appear in objects.data.properties (wrong bucket)."""
+    visual = {
+        "visual_id": "dash_visual_1", "visual_type": "slicer",
+        "x": 0, "y": 0, "width": 200, "height": 60,
+        "field_entity": "orders", "field_property": "Region",
+        "slicer_mode": "Basic", "scoped_to_sheet": "Sheet1",
+        "multi_select": True,
+    }
+    v = _write_single_visual(visual)
+    data_props = v["visual"]["objects"]["data"][0]["properties"]
+    assert "singleSelect" not in data_props
+
+
+def test_single_select_slicer_has_no_selection_object():
+    """multi_select=False must NOT write objects.selection."""
+    visual = {
+        "visual_id": "dash_visual_1", "visual_type": "slicer",
+        "x": 0, "y": 0, "width": 200, "height": 60,
+        "field_entity": "orders", "field_property": "Region",
+        "slicer_mode": "Basic", "scoped_to_sheet": "Sheet1",
+        "multi_select": False,
+    }
+    v = _write_single_visual(visual)
+    assert "selection" not in v["visual"]["objects"]
+
+
+def test_between_slicer_has_no_selection_object():
+    """Between (range) slicers must NOT write objects.selection."""
+    visual = {
+        "visual_id": "dash_visual_1", "visual_type": "slicer",
+        "x": 0, "y": 0, "width": 200, "height": 60,
+        "field_entity": "orders", "field_property": "Order Date",
+        "slicer_mode": "Between", "scoped_to_sheet": "Sheet1",
+        "multi_select": True,
+    }
+    v = _write_single_visual(visual)
+    assert "selection" not in v["visual"]["objects"]
+
+
+def test_single_select_slicer_omits_single_select_property():
+    """multi_select=False must NOT write singleSelect in objects.data."""
+    visual = {
+        "visual_id": "dash_visual_1", "visual_type": "slicer",
+        "x": 0, "y": 0, "width": 200, "height": 60,
+        "field_entity": "orders", "field_property": "Region",
+        "slicer_mode": "Basic", "scoped_to_sheet": "Sheet1",
+        "multi_select": False,
+    }
+    v = _write_single_visual(visual)
+    data_props = v["visual"]["objects"]["data"][0]["properties"]
+    assert "singleSelect" not in data_props
+
+
+def test_between_slicer_omits_single_select_property():
+    """Between (range) slicers must never have singleSelect in objects.data."""
+    visual = {
+        "visual_id": "dash_visual_1", "visual_type": "slicer",
+        "x": 0, "y": 0, "width": 200, "height": 60,
+        "field_entity": "orders", "field_property": "Order Date",
+        "slicer_mode": "Between", "scoped_to_sheet": "Sheet1",
+        "multi_select": True,
+    }
+    v = _write_single_visual(visual)
+    data_props = v["visual"]["objects"]["data"][0]["properties"]
+    assert "singleSelect" not in data_props
+
+
+def test_transform_checkdropdown_sets_multi_select_true():
+    """checkdropdown zone mode -> multi_select=True on the slicer dict."""
+    dashboards = [{
+        "name": "TestDash", "width": 1000, "height": 620, "title": "Test",
+        "zones": [{
+            "zone_type": "filter", "name": "Sheet1",
+            "param_field": "Region", "param_datasource_id": "federated.abc",
+            "mode": "checkdropdown", "x": 0, "y": 0, "w": 10000, "h": 10000,
+        }],
+    }]
+    workbook = {"datasources": [{"name": "federated.abc",
+                                  "columns": [{"name": "Region", "source_table": "orders"}]}]}
+    pages = transform_dashboards(dashboards, workbook, _make_transformed_stub())
+    assert pages[0]["visuals"][0]["multi_select"] is True
+
+
+def test_transform_empty_mode_sets_multi_select_true():
+    """Empty (absent) zone mode -> multi_select=True (Tableau implicit default is multi-select)."""
+    dashboards = [{
+        "name": "TestDash", "width": 1000, "height": 620, "title": "Test",
+        "zones": [{
+            "zone_type": "filter", "name": "Sheet1",
+            "param_field": "Region", "param_datasource_id": "federated.abc",
+            "mode": "", "x": 0, "y": 0, "w": 10000, "h": 10000,
+        }],
+    }]
+    workbook = {"datasources": [{"name": "federated.abc",
+                                  "columns": [{"name": "Region", "source_table": "orders"}]}]}
+    pages = transform_dashboards(dashboards, workbook, _make_transformed_stub())
+    assert pages[0]["visuals"][0]["multi_select"] is True
+
+
+def test_transform_radiolist_sets_multi_select_false():
+    """radiolist zone mode -> multi_select=False (single-select radio buttons)."""
+    dashboards = [{
+        "name": "TestDash", "width": 1000, "height": 620, "title": "Test",
+        "zones": [{
+            "zone_type": "filter", "name": "Sheet1",
+            "param_field": "Region", "param_datasource_id": "federated.abc",
+            "mode": "radiolist", "x": 0, "y": 0, "w": 10000, "h": 10000,
+        }],
+    }]
+    workbook = {"datasources": [{"name": "federated.abc",
+                                  "columns": [{"name": "Region", "source_table": "orders"}]}]}
+    pages = transform_dashboards(dashboards, workbook, _make_transformed_stub())
+    assert pages[0]["visuals"][0]["multi_select"] is False
+
+
+def test_transform_dropdown_sets_multi_select_false():
+    """dropdown zone mode -> multi_select=False (single-select dropdown)."""
+    dashboards = [{
+        "name": "TestDash", "width": 1000, "height": 620, "title": "Test",
+        "zones": [{
+            "zone_type": "filter", "name": "Sheet1",
+            "param_field": "Region", "param_datasource_id": "federated.abc",
+            "mode": "dropdown", "x": 0, "y": 0, "w": 10000, "h": 10000,
+        }],
+    }]
+    workbook = {"datasources": [{"name": "federated.abc",
+                                  "columns": [{"name": "Region", "source_table": "orders"}]}]}
+    pages = transform_dashboards(dashboards, workbook, _make_transformed_stub())
+    assert pages[0]["visuals"][0]["multi_select"] is False
+
+
+# --- Bug 3: data labels on dashboard chart visuals ---
+
+def _make_transformed_stub_with_labels():
+    return {
+        "visuals": [{
+            "name": "Sheet1",
+            "page_name": "Sheet1",
+            "mark_type": "Bar",
+            "table": "orders",
+            "row_fields": [{"name": "Region", "is_measure": False, "table": "orders"}],
+            "col_fields": [{"name": "Sum Sales", "is_measure": True, "table": "orders"}],
+            "show_data_labels": True,
+            "visual_format": {},
+            "col_formats": {},
+            "sorts": [],
+        }]
+    }
+
+
+def test_transform_carries_show_data_labels():
+    """show_data_labels=True on a source visual must be present in the dashboard chart dict."""
+    dashboards = [{
+        "name": "TestDash", "width": 1000, "height": 620, "title": "Test",
+        "zones": [{"zone_type": "sheet", "name": "Sheet1",
+                   "x": 0, "y": 0, "w": 100000, "h": 100000}],
+    }]
+    pages = transform_dashboards(dashboards, _make_workbook_stub(), _make_transformed_stub_with_labels())
+    v = pages[0]["visuals"][0]
+    assert v["show_data_labels"] is True
+
+
+def test_chart_visual_json_has_data_labels_when_enabled():
+    """visual.json must contain objects.labels.show=true when show_data_labels=True."""
+    visual = {
+        "visual_id": "dash_visual_1", "visual_type": "chart",
+        "x": 0, "y": 0, "width": 500, "height": 300,
+        "source_sheet": "Sheet1", "mark_type": "Bar", "table": "orders",
+        "row_fields": [{"name": "Region", "is_measure": False, "table": "orders"}],
+        "col_fields": [{"name": "Sum Sales", "is_measure": True, "table": "orders"}],
+        "show_data_labels": True,
+        "visual_format": {},
+    }
+    v = _write_single_visual(visual)
+    labels = v["visual"]["objects"]["labels"]
+    assert labels[0]["properties"]["show"]["expr"]["Literal"]["Value"] == "true"
+
+
+def test_chart_visual_json_no_data_labels_when_disabled():
+    """visual.json must NOT contain objects.labels when show_data_labels is False/absent."""
+    visual = {
+        "visual_id": "dash_visual_1", "visual_type": "chart",
+        "x": 0, "y": 0, "width": 500, "height": 300,
+        "source_sheet": "Sheet1", "mark_type": "Bar", "table": "orders",
+        "row_fields": [{"name": "Region", "is_measure": False, "table": "orders"}],
+        "col_fields": [{"name": "Sum Sales", "is_measure": True, "table": "orders"}],
+        "show_data_labels": False,
+        "visual_format": {},
+    }
+    v = _write_single_visual(visual)
+    assert "labels" not in v["visual"].get("objects", {})
+
+
+def test_chart_visual_json_has_title_when_present():
+    """visual.json must contain visualContainerObjects.title when source has a title."""
+    visual = {
+        "visual_id": "dash_visual_1", "visual_type": "chart",
+        "x": 0, "y": 0, "width": 500, "height": 300,
+        "source_sheet": "Sheet1", "mark_type": "Bar", "table": "orders",
+        "row_fields": [{"name": "Region", "is_measure": False, "table": "orders"}],
+        "col_fields": [{"name": "Sum Sales", "is_measure": True, "table": "orders"}],
+        "show_data_labels": False,
+        "visual_format": {},
+        "title": {"text": "Sales and Profit", "bold": True},
+    }
+    v = _write_single_visual(visual)
+    vco = v["visual"]["visualContainerObjects"]
+    title_props = vco["title"][0]["properties"]
+    assert title_props["show"]["expr"]["Literal"]["Value"] == "true"
+    assert title_props["text"]["expr"]["Literal"]["Value"] == "'Sales and Profit'"
+    assert title_props["bold"]["expr"]["Literal"]["Value"] == "true"
+
+
+def test_chart_visual_json_no_title_when_absent():
+    """visual.json must NOT contain visualContainerObjects when title is absent."""
+    visual = {
+        "visual_id": "dash_visual_1", "visual_type": "chart",
+        "x": 0, "y": 0, "width": 500, "height": 300,
+        "source_sheet": "Sheet1", "mark_type": "Bar", "table": "orders",
+        "row_fields": [{"name": "Region", "is_measure": False, "table": "orders"}],
+        "col_fields": [{"name": "Sum Sales", "is_measure": True, "table": "orders"}],
+        "show_data_labels": False,
+        "visual_format": {},
+    }
+    v = _write_single_visual(visual)
+    assert "visualContainerObjects" not in v["visual"]
+
+
+def test_transform_copies_title_from_source_visual():
+    """transform_dashboards() must carry title from the source visual into the chart dict."""
+    dashboards = [{
+        "name": "TestDash", "width": 1000, "height": 620, "title": "Test",
+        "zones": [{
+            "zone_type": "sheet", "name": "Sheet1",
+            "x": 0, "y": 0, "w": 100000, "h": 100000,
+        }],
+    }]
+    workbook = {"datasources": []}
+    transformed = {
+        "visuals": [{
+            "name": "Sheet1", "page_name": "Sheet1", "mark_type": "Bar",
+            "table": "orders", "row_fields": [], "col_fields": [],
+            "title": {"text": "My Custom Title"},
+        }]
+    }
+    pages = transform_dashboards(dashboards, workbook, transformed)
+    chart = pages[0]["visuals"][0]
+    assert chart["title"] == {"text": "My Custom Title"}

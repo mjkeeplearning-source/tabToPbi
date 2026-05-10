@@ -5,7 +5,7 @@ import zipfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-from tab_to_pbi.generator import MARK_TO_VISUAL, _VISUAL_ROLES, _make_projection
+from tab_to_pbi.generator import MARK_TO_VISUAL, _VISUAL_ROLES, _make_projection, _build_objects, _build_title_objects
 
 _SCHEMA_BASE = "https://developer.microsoft.com/json-schemas/fabric/item/report"
 _PBI_W = 1280
@@ -19,6 +19,9 @@ _SLICER_MODE_MAP = {
     "radiolist": "Basic",
     "checkdropdown": "Dropdown",
 }
+
+# Tableau modes that are explicitly single-select; everything else (including empty = default) is multi-select
+_SINGLE_SELECT_MODES = {"radiolist", "dropdown", "compact", "type_in"}
 
 
 def parse_dashboards_from_path(path: Path) -> list[dict]:
@@ -148,13 +151,17 @@ def _scale(tab_val: int, pbi_dim: int) -> int:
     return round((tab_val / 100000) * pbi_dim)
 
 
-def _resolve_field_entity(datasource_id: str, field_name: str, workbook: dict) -> str:
-    """Return PBI table name for a field in a given datasource."""
-    for ds in workbook.get("datasources", []):
-        if ds["name"] == datasource_id:
-            for col in ds.get("columns", []):
-                if col["name"] == field_name:
-                    return col.get("source_table", "")
+def _resolve_field_entity(field_name: str, transformed: dict) -> str:
+    """Return PBI table name for a field, searching transformed tables then visuals."""
+    for table in transformed.get("tables", []):
+        for col in table.get("columns", []):
+            if col.get("name") == field_name:
+                return table["name"]
+    for v in transformed.get("visuals", []):
+        for f in v.get("row_fields", []) + v.get("col_fields", []):
+            fname = f.get("name", "") if isinstance(f, dict) else str(f)
+            if fname == field_name and v.get("table"):
+                return v["table"]
     return ""
 
 
@@ -198,24 +205,31 @@ def transform_dashboards(
                     "table": source["table"],
                     "row_fields": source.get("row_fields", []),
                     "col_fields": source.get("col_fields", []),
+                    "show_data_labels": source.get("show_data_labels", False),
+                    "visual_format": source.get("visual_format", {}),
+                    "col_formats": source.get("col_formats", {}),
+                    "sorts": source.get("sorts", []),
+                    "title": source.get("title"),
                 })
                 visual_idx += 1
 
             elif zone["zone_type"] == "filter":
-                entity = _resolve_field_entity(
-                    zone["param_datasource_id"], zone["param_field"], workbook
-                )
+                entity = _resolve_field_entity(zone["param_field"], transformed)
                 if not entity:
                     continue
-                visuals.append({
+                slicer: dict = {
                     "visual_id": visual_id,
                     "visual_type": "slicer",
                     "x": px, "y": py, "width": pw, "height": ph,
                     "field_entity": entity,
                     "field_property": zone["param_field"],
                     "slicer_mode": _SLICER_MODE_MAP.get(zone["mode"], "Basic"),
+                    "multi_select": zone["mode"] not in _SINGLE_SELECT_MODES,
                     "scoped_to_sheet": zone["name"],
-                })
+                }
+                if zone.get("filter_policy_sheets"):
+                    slicer["filter_policy_sheets"] = zone["filter_policy_sheets"]
+                visuals.append(slicer)
                 visual_idx += 1
 
             elif zone["zone_type"] in ("text", "title"):
@@ -229,11 +243,13 @@ def transform_dashboards(
 
         chart_visuals = [v for v in visuals if v["visual_type"] == "chart"]
         slicer_visuals = [v for v in visuals if v["visual_type"] == "slicer"]
+        # NoFilter only when an explicit <filter-policy> scope restriction was parsed.
+        # Tableau's default is "all worksheets using this data source" — no restriction.
         interactions = [
             {"source": s["visual_id"], "target": c["visual_id"], "type": "NoFilter"}
             for s in slicer_visuals
             for c in chart_visuals
-            if c["source_sheet"] != s["scoped_to_sheet"]
+            if s.get("filter_policy_sheets") and c["source_sheet"] not in s["filter_policy_sheets"]
         ]
 
         pages.append({
@@ -355,7 +371,14 @@ def _build_chart_visual(name: str, visual: dict) -> dict:
         }
 
     container = _base_container(name, visual)
-    container["visual"] = {"visualType": visual_type, "query": {"queryState": query_state}}
+    visual_obj: dict = {"visualType": visual_type, "query": {"queryState": query_state}}
+    objects = _build_objects(visual, visual_type)
+    if objects:
+        visual_obj["objects"] = objects
+    title_info = visual.get("title")
+    if title_info:
+        visual_obj["visualContainerObjects"] = _build_title_objects(title_info)
+    container["visual"] = visual_obj
     return container
 
 
@@ -370,15 +393,22 @@ def _build_slicer_visual(name: str, visual: dict) -> dict:
         "queryRef": f"{visual['field_entity']}.{visual['field_property']}",
         "active": True,
     }
+    objects: dict = {
+        "data": [{"properties": {
+            "mode": {"expr": {"Literal": {"Value": f"'{visual['slicer_mode']}'"}}},
+        }}],
+    }
+    if visual["slicer_mode"] != "Between" and visual.get("multi_select", False):
+        objects["selection"] = [{"properties": {
+            "singleSelect": {"expr": {"Literal": {"Value": "false"}}},
+            "strictSingleSelect": {"expr": {"Literal": {"Value": "false"}}},
+            "selectAllCheckboxEnabled": {"expr": {"Literal": {"Value": "true"}}},
+        }}]
     container = _base_container(name, visual)
     container["visual"] = {
         "visualType": "slicer",
         "query": {"queryState": {"Values": {"projections": [projection]}}},
-        "objects": {
-            "data": [{"properties": {
-                "mode": {"expr": {"Literal": {"Value": f"'{visual['slicer_mode']}'"}}},
-            }}]
-        },
+        "objects": objects,
         "drillFilterOtherVisuals": True,
     }
     return container
