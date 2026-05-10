@@ -411,7 +411,7 @@ def _write_tmdl_model(model_dir: Path, transformed: dict, data_dir: Path) -> Non
             if (from_card, to_card) != ("many", "one"):
                 lines.append(f"\tfromCardinality: {from_card}")
                 lines.append(f"\ttoCardinality: {to_card}")
-            if (from_card, to_card) == ("one", "one"):
+            if (from_card, to_card) in (("one", "one"), ("many", "many")):
                 lines.append("\tcrossFilteringBehavior: bothDirections")
             lines.append("")
             rel_lines += lines
@@ -854,6 +854,9 @@ def _write_page(page_dir: Path, page_visuals: list[dict], base_visual_idx: int) 
             slot += 1
 
 
+# Visual types that support a Series role (dimension → multiple lines/grouped bars)
+_SERIES_VISUAL_TYPES = {"lineChart", "areaChart", "columnChart", "barChart"}
+
 # Maps visual type to (role1, role2, shelf_for_role1, shelf_for_role2)
 # shelf values: "row" or "col" — which Tableau shelf feeds each PBI role
 _VISUAL_ROLES = {
@@ -899,6 +902,32 @@ def _make_projection(default_table: str, field: dict | str, col_formats: dict | 
     return proj
 
 
+def _make_series_projection(default_table: str, field: dict | str) -> dict:
+    """Build a Series role projection (dimension on Color shelf → multiple lines/bars).
+
+    Includes nativeQueryRef (field name without table prefix) which PBI Desktop writes
+    for series fields to enable visual calculations referencing.
+    """
+    if isinstance(field, dict):
+        name = field["name"]
+        field_type = "Measure" if field.get("is_measure") else "Column"
+        table_name = field.get("table") or default_table
+    else:
+        name = field
+        field_type = "Column"
+        table_name = default_table
+    return {
+        "field": {
+            field_type: {
+                "Expression": {"SourceRef": {"Entity": table_name}},
+                "Property": name,
+            }
+        },
+        "queryRef": f"{table_name}.{name}",
+        "nativeQueryRef": name,
+    }
+
+
 def _build_sort_definition(sorts: list[dict]) -> dict | None:
     """Build PBI sortDefinition from enriched sort list. Returns None if no sorts."""
     if not sorts:
@@ -924,6 +953,7 @@ def _write_visual(visual_dir: Path, visual_info: dict, x_offset: int = 20) -> No
     table_name = visual_info["table"]
     row_fields = visual_info.get("row_fields", [])
     col_fields = visual_info.get("col_fields", [])
+    color_fields = visual_info.get("color_fields", [])
 
     col_formats = visual_info.get("col_formats") or {}
     if visual_type in _VISUAL_ROLES:
@@ -934,6 +964,10 @@ def _write_visual(visual_dir: Path, visual_info: dict, x_offset: int = 20) -> No
             cat_role: {"projections": [_make_projection(table_name, f, col_formats) for f in cat_fields]},
             val_role: {"projections": [_make_projection(table_name, f, col_formats) for f in val_fields]},
         }
+        if color_fields and visual_type in _SERIES_VISUAL_TYPES:
+            query_state["Series"] = {
+                "projections": [_make_series_projection(table_name, f) for f in color_fields]
+            }
     else:
         # tableEx and fallback: all fields under Values
         all_fields = row_fields + [f for f in col_fields if f not in row_fields]

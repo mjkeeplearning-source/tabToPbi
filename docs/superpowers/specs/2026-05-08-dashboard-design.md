@@ -176,13 +176,19 @@ pbi_h = round((tab_h / 100000) * 720)
 
 ## Visual Interactions (Filter Scoping)
 
-Each filter zone has `name` = the worksheet it is scoped to. For every slicer, set
-`NoFilter` on every chart visual it is NOT scoped to.
+**Corrected design (see Implementation Notes).**
+
+Tableau's default dashboard filter behaviour is "all worksheets using this data source". A scope
+restriction requires an explicit `<filter-policy>` element in the workbook XML. The filter zone's
+`name` attribute is the worksheet the filter was *dragged from* — it is not a scope restriction.
+
+`NoFilter` is only generated when a filter zone carries an explicit `filter_policy_sheets` list
+(populated by the parser when `<filter-policy>` XML is present):
 
 ```python
 for slicer in slicers:
     for chart in charts:
-        if chart["source_sheet"] != slicer["scoped_to_sheet"]:
+        if slicer.get("filter_policy_sheets") and chart["source_sheet"] not in slicer["filter_policy_sheets"]:
             visual_interactions.append({
                 "source": slicer["visual_id"],
                 "target": chart["visual_id"],
@@ -190,7 +196,10 @@ for slicer in slicers:
             })
 ```
 
-Written to `page.json` alongside existing width/height fields:
+When no `<filter-policy>` is present, `visual_interactions` is empty — the slicer applies to all
+charts on the dashboard page by default, which matches Tableau's documented default behaviour.
+
+Written to `page.json` only when at least one interaction exists:
 
 ```json
 {
@@ -320,3 +329,65 @@ Conforms to `visualContainer/1.0.0/schema.json`. Based on official Microsoft sch
 - Parameter controls (`paramctrl`) → logged as unsupported, no visual generated
 - Color legend zones → silently skipped (PBI chart legends are automatic)
 - Existing sheet pages (one per Tableau worksheet) are unaffected
+
+---
+
+## Implementation Notes — Bugs Found and Fixed During Development
+
+Two bugs were discovered during dashboard implementation and fixed in the same branch.
+Both are documented with root cause analysis in `docs/relationship_dashboard.md`.
+
+### Fix 1 — NoFilter interaction generation (dashboard.py)
+
+**Bug:** `transform_dashboards()` generated a `NoFilter` interaction for every chart whose
+`source_sheet` differed from the filter zone's `name`. This blocked slicers from filtering
+related charts on multi-sheet dashboards.
+
+**Root cause:** The filter zone `name` attribute is the worksheet the filter was dragged from in
+the Tableau dashboard builder — not a scope restriction. Tableau's default is "all worksheets
+using this data source." An explicit scope restriction requires a `<filter-policy>` XML element,
+which most workbooks do not have.
+
+**Fix:** `NoFilter` is only generated when a slicer visual has an explicit `filter_policy_sheets`
+list. That list is populated by the parser only when `<filter-policy>` XML is present. Without
+it, `visual_interactions` is empty and the slicer applies to all charts (correct default).
+
+**Files changed:** `tab_to_pbi/dashboard.py`
+
+---
+
+### Fix 2 — Logical relationship direction (parser.py, transformer.py, generator.py)
+
+**Bug:** Logical relationships (from Tableau's `<object-graph>`) were written to PBI TMDL with
+`fromColumn`/`toColumn` based on XML order only, with no cardinality inference. This caused
+inverted filter direction: a slicer on the ONE-side table could not propagate to the MANY-side
+table because the PBI relationship arrow pointed the wrong way.
+
+The bug was invisible on regular report pages because worksheet filters are written as hardcoded
+`filterConfig` JSON in `visual.json` and bypass relationship traversal entirely. It surfaced when
+dashboard slicers required live cross-filtering, which PBI routes through the relationship.
+
+**Root cause (from official docs):**
+- PBI TMSL documentation: filter flows from the `toColumn` (ONE side) to the `fromColumn` (MANY
+  side) in `OneDirection` mode.
+- Tableau's official XSD encodes cardinality only via an optional `unique-key` attribute on
+  `<first-end-point>` / `<second-end-point>`. When absent, Tableau's default is Many-to-Many.
+- Dashboard filter placement is not a cardinality signal — it is a user UI choice only.
+
+**Fix:** Three cases, all derived from the official Tableau XSD and Microsoft TMSL docs:
+
+| Tableau XML | PBI TMDL written | Notes |
+|---|---|---|
+| `unique-key="true"` on second endpoint | `toColumn` = second (ONE), `fromColumn` = first (MANY) | No explicit cardinality needed; PBI default many:one applies |
+| `unique-key="true"` on first endpoint | Swap: `toColumn` = first (ONE), `fromColumn` = second (MANY) | No explicit cardinality needed |
+| `unique-key="true"` on both endpoints | `fromCardinality: one`, `toCardinality: one` | PBI mandates `crossFilteringBehavior: bothDirections` for 1:1 |
+| `unique-key` absent (Tableau M:M default) | `fromCardinality: many`, `toCardinality: many`, `crossFilteringBehavior: bothDirections` | Matches Tableau's documented M:M default |
+
+**Files changed:** `tab_to_pbi/parser.py`, `tab_to_pbi/transformer.py`, `tab_to_pbi/generator.py`
+
+**Sources:**
+- [Relationships object (TMSL) — Microsoft Learn](https://learn.microsoft.com/en-us/analysis-services/tmsl/relationships-object-tmsl?view=sql-analysis-services-2025)
+- [Model relationships in Power BI Desktop — Microsoft Learn](https://learn.microsoft.com/en-us/power-bi/transform-model/desktop-relationships-understand)
+- [One-to-one relationship guidance — Microsoft Learn](https://learn.microsoft.com/en-us/power-bi/guidance/relationships-one-to-one)
+- [Tableau Document Schemas — GitHub (official XSD)](https://github.com/tableau/tableau-document-schemas)
+- [Optimize Relationship Queries — Tableau Help](https://help.tableau.com/current/server/en-us/datasource_relationships_perfoptions.htm)

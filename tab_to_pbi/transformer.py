@@ -107,7 +107,7 @@ def transform(workbook: dict) -> dict:
         (
             f"Relationship {r['from_table']}.{r['from_column']} -> "
             f"{r['to_table']}.{r['to_column']} "
-            f"({r['from_cardinality']}:{r['to_cardinality']}, method={r['cardinality_method']}): "
+            f"({r['from_cardinality']}:{r['to_cardinality']}, method={r.get('cardinality_method', 'unique_key')}): "
             "cardinality inferred — verify in PBI Desktop Model View after opening"
         )
         for r in relationships
@@ -207,15 +207,36 @@ def _infer_cardinality(
 def _map_relationship(r: dict) -> dict:
     """Convert a parsed relationship to a PBI relationship dict with cardinality.
 
-    Logical relationships (no join_type) get no explicit cardinality — PBI defaults (many:one) apply.
-    Physical joins get cardinality inferred from join type + naming signals.
+    Logical relationships use unique-key endpoints to determine ONE side.
+    Physical joins use join type + naming signals via _infer_cardinality.
     """
     if "join_type" not in r:
+        first_one = r.get("first_unique_key", False)
+        second_one = r.get("second_unique_key", False)
+        if first_one and second_one:
+            # 1:1 — both sides unique; PBI mandates bothDirections for 1:1
+            return {
+                "from_table": r["from_table"], "from_column": r["from_column"],
+                "to_table": r["to_table"], "to_column": r["to_column"],
+                "from_cardinality": "one", "to_cardinality": "one",
+            }
+        if first_one:
+            # first side is ONE → swap so toColumn = first (ONE side)
+            return {
+                "from_table": r["to_table"], "from_column": r["to_column"],
+                "to_table": r["from_table"], "to_column": r["from_column"],
+            }
+        if second_one:
+            # second side is ONE → from=first(MANY), to=second(ONE): already correct
+            return {
+                "from_table": r["from_table"], "from_column": r["from_column"],
+                "to_table": r["to_table"], "to_column": r["to_column"],
+            }
+        # No unique-key → Tableau M:M default; bothDirections per official docs
         return {
-            "from_table": r["from_table"],
-            "from_column": r["from_column"],
-            "to_table": r["to_table"],
-            "to_column": r["to_column"],
+            "from_table": r["from_table"], "from_column": r["from_column"],
+            "to_table": r["to_table"], "to_column": r["to_column"],
+            "from_cardinality": "many", "to_cardinality": "many",
         }
     from_card, to_card, method = _infer_cardinality(
         r["join_type"], r["from_table"], r["from_column"], r["to_table"], r["to_column"]
@@ -364,19 +385,29 @@ def _process_sheets(
         if mark_type == "Bar" and any(f.get("is_measure") for f in row_fields):
             mark_type = "Column"
 
-        # Resolve color encoding fields (heatmap intensity) and append to col_fields as measures only
+        # Resolve color encoding fields: dimensions → Series role (multiple lines/bars);
+        # measures → col_fields (heatmap intensity / size encoding).
+        # Only include dimension fields that are known datasource columns (in fmap);
+        # calc fields, parameters, and Tableau-generated fields are excluded.
         enc_raw = sheet.get("encoding_fields", [])
-        enc_resolved = [
-            r for f in enc_raw
-            for r in [_resolve_field(f, fmap, cmap, default_table, measures, calc_table_map, oid_map, date_part_columns)]
-            if r and r.get("is_measure")
-        ]
-        if enc_resolved:
+        enc_dims: list[dict] = []
+        enc_measures: list[dict] = []
+        for f in enc_raw:
+            field_name = f["name"] if isinstance(f, dict) else f
+            r = _resolve_field(f, fmap, cmap, default_table, measures, calc_table_map, oid_map, date_part_columns)
+            if not r:
+                continue
+            if r.get("is_measure"):
+                enc_measures.append(r)
+            elif field_name in fmap:
+                enc_dims.append(r)
+        if enc_measures:
             if mark_type == "Automatic":
                 unsupported_warnings.append(
                     f"Sheet '{sheet['name']}': heatmap color encoding has no PBI equivalent — color measure added as table column"
                 )
-            col_fields = col_fields + enc_resolved
+            col_fields = col_fields + enc_measures
+        color_fields = enc_dims  # dimension on color shelf → PBI Series role
 
         col_measures = [f for f in col_fields if f and f.get("is_measure")]
         col_dims = [f for f in col_fields if f and not f.get("is_measure")]
@@ -419,6 +450,7 @@ def _process_sheets(
                     "field_table_map": fmap,
                     "row_fields": row_fields,
                     "col_fields": col_dims + [m],
+                    "color_fields": color_fields,
                     "mark_type": mark_type,
                     "show_data_labels": show_data_labels,
                     "filters": enriched_filters,
@@ -435,6 +467,7 @@ def _process_sheets(
                 "field_table_map": fmap,
                 "row_fields": row_fields,
                 "col_fields": col_fields,
+                "color_fields": color_fields,
                 "mark_type": mark_type,
                 "show_data_labels": show_data_labels,
                 "filters": enriched_filters,

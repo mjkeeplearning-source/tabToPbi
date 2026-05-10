@@ -28,7 +28,7 @@ Parse `<dashboards>` XML into a list of dashboard dicts with name, size, title, 
 - Create: `tab_to_pbi/dashboard.py`
 - Create: `tests/test_dashboard.py`
 
-- [ ] **Step 1.1: Write failing tests**
+- [x] **Step 1.1: Write failing tests**
 
 ```python
 # tests/test_dashboard.py
@@ -71,7 +71,7 @@ def test_parse_dashboards_from_path():
     assert len(dashboards) == 6
 ```
 
-- [ ] **Step 1.2: Run tests to verify they fail**
+- [x] **Step 1.2: Run tests to verify they fail**
 
 ```
 uv run pytest tests/test_dashboard.py -v
@@ -79,7 +79,7 @@ uv run pytest tests/test_dashboard.py -v
 
 Expected: `ModuleNotFoundError: No module named 'tab_to_pbi.dashboard'`
 
-- [ ] **Step 1.3: Create `tab_to_pbi/dashboard.py` with scaffold and parse_dashboards()**
+- [x] **Step 1.3: Create `tab_to_pbi/dashboard.py` with scaffold and parse_dashboards()**
 
 ```python
 """Tableau dashboard zones → PBI dashboard pages."""
@@ -237,7 +237,7 @@ def write_dashboard_pages(dashboard_pages: list[dict], output_dir: Path, stem: s
     return []
 ```
 
-- [ ] **Step 1.4: Run tests to verify they pass**
+- [x] **Step 1.4: Run tests to verify they pass**
 
 ```
 uv run pytest tests/test_dashboard.py -v
@@ -245,7 +245,7 @@ uv run pytest tests/test_dashboard.py -v
 
 Expected: 5 tests PASS
 
-- [ ] **Step 1.5: Commit**
+- [x] **Step 1.5: Commit**
 
 ```
 git add tab_to_pbi/dashboard.py tests/test_dashboard.py
@@ -261,7 +261,7 @@ Verify the correct zone types and coordinates are extracted from Superstore.twb 
 **Files:**
 - Modify: `tests/test_dashboard.py` (append new tests)
 
-- [ ] **Step 2.1: Append failing tests to `tests/test_dashboard.py`**
+- [x] **Step 2.1: Append failing tests to `tests/test_dashboard.py`**
 
 ```python
 def test_shipping_sheet_zones():
@@ -329,7 +329,7 @@ def test_sheet_zone_has_coordinates():
     assert trend["h"] == 32743
 ```
 
-- [ ] **Step 2.2: Run tests to verify failures**
+- [x] **Step 2.2: Run tests to verify failures**
 
 ```
 uv run pytest tests/test_dashboard.py -v -k "test_shipping or test_filter or test_paramctrl or test_sheet_zone"
@@ -337,7 +337,7 @@ uv run pytest tests/test_dashboard.py -v -k "test_shipping or test_filter or tes
 
 Expected: All new tests FAIL (coordinates hardcoded, zones not extracted yet)
 
-- [ ] **Step 2.3: Run full test suite to confirm no regressions**
+- [x] **Step 2.3: Run full test suite to confirm no regressions**
 
 ```
 uv run pytest tests/ -v
@@ -345,7 +345,7 @@ uv run pytest tests/ -v
 
 Expected: All pre-existing tests PASS, only new zone tests fail.
 
-- [ ] **Step 2.4: Run tests to verify they now pass**
+- [x] **Step 2.4: Run tests to verify they now pass**
 
 The zone extraction is already implemented in Task 1's `_flatten_zones`. Run:
 
@@ -357,7 +357,7 @@ Expected: All 12 tests PASS (Task 1 implementation already covers this).
 
 If any fail, cross-check the XML coordinates in `input/Superstore.twb` at lines 6115 and 6124 and adjust the assertions.
 
-- [ ] **Step 2.5: Commit**
+- [x] **Step 2.5: Commit**
 
 ```
 git add tests/test_dashboard.py
@@ -374,7 +374,7 @@ Scale Tableau 100000-unit coordinates to PBI 1280×720 pixels. For each workshee
 - Modify: `tests/test_dashboard.py` (append)
 - Modify: `tab_to_pbi/dashboard.py` (replace `transform_dashboards` stub)
 
-- [ ] **Step 3.1: Append failing tests**
+- [x] **Step 3.1: Append failing tests**
 
 ```python
 from tab_to_pbi.dashboard import transform_dashboards
@@ -465,7 +465,7 @@ def test_transform_page_dimensions():
     assert pages[0]["height"] == 720
 ```
 
-- [ ] **Step 3.2: Run to verify failures**
+- [x] **Step 3.2: Run to verify failures**
 
 ```
 uv run pytest tests/test_dashboard.py -v -k "test_transform"
@@ -473,7 +473,7 @@ uv run pytest tests/test_dashboard.py -v -k "test_transform"
 
 Expected: FAIL — `transform_dashboards` returns `[]`
 
-- [ ] **Step 3.3: Replace `transform_dashboards` stub in `dashboard.py`**
+- [x] **Step 3.3: Replace `transform_dashboards` stub in `dashboard.py`**
 
 Replace the stub `transform_dashboards` function with:
 
@@ -582,7 +582,7 @@ def transform_dashboards(
     return pages
 ```
 
-- [ ] **Step 3.4: Run tests**
+- [x] **Step 3.4: Run tests**
 
 ```
 uv run pytest tests/test_dashboard.py -v -k "test_transform"
@@ -590,7 +590,7 @@ uv run pytest tests/test_dashboard.py -v -k "test_transform"
 
 Expected: All transform tests PASS
 
-- [ ] **Step 3.5: Full suite check**
+- [x] **Step 3.5: Full suite check**
 
 ```
 uv run pytest tests/ -v
@@ -598,7 +598,7 @@ uv run pytest tests/ -v
 
 Expected: All tests PASS
 
-- [ ] **Step 3.6: Commit**
+- [x] **Step 3.6: Commit**
 
 ```
 git add tab_to_pbi/dashboard.py tests/test_dashboard.py
@@ -614,7 +614,7 @@ Verify that filter zones resolve to the correct PBI table/field and produce the 
 **Files:**
 - Modify: `tests/test_dashboard.py` (append)
 
-- [ ] **Step 4.1: Append failing tests**
+- [x] **Step 4.1: Append failing tests**
 
 ```python
 def test_transform_filter_zone_becomes_slicer():
@@ -746,7 +746,7 @@ def test_transform_no_interactions_when_slicer_matches_all_charts():
     assert pages[0]["visual_interactions"] == []
 ```
 
-- [ ] **Step 4.2: Run to verify failures**
+- [x] **Step 4.2: Run to verify failures**
 
 ```
 uv run pytest tests/test_dashboard.py -v -k "test_transform_filter or test_transform_visual or test_transform_slicer or test_transform_no_inter"
@@ -754,7 +754,7 @@ uv run pytest tests/test_dashboard.py -v -k "test_transform_filter or test_trans
 
 Expected: All new tests FAIL
 
-- [ ] **Step 4.3: Run tests again — `transform_dashboards` already handles this**
+- [x] **Step 4.3: Run tests again — `transform_dashboards` already handles this**
 
 The implementation written in Task 3 already handles filter zones and visual interactions. Run:
 
@@ -766,7 +766,7 @@ Expected: All tests PASS (the Task 3 implementation covers filter zones and inte
 
 If `test_transform_visual_interactions_nofilter` fails, check that `visual_idx` increments correctly for both sheet and filter zones in `transform_dashboards`.
 
-- [ ] **Step 4.4: Full suite check**
+- [x] **Step 4.4: Full suite check**
 
 ```
 uv run pytest tests/ -v
@@ -774,7 +774,7 @@ uv run pytest tests/ -v
 
 Expected: All tests PASS
 
-- [ ] **Step 4.5: Commit**
+- [x] **Step 4.5: Commit**
 
 ```
 git add tests/test_dashboard.py
@@ -791,7 +791,7 @@ Write page folders, `page.json` (with optional `visualInteractions`), and append
 - Modify: `tests/test_dashboard.py` (append)
 - Modify: `tab_to_pbi/dashboard.py` (replace `write_dashboard_pages` stub + add helpers)
 
-- [ ] **Step 5.1: Append failing tests**
+- [x] **Step 5.1: Append failing tests**
 
 ```python
 import json
@@ -918,7 +918,7 @@ def test_write_returns_report_entries():
         assert "Region" in result[0]["slicers_placed"]
 ```
 
-- [ ] **Step 5.2: Run to verify failures**
+- [x] **Step 5.2: Run to verify failures**
 
 ```
 uv run pytest tests/test_dashboard.py -v -k "test_write"
@@ -926,7 +926,7 @@ uv run pytest tests/test_dashboard.py -v -k "test_write"
 
 Expected: All new tests FAIL — `write_dashboard_pages` returns `[]`
 
-- [ ] **Step 5.3: Replace `write_dashboard_pages` stub and add page-writing helpers in `dashboard.py`**
+- [x] **Step 5.3: Replace `write_dashboard_pages` stub and add page-writing helpers in `dashboard.py`**
 
 Replace the stub `write_dashboard_pages` function with:
 
@@ -1080,7 +1080,7 @@ def _build_textbox_visual(name: str, visual: dict) -> dict:
     return container
 ```
 
-- [ ] **Step 5.4: Run tests**
+- [x] **Step 5.4: Run tests**
 
 ```
 uv run pytest tests/test_dashboard.py -v
@@ -1088,7 +1088,7 @@ uv run pytest tests/test_dashboard.py -v
 
 Expected: All tests PASS
 
-- [ ] **Step 5.5: Full suite check**
+- [x] **Step 5.5: Full suite check**
 
 ```
 uv run pytest tests/ -v
@@ -1096,7 +1096,7 @@ uv run pytest tests/ -v
 
 Expected: All tests PASS
 
-- [ ] **Step 5.6: Commit**
+- [x] **Step 5.6: Commit**
 
 ```
 git add tab_to_pbi/dashboard.py tests/test_dashboard.py
@@ -1112,7 +1112,7 @@ Verify the visual.json files written for chart, slicer, and textbox visuals have
 **Files:**
 - Modify: `tests/test_dashboard.py` (append)
 
-- [ ] **Step 6.1: Append failing tests**
+- [x] **Step 6.1: Append failing tests**
 
 ```python
 def _write_single_visual(visual_dict):
@@ -1193,7 +1193,7 @@ def test_slicer_between_mode():
     assert mode_val == "'Between'"
 ```
 
-- [ ] **Step 6.2: Run to verify failures**
+- [x] **Step 6.2: Run to verify failures**
 
 ```
 uv run pytest tests/test_dashboard.py -v -k "test_chart_visual or test_slicer_visual or test_textbox or test_slicer_between"
@@ -1201,7 +1201,7 @@ uv run pytest tests/test_dashboard.py -v -k "test_chart_visual or test_slicer_vi
 
 Expected: FAIL — visual.json files are not written yet (stubs from Task 1 returned `[]`)
 
-- [ ] **Step 6.3: Run all tests — Task 5 implementation already covers this**
+- [x] **Step 6.3: Run all tests — Task 5 implementation already covers this**
 
 The `_build_chart_visual`, `_build_slicer_visual`, `_build_textbox_visual` functions added in Task 5 should handle all visual writing. Run:
 
@@ -1211,7 +1211,7 @@ uv run pytest tests/test_dashboard.py -v
 
 Expected: All tests PASS
 
-- [ ] **Step 6.4: Full suite check**
+- [x] **Step 6.4: Full suite check**
 
 ```
 uv run pytest tests/ -v
@@ -1219,7 +1219,7 @@ uv run pytest tests/ -v
 
 Expected: All tests PASS
 
-- [ ] **Step 6.5: Commit**
+- [x] **Step 6.5: Commit**
 
 ```
 git add tests/test_dashboard.py
@@ -1235,7 +1235,7 @@ Add the dashboard pipeline to `main.py`, run against Superstore.twb, verify the 
 **Files:**
 - Modify: `tab_to_pbi/main.py`
 
-- [ ] **Step 7.1: Add dashboard import and pipeline calls to `main.py`**
+- [x] **Step 7.1: Add dashboard import and pipeline calls to `main.py`**
 
 At the top of `main.py`, after the existing imports, add:
 
@@ -1265,7 +1265,7 @@ with:
     report_file.write_text(json.dumps(report_data, indent=2))
 ```
 
-- [ ] **Step 7.2: Run full test suite to confirm no regressions**
+- [x] **Step 7.2: Run full test suite to confirm no regressions**
 
 ```
 uv run pytest tests/ -v
@@ -1273,7 +1273,7 @@ uv run pytest tests/ -v
 
 Expected: All tests PASS
 
-- [ ] **Step 7.3: Run end-to-end against Superstore.twb**
+- [x] **Step 7.3: Run end-to-end against Superstore.twb**
 
 ```
 uv run tab_to_pbi/main.py input/Superstore.twb
@@ -1286,7 +1286,7 @@ Report: output\Superstore.migration_report.json
 ```
 And the validator section at the end exits with 0 errors (the same result as before this change).
 
-- [ ] **Step 7.4: Verify dashboard pages in pages.json**
+- [x] **Step 7.4: Verify dashboard pages in pages.json**
 
 ```
 python -c "import json; d=json.load(open('output/Superstore.Report/definition/pages/pages.json')); print(d['pageOrder'])"
@@ -1294,7 +1294,7 @@ python -c "import json; d=json.load(open('output/Superstore.Report/definition/pa
 
 Expected: List contains both `ReportSectionN` entries (existing sheet pages) AND `DashboardSection1` through `DashboardSection6`.
 
-- [ ] **Step 7.5: Verify migration report has dashboards key**
+- [x] **Step 7.5: Verify migration report has dashboards key**
 
 ```
 python -c "import json; r=json.load(open('output/Superstore.migration_report.json')); print([d['name'] for d in r['dashboards']])"
@@ -1302,13 +1302,13 @@ python -c "import json; r=json.load(open('output/Superstore.migration_report.jso
 
 Expected: `['Commission Model', 'Customers', 'Order Details', 'Overview', 'Product', 'Shipping']`
 
-- [ ] **Step 7.6: Manual PBI Desktop verification — P2 checkpoint**
+- [x] **Step 7.6: Manual PBI Desktop verification — P2 checkpoint**
 
 Open `output/Superstore.Report` in PBI Desktop. Check that the page list shows 6 dashboard pages alongside the existing sheet pages. No errors on open.
 
 *Confirm back before proceeding to P3.*
 
-- [ ] **Step 7.7: Full suite one more time**
+- [x] **Step 7.7: Full suite one more time**
 
 ```
 uv run pytest tests/ -v
@@ -1316,7 +1316,7 @@ uv run pytest tests/ -v
 
 Expected: All tests PASS (count should be previous count + new dashboard tests)
 
-- [ ] **Step 7.8: Commit**
+- [x] **Step 7.8: Commit**
 
 ```
 git add tab_to_pbi/main.py tab_to_pbi/dashboard.py
@@ -1358,3 +1358,206 @@ git commit -m "feat: wire dashboard pipeline into main.py with migration report 
 - `write_dashboard_pages()` returns `list[dict]` — assigned to `dashboard_report`, stored in `report_data["dashboards"]` ✓
 - `visual["visual_type"]` values (`"chart"`, `"slicer"`, `"textbox"`) used consistently in transform and write ✓
 - `_scale(tab_val, pbi_dim)` takes ints, returns int — consistent with zone `x/y/w/h` int values ✓
+
+---
+
+## Known Bugs — Discovered Post-Implementation (2026-05-09)
+
+Identified during manual testing of `simple_join_calculated_line_dashboard.twb`.
+See full RCA in `docs/relationship_dashboard.md`.
+
+### Bug 1: NoFilter interaction wrongly blocks slicer from filtering charts ✅ FIXED
+
+**File:** `tab_to_pbi/dashboard.py` — `transform_dashboards()` lines 234–239
+
+**Symptom:** Dashboard slicer does not filter the line chart.
+
+**Root cause:** The filter zone's `name` attribute (the anchor sheet the filter was dragged from) is incorrectly used as a scope restriction. The `NoFilter` interaction is generated whenever the slicer's anchor sheet differs from a chart's source sheet. But in Tableau, the `name` attribute is metadata only — the default scope is "All worksheets using this data source." Scope restriction would require a `<filter-policy>` element in the XML, which we do not parse.
+
+**Fix:** Removed `NoFilter` interaction generation for default case. `NoFilter` is only emitted when an explicit `<filter-policy>` scope restriction is present in the Tableau XML.
+
+---
+
+### Bug 2: Relationship `fromColumn`/`toColumn` is inverted — slicer cannot cross-filter charts ✅ FIXED
+
+**File:** `tab_to_pbi/generator.py` — relationship TMDL writing, lines 394–417
+
+**Symptom:** Dashboard slicer on `people.region` does not filter bar chart showing `orders` data, even without a `NoFilter` interaction.
+
+**Root cause (documented from official Microsoft TMSL spec):**
+
+> *"OneDirection: The rows selected in the 'To' end of the relationship will automatically filter scans of the table in the 'From' end."*
+
+Our TMDL writes `fromColumn: people.region, toColumn: orders.region`, which makes `orders` the TO end (filter origin) and `people` the FROM end (filter target). Filter flows `orders → people`. A slicer on `people` (the FROM/downstream end) cannot propagate upstream to `orders`.
+
+The correct assignment: `people` (4 unique rows, ONE side) → `toColumn`; `orders` (MANY side) → `fromColumn`.
+
+**Root cause of the wrong assignment:** Tableau's TWB XML `object-graph` relationships do not store cardinality explicitly. The `<first-end-point>`/`<second-end-point>` elements have an optional `unique-key` attribute (per the official Tableau XSD `twb_2026.1.0.xsd`) but it is absent by default (Tableau default is Many-to-Many). Our parser has no cardinality signal, so the generator defaults both sides incorrectly.
+
+**Fix:** Parse `unique-key="true"` from Tableau endpoint elements to determine ONE side → `toColumn`. When `unique-key` is absent, write `crossFilteringBehavior: bothDirections` in TMDL (matches Tableau's M:M default) and flag in migration report.
+
+**Note:** This bug was pre-existing across all multi-table workbooks but was invisible because regular sheet page filters use `filterConfig` (direct WHERE clause on the visual query) and bypass relationships entirely. It only surfaces in dashboard slicers, which require live cross-filtering at runtime.
+
+---
+
+### Bug 3: Data labels missing on dashboard page chart visuals ✅ FIXED
+
+**File:** `tab_to_pbi/dashboard.py` — `transform_dashboards()` and `_build_chart_visual()`
+
+**Symptom:** Tableau sheets that have data labels enabled (e.g. `Sales  Profit`, `Sales  Year` in `simple_join_calculated_line_dashboard.twb`) correctly show `objects.labels.show=true` in their sheet page `visual.json`. But the same sheets placed on the `Company Dashboard` dashboard page have an empty `objects: {}` block — data labels are absent in PBI.
+
+**Confirmed via:** Running the pipeline and diffing the two generated `visual.json` files:
+- `output/.../pages/ReportSection1/visuals/visual_1/visual.json` → `"objects": {"labels": [{"properties": {"show": {"expr": {"Literal": {"Value": "true"}}}}}]}`
+- `output/.../pages/DashboardSection1/visuals/dash_visual_1/visual.json` → `"objects": {}`
+
+**Root cause — two-part gap:**
+
+**Part 1 — data not carried through `transform_dashboards()`** (`dashboard.py:199–208`):
+When a sheet zone is converted to a dashboard chart visual dict, only `mark_type`, `table`, `row_fields`, and `col_fields` are copied from the source visual. `show_data_labels` (and other display properties like `visual_format`, `sorts`, `col_formats`) are silently dropped.
+
+**Part 2 — `_build_chart_visual()` has no objects block** (`dashboard.py:348–370`):
+The function builds `container["visual"] = {"visualType": ..., "query": ...}` with no `objects` key. It does not call `_build_objects()` from `generator.py`. Even if `show_data_labels` were present in the dict, the function would ignore it.
+
+**Fix (future-proof approach):**
+
+Two targeted changes:
+
+1. **In `transform_dashboards()`** — copy display properties from the source visual into the dashboard chart dict:
+   ```python
+   visuals.append({
+       ...existing fields...,
+       "show_data_labels": source.get("show_data_labels", False),
+       "visual_format": source.get("visual_format", {}),
+       "col_formats": source.get("col_formats", {}),
+       "sorts": source.get("sorts", []),
+   })
+   ```
+
+2. **In `_build_chart_visual()`** — import `_build_objects` from `generator.py` and apply it:
+   ```python
+   from tab_to_pbi.generator import MARK_TO_VISUAL, _VISUAL_ROLES, _make_projection, _build_objects
+   ...
+   def _build_chart_visual(name: str, visual: dict) -> dict:
+       ...
+       container = _base_container(name, visual)
+       visual_obj: dict = {"visualType": visual_type, "query": {"queryState": query_state}}
+       objects = _build_objects(visual, visual_type)
+       if objects:
+           visual_obj["objects"] = objects
+       container["visual"] = visual_obj
+       return container
+   ```
+
+**Why this is future-proof:**
+`_build_objects()` is the single canonical function that translates display properties (data labels, axis formatting, plot area color) into PBI `objects` JSON. Any future display property added to `_build_objects()` for sheet visuals will automatically apply to dashboard chart visuals once it is called here. Copying individual flags is not needed — a single dict passthrough and function call covers all current and future properties handled by `_build_objects()`.
+
+**Validation basis:**
+- The `objects.labels` structure written by `_build_objects()` is confirmed working in PBI Desktop 2.152 (verified during T14/T19 work for regular sheet pages).
+- The PBI PBIR visual container schema (`definition/visualContainer/1.0.0/schema.json`) defines `objects` as a free-form property bag; the `labels` key with `show` property is the standard data-labels toggle per PBI's own PBIR format (validated from PBI Desktop save-round-trip output in our existing tests).
+- No assumption: the identical JSON structure is already written and verified for sheet visuals by the existing pipeline.
+
+---
+
+### Bug 4: Visual titles not migrated to dashboard page chart visuals ✅ FIXED
+
+**File:** `tab_to_pbi/dashboard.py` — `transform_dashboards()` (lines 199–212) and `_build_chart_visual()` (lines 352–378)
+
+**Symptom:** Visual titles set in Tableau (e.g. "Sales and  Profit On Region" on the `Sales Profit` sheet, "Sales on Year" on the `Sales Year` sheet) are correctly written to the individual sheet pages in PBI (`ReportSection1`, `ReportSection2`). When those same sheets are placed on the `Company Dashboard` dashboard page (`DashboardSection1`), the chart visuals show self-generated titles derived from field names (e.g. "Sum profit, Sum sales" or "Sum sales") instead of the Tableau-authored titles.
+
+**Confirmed via:** Diffing the generated `visual.json` files for both page types:
+
+- `output/.../pages/ReportSection1/visuals/visual_1/visual.json`:
+  ```json
+  "visualContainerObjects": {
+    "title": [{"properties": {
+      "show": {"expr": {"Literal": {"Value": "true"}}},
+      "text": {"expr": {"Literal": {"Value": "'Sales and  Profit On Region Æ'"}}}
+    }}]
+  }
+  ```
+- `output/.../pages/DashboardSection1/visuals/dash_visual_1/visual.json`:
+  → no `visualContainerObjects` key at all
+
+Identical gap confirmed on `dash_visual_2` (Sales on Year line chart): `ReportSection2/visuals/visual_2` has `visualContainerObjects.title` with `"'Sales on Year'"`, `DashboardSection1/visuals/dash_visual_2` has none.
+
+**Root cause — two-part gap (same pattern as Bug 3):**
+
+**Part 1 — `title` not carried through `transform_dashboards()`** (`dashboard.py:199–212`):
+When a sheet zone is converted to a dashboard chart visual dict, `show_data_labels`, `visual_format`, `col_formats`, and `sorts` are copied from the source visual (Bug 3 fix), but `title` is not. The source visual dict produced by `transformer.py` always carries a `"title"` key (set at `transformer.py:431,438,454` via `sheet_title = sheet.get("title")`). Because `title` is never copied into the dashboard chart dict, it is `None` downstream.
+
+**Part 2 — `_build_chart_visual()` does not write `visualContainerObjects`** (`dashboard.py:352–378`):
+The function builds `container["visual"] = {"visualType": ..., "query": ..., "objects": ...}` but has no `visualContainerObjects` block. `generator.py`'s `_write_visual()` (line 953–955) already does this correctly for sheet-page visuals:
+```python
+title_info = visual_info.get("title")
+if title_info:
+    visual_obj["visualContainerObjects"] = _build_title_objects(title_info)
+```
+`_build_chart_visual()` in `dashboard.py` has no equivalent code path.
+
+**Why PBI auto-generates titles when `visualContainerObjects` is absent:**
+PBI Desktop's rendering engine applies the theme-default visual header behaviour when `visualContainerObjects` is absent from the visual container. In that mode, PBI auto-composes a title string from the measure/column display names in the visual's `queryState`. `visualContainerObjects.title` with `show=true` and an explicit `text` literal is the mechanism to override that auto-generated header with a custom string. Without it, the header reverts to auto.
+
+**Fix — two targeted changes, same pattern as Bug 3:**
+
+**1. In `transform_dashboards()`** — copy `title` from the source visual into the chart visual dict:
+```python
+visuals.append({
+    ...existing fields...,
+    "show_data_labels": source.get("show_data_labels", False),
+    "visual_format": source.get("visual_format", {}),
+    "col_formats": source.get("col_formats", {}),
+    "sorts": source.get("sorts", []),
+    "title": source.get("title"),          # ← add this line
+})
+```
+
+**2. In `_build_chart_visual()`** — import `_build_title_objects` from `generator.py` and apply it:
+
+Update the import at the top of `dashboard.py`:
+```python
+from tab_to_pbi.generator import MARK_TO_VISUAL, _VISUAL_ROLES, _make_projection, _build_objects, _build_title_objects
+```
+
+Add the `visualContainerObjects` block inside `_build_chart_visual()` after the `objects` block:
+```python
+container = _base_container(name, visual)
+visual_obj: dict = {"visualType": visual_type, "query": {"queryState": query_state}}
+objects = _build_objects(visual, visual_type)
+if objects:
+    visual_obj["objects"] = objects
+title_info = visual.get("title")
+if title_info:
+    visual_obj["visualContainerObjects"] = _build_title_objects(title_info)
+container["visual"] = visual_obj
+return container
+```
+
+**Why this is future-proof:**
+`_build_title_objects()` is the single canonical builder for `visualContainerObjects.title` in this codebase. It handles all title formatting properties (text, font family, font size, color, bold, italic, underline) that `parser.py` and `transformer.py` may extract. Any new title property added to `_build_title_objects()` for sheet visuals will automatically apply to dashboard chart visuals with this change. No duplication is introduced.
+
+**Validation basis — all claims backed by the official schema (cached at `.pbir_schema_cache/developer-microsoft-com-json-schemas-fabric-item-report-definition-visualContainer-1-0-0-schema-json.json`):**
+
+1. **`visualContainerObjects` is schema-defined on `VisualConfig`** (schema lines 185–188, `VisualConfig` definition):
+   ```json
+   "visualContainerObjects": {
+     "description": "Specifies the formatting to be set for different \"objects\" of the container.",
+     "$ref": "#/definitions/VisualContainerFormattingObjects"
+   }
+   ```
+   `VisualConfig` uses `"additionalProperties": false`, so only declared properties are valid. `visualContainerObjects` is declared — it is a fully supported, schema-compliant property of the `visual` object.
+
+2. **`title` is schema-defined on `VisualContainerFormattingObjects`** (schema lines 527–546):
+   ```json
+   "title": {
+     "type": "array",
+     "items": { "type": "object", "properties": { "selector": {...}, "properties": { "$ref": "#/definitions/Title" } }, "required": ["properties"] }
+   }
+   ```
+   The `selector` field is optional (not in `required`), so omitting it (as `_build_title_objects()` does) is schema-valid.
+
+3. **Every property written by `_build_title_objects()` is listed in the `Title` definition** (schema lines 830–847):
+   The `Title` object defines `show`, `text`, `fontColor`, `fontSize`, `bold`, `italic`, `underline`, `fontFamily` — exactly the properties `_build_title_objects()` conditionally writes. The definition uses `"additionalProperties": false`, so only those properties are valid, and we write only those.
+
+4. **The same JSON structure is already verified working in PBI Desktop 2.152**: `ReportSection1/visuals/visual_1/visual.json` and `ReportSection2/visuals/visual_2/visual.json` both carry `visualContainerObjects.title` blocks produced by `_build_title_objects()` and were validated during T19 verification. The fix reuses the same function — no new shape is introduced.
+
+5. **Auto-generated title fallback is observed, not assumed**: the dashboard `visual.json` files have no `visualContainerObjects` and PBI Desktop shows auto-composed field-name titles. The sheet-page `visual.json` files have `visualContainerObjects.title` with explicit `text` and PBI Desktop shows the custom text. Both observed directly from generated output.

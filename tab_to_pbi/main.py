@@ -10,6 +10,7 @@ from tab_to_pbi.parser import parse, extract_twbx_data
 from tab_to_pbi.transformer import transform
 from tab_to_pbi.generator import generate
 from tab_to_pbi.translator import translate_calc_fields_in_transformed
+from tab_to_pbi.dashboard import parse_dashboards_from_path, transform_dashboards, write_dashboard_pages
 
 load_dotenv()
 
@@ -44,8 +45,16 @@ def main():
 
     report_path = generate(transformed, output_dir, data_dir)
 
+    # Dashboard pages
+    dashboards = parse_dashboards_from_path(input_path)
+    dashboard_pages = transform_dashboards(dashboards, workbook, transformed)
+    dashboard_report = write_dashboard_pages(dashboard_pages, output_dir, input_path.stem)
+
+    # Migration report
+    report_data = dict(transformed.get("report", {}))
+    report_data["dashboards"] = dashboard_report
     report_file = output_dir / f"{input_path.stem}.migration_report.json"
-    report_file.write_text(json.dumps(transformed.get("report", {}), indent=2))
+    report_file.write_text(json.dumps(report_data, indent=2))
 
     print(f"Output: {report_path}")
     print(f"Report: {report_file}")

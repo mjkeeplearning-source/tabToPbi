@@ -35,7 +35,23 @@
       "WebFetch(domain:draftbi.com)",
       "Bash(grep -n \"order_id\\\\|\\\\\\\\\\\\\\\\\\(.*\\\\\\\\\\\\\\\\\\)\\\\|col.*name\\\\|caption\\\\|metadata\" C:/vibe_coding/tabToPbi/tab_to_pbi/parser.py)",
       "Bash(git *)",
-      "PowerShell(Get-Content *)"
+      "PowerShell(Get-Content *)",
+      "mcp__github__merge_pull_request",
+      "mcp__github__create_pull_request",
+      "Bash(Get-ChildItem -Path \"C:\\\\vibe_coding\\\\tabToPbi\\\\output\" -Recurse -Force)",
+      "Bash(Select-Object FullName, PSIsContainer)",
+      "Bash(Format-Table -AutoSize)",
+      "Bash(powershell *)",
+      "Bash(Select-String \"Output:|Error\")",
+      "mcp__github__get_me",
+      "mcp__github__create_branch",
+      "mcp__github__push_files",
+      "Bash(gh api *)",
+      "WebFetch(domain:help.tableau.com)",
+      "WebFetch(domain:community.tableau.com)",
+      "WebFetch(domain:trailhead.salesforce.com)",
+      "Bash(Get-ChildItem *)",
+      "WebFetch(domain:developer.microsoft.com)"
     ]
   }
 }

@@ -438,11 +438,18 @@ def _parse_relationships(ds: ET.Element, query_caption_map: dict | None = None) 
         right_table = col_table.get(right_logical, "")
         right_col = col_physical.get(right_logical, right_logical)
 
+        first_ep = rel.find("first-end-point")
+        second_ep = rel.find("second-end-point")
+        first_unique = first_ep is not None and first_ep.get("unique-key") == "true"
+        second_unique = second_ep is not None and second_ep.get("unique-key") == "true"
+
         rels.append({
             "from_table": left_table,
             "from_column": left_col,
             "to_table": right_table,
             "to_column": right_col,
+            "first_unique_key": first_unique,
+            "second_unique_key": second_unique,
         })
     return rels
 

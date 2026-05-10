@@ -6,13 +6,17 @@ from unittest.mock import patch
 
 import pytest
 
+import tempfile
+
 from tab_to_pbi.parser import (
     parse,
     _parse_physical_joins,
     _detect_unsupported,
     _parse_datasources,
+    _parse_relationships,
 )
-from tab_to_pbi.transformer import transform, _apply_storage_mode
+from tab_to_pbi.transformer import transform, _apply_storage_mode, _map_relationship
+from tab_to_pbi.generator import generate, _write_tmdl_model
 from tab_to_pbi.generator import generate
 from tab_to_pbi.translator import _blocklist_check
 from tab_to_pbi.validator import validate
@@ -355,6 +359,132 @@ def test_extract_disabled_treated_as_live():
     </datasource>""")
     conn = _parse_connection(ds)
     assert conn["live_connection"] is True
+
+
+# ---------------------------------------------------------------------------
+# Fix 2: unique-key-based cardinality for logical (object-graph) relationships
+# ---------------------------------------------------------------------------
+
+def _make_logical_rel_ds(first_unique: bool = False, second_unique: bool = False) -> ET.Element:
+    """Minimal datasource XML with one logical relationship and optional unique-key attributes."""
+    first_attr = ' unique-key="true"' if first_unique else ""
+    second_attr = ' unique-key="true"' if second_unique else ""
+    return ET.fromstring(f"""<datasource name="ds" caption="DS">
+      <object-graph>
+        <relationships>
+          <relationship>
+            <expression op="=">
+              <expression op="[region]"/>
+              <expression op="[region (orders)]"/>
+            </expression>
+            <first-end-point object-id="people_xxx"{first_attr}/>
+            <second-end-point object-id="orders_xxx"{second_attr}/>
+          </relationship>
+        </relationships>
+      </object-graph>
+      <connection class="postgres" server="host" dbname="db">
+        <cols>
+          <map key="[region]" value="[people].[region]"/>
+          <map key="[region (orders)]" value="[orders].[region]"/>
+        </cols>
+        <relation name="people" table="[public].[people]" type="table"/>
+      </connection>
+    </datasource>""")
+
+
+def test_parse_logical_relationship_no_unique_key():
+    """Neither endpoint has unique-key → both flags are False."""
+    ds = _make_logical_rel_ds(first_unique=False, second_unique=False)
+    rels = _parse_relationships(ds)
+    assert len(rels) == 1
+    assert rels[0]["first_unique_key"] is False
+    assert rels[0]["second_unique_key"] is False
+
+
+def test_parse_logical_relationship_second_unique_key():
+    """second-end-point unique-key='true' → second_unique_key is True."""
+    ds = _make_logical_rel_ds(second_unique=True)
+    rels = _parse_relationships(ds)
+    assert rels[0]["second_unique_key"] is True
+    assert rels[0]["first_unique_key"] is False
+
+
+def test_parse_logical_relationship_first_unique_key():
+    """first-end-point unique-key='true' → first_unique_key is True."""
+    ds = _make_logical_rel_ds(first_unique=True)
+    rels = _parse_relationships(ds)
+    assert rels[0]["first_unique_key"] is True
+    assert rels[0]["second_unique_key"] is False
+
+
+def test_parse_logical_relationship_both_unique_key():
+    """Both endpoints unique-key='true' → both flags True (1:1)."""
+    ds = _make_logical_rel_ds(first_unique=True, second_unique=True)
+    rels = _parse_relationships(ds)
+    assert rels[0]["first_unique_key"] is True
+    assert rels[0]["second_unique_key"] is True
+
+
+def _logical_rel(from_table, from_col, to_table, to_col, first_unique=False, second_unique=False):
+    return {
+        "from_table": from_table, "from_column": from_col,
+        "to_table": to_table, "to_column": to_col,
+        "first_unique_key": first_unique, "second_unique_key": second_unique,
+    }
+
+
+def test_map_logical_relationship_second_unique_key_keeps_order():
+    """second is ONE → from=first(MANY), to=second(ONE): no swap needed."""
+    r = _logical_rel("people", "region", "orders", "region", second_unique=True)
+    result = _map_relationship(r)
+    assert result["from_table"] == "people"
+    assert result["to_table"] == "orders"
+
+
+def test_map_logical_relationship_first_unique_key_swaps():
+    """first is ONE → must swap so PBI toColumn = first (ONE side)."""
+    r = _logical_rel("people", "region", "orders", "region", first_unique=True)
+    result = _map_relationship(r)
+    assert result["to_table"] == "people"
+    assert result["from_table"] == "orders"
+
+
+def test_map_logical_relationship_no_unique_key_mm_cardinality():
+    """No unique-key → M:M default → from_cardinality=many, to_cardinality=many."""
+    r = _logical_rel("people", "region", "orders", "region")
+    result = _map_relationship(r)
+    assert result.get("from_cardinality") == "many"
+    assert result.get("to_cardinality") == "many"
+
+
+def test_map_logical_relationship_both_unique_key_one_to_one():
+    """Both unique-key=true → 1:1 → from_cardinality=one, to_cardinality=one."""
+    r = _logical_rel("people", "region", "orders", "region", first_unique=True, second_unique=True)
+    result = _map_relationship(r)
+    assert result.get("from_cardinality") == "one"
+    assert result.get("to_cardinality") == "one"
+
+
+def test_generator_mm_relationship_writes_both_directions(tmp_path):
+    """M:M relationship must write crossFilteringBehavior: bothDirections in TMDL."""
+    model_dir = tmp_path / "Test.SemanticModel"
+    defn_dir = model_dir / "definition"
+    defn_dir.mkdir(parents=True)
+    transformed = {
+        "name": "Test",
+        "tables": [],
+        "relationships": [{
+            "from_table": "people", "from_column": "region",
+            "to_table": "orders", "to_column": "region",
+            "from_cardinality": "many", "to_cardinality": "many",
+        }],
+        "report": {},
+    }
+    _write_tmdl_model(model_dir, transformed, Path("data"))
+    tmdl = (defn_dir / "relationships.tmdl").read_text()
+    assert "crossFilteringBehavior: bothDirections" in tmdl
+    assert "fromCardinality: many" in tmdl
+    assert "toCardinality: many" in tmdl
 
 
 def test_parent_name_fallback_for_source_table():
