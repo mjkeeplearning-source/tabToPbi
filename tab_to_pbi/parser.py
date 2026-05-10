@@ -681,11 +681,23 @@ def _parse_sheets(root: ET.Element) -> list[dict]:
             and not cols_text.strip()
             and bool(text_enc_fields)
         )
+        # KPI/summary-number: both shelves empty, measure only in <encodings><text>.
+        # Tableau renders this as a single large number; PBI equivalent is cardVisual.
+        is_kpi = (
+            mark_type == "Automatic"
+            and not rows_text.strip()
+            and not cols_text.strip()
+            and bool(text_enc_fields)
+        )
         rows_parsed = _parse_shelf_fields(rows_text)
         if is_text_table:
             col_fields = text_enc_fields
             mark_type = "Text"
             encoding_fields: list[dict] = []
+        elif is_kpi:
+            col_fields = text_enc_fields
+            mark_type = "KPI"
+            encoding_fields = []
         elif mark_type == "Pie" and color_enc_fields:
             # Pie uses encodings instead of row/col shelves: color=legend, wedge=values
             rows_parsed = color_enc_fields

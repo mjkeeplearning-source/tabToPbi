@@ -17,6 +17,7 @@ Tableau mark type → PBI `visualType` in `visual.json`.
 | `Area` | `areaChart` | High | Area chart; same shelf layout as Line |
 | `Pie` | `pieChart` | High | Pie chart; dimension on Color shelf = legend slices |
 | `Text` | `tableEx` | High | Cross-tab / text table |
+| `KPI` *(internal)* | `cardVisual` | High | Single-number summary; both shelves empty, measure in `<encodings><text>` |
 | `Automatic` | *(inferred)* | Medium | Inferred from shelf layout — see Automatic inference rules below |
 | `Circle` | `scatterChart` | Medium | Scatter plot |
 | `Shape` | `scatterChart` | Medium | Scatter plot with custom shapes |
@@ -28,12 +29,15 @@ Tableau mark type → PBI `visualType` in `visual.json`.
 
 When Tableau mark is `Automatic`, the pipeline infers the PBI visual type from shelf layout:
 
-| Rows shelf | Cols shelf | Inferred PBI type |
-|------------|------------|-------------------|
-| Continuous measure | Discrete dimension | `columnChart` |
-| Discrete dimension | Continuous measure | `barChart` |
-| Continuous measure | Continuous measure | `lineChart` |
-| Neither continuous | Either | `tableEx` |
+| Rows shelf | Cols shelf | `<encodings><text>` | Inferred PBI type |
+|------------|------------|---------------------|-------------------|
+| Continuous measure | Discrete dimension | — | `columnChart` |
+| Discrete dimension | Continuous measure | — | `barChart` |
+| Continuous measure | Continuous measure | — | `lineChart` |
+| Neither continuous | Either | — | `tableEx` |
+| *(empty)* | *(empty)* | Measure present | `cardVisual` (KPI) |
+
+The last row — both shelves empty, measure only in `<encodings><text>` — is Tableau's single-number KPI view. The parser reclassifies it as internal mark type `KPI` so the generator can map it to `cardVisual`.
 
 ---
 
@@ -95,6 +99,16 @@ How Tableau shelves and encodings map to PBI `queryState` roles inside `visual.j
 |----------|---------------|------------|
 | `Location` | Rows shelf | Dimension (geo field) |
 | `Size` | Cols shelf | Measure / Dimension |
+
+### Card / KPI (`cardVisual`) ✓ Validated
+
+| PBI Role | Tableau Source | Field type |
+|----------|---------------|------------|
+| `Data` | `<encodings><text>` (single measure) | Measure |
+
+**Detection:** Both `<rows>` and `<cols>` shelves are empty; measure is carried in `<encodings><text>` with mark `Automatic`. Parser sets `mark_type = "KPI"` and moves the field to `col_fields`.
+
+**Validated:** `Total Sales By Year` sheet — `SUM(sales)` in text encoding, empty shelves → `cardVisual` with `Sum sales` measure in `Data` role.
 
 ### Table (`tableEx`) ✓ Validated
 

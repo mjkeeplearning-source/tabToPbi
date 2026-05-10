@@ -17,6 +17,7 @@ MARK_TO_VISUAL = {
     "Multipolygon": "filledMap",
     "PolyLine": "map",
     "Text": "tableEx",
+    "KPI": "cardVisual",
 }
 
 _SCHEMA_BASE = "https://developer.microsoft.com/json-schemas/fabric/item/report"
@@ -956,7 +957,12 @@ def _write_visual(visual_dir: Path, visual_info: dict, x_offset: int = 20) -> No
     color_fields = visual_info.get("color_fields", [])
 
     col_formats = visual_info.get("col_formats") or {}
-    if visual_type in _VISUAL_ROLES:
+    if visual_type == "cardVisual":
+        # Single-measure KPI card: measure comes from col_fields (text encoding), role is "Data"
+        query_state = {
+            "Data": {"projections": [_make_projection(table_name, f, col_formats) for f in col_fields]}
+        }
+    elif visual_type in _VISUAL_ROLES:
         cat_role, val_role, cat_shelf, val_shelf = _VISUAL_ROLES[visual_type]
         cat_fields = row_fields if cat_shelf == "row" else col_fields
         val_fields = col_fields if val_shelf == "col" else row_fields
