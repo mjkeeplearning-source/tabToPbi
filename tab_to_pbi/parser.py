@@ -699,9 +699,11 @@ def _parse_sheets(root: ET.Element) -> list[dict]:
             mark_type = "KPI"
             encoding_fields = []
         elif mark_type == "Pie" and color_enc_fields:
-            # Pie uses encodings instead of row/col shelves: color=legend, wedge=values
+            # Pie uses encodings instead of row/col shelves: color=legend, wedge=values.
+            # Fall back to text_enc_fields when no explicit wedge-size encoding exists
+            # (measure placed on the Text shelf only — Tableau renders equal slices with labels).
             rows_parsed = color_enc_fields
-            col_fields = wedge_enc_fields
+            col_fields = wedge_enc_fields or text_enc_fields
             encoding_fields = []
         else:
             col_fields = _parse_shelf_fields(cols_text)

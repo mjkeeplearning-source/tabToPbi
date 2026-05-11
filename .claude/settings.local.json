@@ -51,7 +51,10 @@
       "WebFetch(domain:community.tableau.com)",
       "WebFetch(domain:trailhead.salesforce.com)",
       "Bash(Get-ChildItem *)",
-      "WebFetch(domain:developer.microsoft.com)"
+      "WebFetch(domain:developer.microsoft.com)",
+      "Bash(xargs grep -l \"lineChart\")",
+      "Bash(xargs -I{} python -c \"import json,sys; d=json.load\\(open\\(sys.argv[1]\\)\\); print\\(sys.argv[1], '->', d.get\\('visual',{}\\).get\\('visualType','n/a'\\)\\)\" {})",
+      "WebFetch(domain:www.tableau.com)"
     ]
   }
 }

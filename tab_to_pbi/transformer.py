@@ -639,11 +639,12 @@ def _infer_mark_type(rows: list, cols: list) -> str:
     """Infer chart type from shelf layout when Tableau mark is Automatic."""
     rows_cont = any(f.get("continuous") for f in rows if isinstance(f, dict))
     cols_cont = any(f.get("continuous") for f in cols if isinstance(f, dict))
+    cols_has_date = any(f.get("date_part") for f in cols if isinstance(f, dict))
 
     if cols_cont and not rows_cont:
         return "Bar"
-    if rows_cont and not cols_cont:
-        return "Column"
-    if cols_cont and rows_cont:
+    if (cols_cont or cols_has_date) and rows_cont:
         return "Line"
+    if rows_cont and not cols_cont and not cols_has_date:
+        return "Column"
     return "Automatic"

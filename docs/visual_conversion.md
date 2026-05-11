@@ -31,11 +31,14 @@ When Tableau mark is `Automatic`, the pipeline infers the PBI visual type from s
 
 | Rows shelf | Cols shelf | `<encodings><text>` | Inferred PBI type |
 |------------|------------|---------------------|-------------------|
-| Continuous measure | Discrete dimension | — | `columnChart` |
 | Discrete dimension | Continuous measure | — | `barChart` |
-| Continuous measure | Continuous measure | — | `lineChart` |
+| Continuous measure | Date part (any — `yr`, `qr`, `mn`, `wk`, `hr`) | — | `lineChart` |
+| Continuous measure | Continuous measure (non-date) | — | `lineChart` |
+| Continuous measure | Discrete dimension (non-date) | — | `columnChart` |
 | Neither continuous | Either | — | `tableEx` |
 | *(empty)* | *(empty)* | Measure present | `cardVisual` (KPI) |
+
+**Date-part rule:** Tableau treats any date derivation on the Cols shelf (ordinal or continuous) as a time axis, producing a Line chart under Automatic. The pipeline checks `date_part` on the parsed field dict — not `continuous` — to detect this case. Validated against `sql_custom_single_date.twb` Sheet 4 (`yr:order_date:ok` ordinal, `Automatic` mark) and `simple_join_calculated_line.twb` (explicit `Line` mark, same shelf layout).
 
 The last row — both shelves empty, measure only in `<encodings><text>` — is Tableau's single-number KPI view. The parser reclassifies it as internal mark type `KPI` so the generator can map it to `cardVisual`.
 
@@ -70,6 +73,7 @@ How Tableau shelves and encodings map to PBI `queryState` roles inside `visual.j
 | `Series` | Color shelf (dimension) | Dimension — creates one line per value |
 
 **Validated:** `Sales Year` sheet — `order_date Year` on Cols, `SUM(sales)` on Rows, `category` on Color → multiple lines, one per category.
+**Validated:** `sql_custom_single_date.twb` Sheet 4 — `yr:order_date:ok` (ordinal YEAR, `Automatic` mark) on Cols, `SUM(sales)` on Rows → `lineChart`, `Category` bound to `order_date Year` derived column.
 
 ### Area Chart (`areaChart`)
 
@@ -83,8 +87,21 @@ How Tableau shelves and encodings map to PBI `queryState` roles inside `visual.j
 
 | PBI Role | Tableau Source | Field type |
 |----------|---------------|------------|
-| `Category` | Color shelf (dimension via `color_enc_fields`) | Dimension — legend slices |
-| `Y` | Wedge-size encoding (`wedge-size`) | Measure |
+| `Category` | `<encodings><color>` (dimension) | Dimension — legend slices |
+| `Y` | `<encodings><wedge-size>` (primary) or `<encodings><text>` (fallback) | Measure |
+
+**Encoding resolution for `Y` (slice size):**
+
+Tableau serialises the Angle shelf as `<wedge-size>` when a measure is explicitly placed there. When no `<wedge-size>` exists the parser falls back to `<text>` encoding (measure placed on the Label shelf). This covers two Tableau pie-chart authoring patterns:
+
+| Tableau authoring | XML present | Pie slices in PBI |
+|-------------------|------------|-------------------|
+| Measure on Angle shelf | `<wedge-size>` | Sized by that measure |
+| Measure on Label shelf only (equal slices in Tableau) | `<text>` | Sized by the label measure |
+| No measure at all | neither | `Y` role empty — no slices rendered |
+
+**Validated:** `join_custom_rds_pie_map_dual.twb` — `Category` on Color, `SUM(Revenue)` on Angle (`<wedge-size>`) → `pieChart` with `Y = Sum Revenue`.
+**Validated:** `simple_join_calculated_line_dashboard_multiple_visual.twb` `Sales Profit Pie Chart` — `Category` on Color, `Count(Orders)` on Label only (`<text>`, no `<wedge-size>`) → `pieChart` with `Y = Count orders` (text-encoding fallback).
 
 ### Scatter Chart (`scatterChart`)
 
