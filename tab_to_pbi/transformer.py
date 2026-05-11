@@ -95,8 +95,20 @@ def transform(workbook: dict) -> dict:
     # Build display_name → table map so visual field refs stay in sync with TMDL host table
     calc_table_map: dict[str, str] = {cf["name"]: cf["table"] for cf in pending_calc_fields}
 
+    # physical_lookup: ds_name → {logical_name: physical_name} for disambiguated columns
+    # (e.g. "region (orders)" → "region"). PBI columns use physical names; Tableau uses
+    # logical display names when the same column name exists in multiple tables.
+    physical_lookup: dict[str, dict[str, str]] = {}
+    for ds in workbook.get("datasources", []):
+        pmap = {}
+        for col in ds.get("columns", []):
+            physical = col.get("remote_name", col["name"])
+            if physical != col["name"]:
+                pmap[col["name"]] = physical
+        physical_lookup[ds["name"]] = pmap
+
     measures: dict[tuple, dict] = {}
-    visuals, visual_warnings = _process_sheets(workbook, tables, field_lookup, calc_name_lookup, measures, calc_table_map, object_id_lookup)
+    visuals, visual_warnings = _process_sheets(workbook, tables, field_lookup, calc_name_lookup, measures, calc_table_map, object_id_lookup, physical_lookup)
 
     sheet_filters = [
         {"sheet": s["name"], "filters": s.get("filters", [])}
@@ -345,6 +357,7 @@ def _process_sheets(
     measures: dict,
     calc_table_map: dict[str, str] | None = None,
     object_id_lookup: dict[str, dict[str, str]] | None = None,
+    physical_lookup: dict[str, dict[str, str]] | None = None,
 ) -> tuple[list[dict], list[str]]:
     """Map sheets to visual descriptors. Returns (visuals, unsupported_warnings)."""
     ds_list = workbook.get("datasources", [])
@@ -362,6 +375,7 @@ def _process_sheets(
         fmap = field_lookup.get(ds_name, {})
         cmap = calc_name_lookup.get(ds_name, {})
         oid_map = (object_id_lookup or {}).get(ds_name, {})
+        pmap = (physical_lookup or {}).get(ds_name, {})
         col_formats = ds_col_formats.get(ds_name, {})
         default_table = ds_default_table.get(ds_name, "")
 
@@ -378,8 +392,8 @@ def _process_sheets(
                 f"Sheet '{sheet['name']}': mark type '{mark_type}' not supported — rendered as table"
             )
 
-        row_fields = [r for f in rows for r in [_resolve_field(f, fmap, cmap, default_table, measures, calc_table_map, oid_map, date_part_columns)] if r]
-        col_fields = [r for f in cols for r in [_resolve_field(f, fmap, cmap, default_table, measures, calc_table_map, oid_map, date_part_columns)] if r]
+        row_fields = [r for f in rows for r in [_resolve_field(f, fmap, cmap, default_table, measures, calc_table_map, oid_map, date_part_columns, pmap)] if r]
+        col_fields = [r for f in cols for r in [_resolve_field(f, fmap, cmap, default_table, measures, calc_table_map, oid_map, date_part_columns, pmap)] if r]
 
         # Bar mark with measure on rows shelf = vertical bars → columnChart in PBI
         if mark_type == "Bar" and any(f.get("is_measure") for f in row_fields):
@@ -394,7 +408,7 @@ def _process_sheets(
         enc_measures: list[dict] = []
         for f in enc_raw:
             field_name = f["name"] if isinstance(f, dict) else f
-            r = _resolve_field(f, fmap, cmap, default_table, measures, calc_table_map, oid_map, date_part_columns)
+            r = _resolve_field(f, fmap, cmap, default_table, measures, calc_table_map, oid_map, date_part_columns, pmap)
             if not r:
                 continue
             if r.get("is_measure"):
@@ -555,6 +569,7 @@ def _resolve_field(
     calc_table_map: dict[str, str] | None = None,
     object_id_map: dict[str, str] | None = None,
     date_part_columns: dict | None = None,
+    physical_name_map: dict[str, str] | None = None,
 ) -> dict | None:
     """Return {name, is_measure, table} ref, or None if field is a pending calc field."""
     ctmap = calc_table_map or {}
@@ -573,12 +588,15 @@ def _resolve_field(
             measures[key] = {"name": measure_name, "table": pbi_table, "dax": f"COUNTROWS({tname_q})"}
         return {"name": measure_name, "is_measure": True, "table": pbi_table}
 
+    pnmap = physical_name_map or {}
+
     if not isinstance(field, dict):
         if field in calc_name_map:
             display_name = calc_name_map[field]
             return {"name": display_name, "is_measure": True, "table": ctmap.get(display_name, default_table)}
         tname = field_table_map.get(field, default_table)
-        return {"name": field, "is_measure": False, "table": tname}
+        physical = pnmap.get(field, field)
+        return {"name": physical, "is_measure": False, "table": tname}
 
     agg = field.get("aggregation")
     name = field["name"]
@@ -588,30 +606,31 @@ def _resolve_field(
         return {"name": display_name, "is_measure": True, "table": ctmap.get(display_name, default_table)}
 
     tname = field_table_map.get(name, default_table)
+    physical = pnmap.get(name, name)
 
     if field.get("date_part"):
         part = field["date_part"]
-        derived = f"{name} {part.capitalize()}"
+        derived = f"{physical} {part.capitalize()}"
         if date_part_columns is not None:
             tkey = tname or default_table
             bucket = date_part_columns.setdefault(tkey, [])
-            entry = {"base_col": name, "part": part, "derived": derived}
+            entry = {"base_col": physical, "part": part, "derived": derived}
             if entry not in bucket:
                 bucket.append(entry)
         return {"name": derived, "is_measure": False, "table": tname or default_table}
 
     if not agg or not tname:
-        return {"name": name, "is_measure": False, "table": tname or default_table}
+        return {"name": physical, "is_measure": False, "table": tname or default_table}
 
     label = _AGG_LABEL.get(agg, agg)
-    measure_name = f"{label} {name}"
+    measure_name = f"{label} {physical}"
     key = (tname, measure_name)
     if key not in measures:
         tname_q = f"'{tname}'" if any(c in tname for c in " ()/-.,") else tname
         measures[key] = {
             "name": measure_name,
             "table": tname,
-            "dax": f"{agg}({tname_q}[{name}])",
+            "dax": f"{agg}({tname_q}[{physical}])",
         }
     return {"name": measure_name, "is_measure": True, "table": tname}
 

@@ -433,6 +433,66 @@ def _logical_rel(from_table, from_col, to_table, to_col, first_unique=False, sec
     }
 
 
+# ---------------------------------------------------------------------------
+# Regression: disambiguated column name on visual shelf
+# ---------------------------------------------------------------------------
+
+def test_disambiguated_column_uses_physical_name_in_visual():
+    """Visual projections must use physical (remote_name) not Tableau logical name.
+
+    When 'region' exists in both 'people' and 'orders', Tableau names the orders
+    copy 'region (orders)'. PBI columns are named by remote_name ('region').
+    The visual Property must be 'region', not 'region (orders)'.
+    """
+    from tab_to_pbi.transformer import transform as tf
+
+    workbook = {
+        "name": "test",
+        "datasources": [{
+            "name": "ds1",
+            "caption": "DS1",
+            "connection": {"type": "postgres", "server": "h", "dbname": "d"},
+            "tables": [
+                {"name": "people", "schema": "public", "table": "people", "custom_sql": ""},
+                {"name": "orders", "schema": "public", "table": "orders", "custom_sql": ""},
+            ],
+            "columns": [
+                {"name": "region", "remote_name": "region", "datatype": "string", "source_table": "people"},
+                # Tableau disambiguates orders.region as 'region (orders)'
+                {"name": "region (orders)", "remote_name": "region", "datatype": "string", "source_table": "orders"},
+                {"name": "sales", "remote_name": "sales", "datatype": "real", "source_table": "orders"},
+            ],
+            "relationships": [],
+            "calculated_fields": [],
+            "calc_name_map": {},
+        }],
+        "sheets": [{
+            "name": "Sheet1",
+            "datasource": "ds1",
+            "rows": [{"name": "sales", "continuous": True, "aggregation": "SUM", "date_part": None}],
+            "cols": [],
+            "encoding_fields": [{"name": "region (orders)", "continuous": False, "aggregation": None, "date_part": None}],
+            "mark_type": "Bar",
+            "mark_orientation": "",
+            "show_data_labels": False,
+            "filters": [],
+            "sorts": [],
+            "title": None,
+            "visual_format": {},
+        }],
+        "unsupported": [],
+        "datasource_filters": [],
+    }
+
+    transformed = tf(workbook)
+    visual = transformed["visuals"][0]
+    color_fields = visual["color_fields"]
+    assert len(color_fields) == 1
+    assert color_fields[0]["name"] == "region", (
+        f"Expected physical name 'region', got '{color_fields[0]['name']}'"
+    )
+
+
 def test_map_logical_relationship_second_unique_key_keeps_order():
     """second is ONE → from=first(MANY), to=second(ONE): no swap needed."""
     r = _logical_rel("people", "region", "orders", "region", second_unique=True)
