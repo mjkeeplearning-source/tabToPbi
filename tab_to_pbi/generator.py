@@ -732,6 +732,25 @@ def _build_m_expression(
             base_lines, _ = _chain_add_columns(base_lines, "nav", dpc)
         return base_lines, False
 
+    if conn_type == "databricks":
+        server = conn.get("server", "")
+        http_path = conn.get("http_path", "")
+        catalog = conn.get("dbname", "")
+        schema = conn.get("schema", "")
+        table = conn.get("table", "")
+        cat_var = f"{catalog}_Database"
+        sch_var = f"{schema}_Schema"
+        tbl_var = f"{table}_Table"
+        return [
+            "let",
+            f'    Source = DatabricksMultiCloud.Catalogs("{server}", "{http_path}", [Catalog=null, Database=null, QueryTags=null, EnableAutomaticProxyDiscovery=null, Implementation="2.0"]),',
+            f'    {cat_var} = Source{{[Name="{catalog}",Kind="Database"]}}[Data],',
+            f'    {sch_var} = {cat_var}{{[Name="{schema}",Kind="Schema"]}}[Data],',
+            f'    {tbl_var} = {sch_var}{{[Name="{table}",Kind="Table"]}}[Data]',
+            "in",
+            f"    {tbl_var}",
+        ], False
+
     return [f'error "Unsupported connection type: {conn_type}"'], False
 
 

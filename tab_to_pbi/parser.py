@@ -122,8 +122,9 @@ def _parse_connection(ds: ET.Element, query_caption_map: dict | None = None) -> 
             dbname = named.get("dbname", "")
             port = named.get("port", "")
             username = named.get("username", "")
+            http_path = named.get("v-http-path", "")
         else:
-            actual_class = filename = server = dbname = port = username = ""
+            actual_class = filename = server = dbname = port = username = http_path = ""
 
         relation = conn.find("relation")
         rel_type = relation.get("type", "") if relation is not None else ""
@@ -144,6 +145,7 @@ def _parse_connection(ds: ET.Element, query_caption_map: dict | None = None) -> 
         dbname = conn.get("dbname", "")
         port = conn.get("port", "")
         username = conn.get("username", "")
+        http_path = ""
         relation = conn.find("relation")
         custom_sql = ""
         if relation is not None and relation.get("type") == "text":
@@ -167,6 +169,7 @@ def _parse_connection(ds: ET.Element, query_caption_map: dict | None = None) -> 
         "dbname": dbname,
         "port": port,
         "username": username,
+        "http_path": http_path,
         "table": table,
         "table_name": table_name,
         "custom_sql": custom_sql,
@@ -188,10 +191,10 @@ def _parse_tables(ds: ET.Element, connection: dict, query_caption_map: dict | No
     if relation.get("type") == "collection":
         tables = []
         for child in relation.findall("relation[@type='table']"):
-            raw_table = child.get("table", "")  # e.g. [superstore].[orders]
+            raw_table = child.get("table", "")  # e.g. [schema].[table] or [cat].[schema].[table]
             parts = raw_table.strip("[]").split("].[")
-            schema = parts[0] if len(parts) == 2 else ""
-            table = parts[1] if len(parts) == 2 else raw_table.strip("[]")
+            schema = parts[-2] if len(parts) >= 2 else ""
+            table = parts[-1] if len(parts) >= 1 else raw_table.strip("[]")
             tables.append({
                 "name": child.get("name", table),
                 "schema": schema,
@@ -212,8 +215,8 @@ def _parse_tables(ds: ET.Element, connection: dict, query_caption_map: dict | No
             if r.get("type") == "table":
                 raw_table = r.get("table", "")
                 parts = raw_table.strip("[]").split("].[")
-                schema = parts[0] if len(parts) == 2 else ""
-                table_name = parts[1] if len(parts) == 2 else raw_table.strip("[]")
+                schema = parts[-2] if len(parts) >= 2 else ""
+                table_name = parts[-1] if len(parts) >= 1 else raw_table.strip("[]")
                 tables.append({
                     "name": r.get("name", table_name),
                     "schema": schema,
@@ -895,8 +898,8 @@ def _parse_shelf_fields(shelf: str) -> list[dict]:
     return fields
 
 
-_SUPPORTED_CONN_TYPES = {"excel-direct", "textscan", "csv", "postgres", "sqlserver", "mysql", "bigquery", "redshift", "snowflake", "oracle", "teradata", ""}
-_SQL_CONN_TYPES = {"postgres", "sqlserver", "mysql", "bigquery", "redshift", "snowflake", "oracle", "teradata"}
+_SUPPORTED_CONN_TYPES = {"excel-direct", "textscan", "csv", "postgres", "sqlserver", "mysql", "bigquery", "redshift", "snowflake", "oracle", "teradata", "databricks", ""}
+_SQL_CONN_TYPES = {"postgres", "sqlserver", "mysql", "bigquery", "redshift", "snowflake", "oracle", "teradata", "databricks"}
 _UNSUPPORTED_RELATION_TYPES = {"union", "batch-union", "subquery", "stored-proc", "pivot", "project"}
 
 

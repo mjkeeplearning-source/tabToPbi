@@ -2,7 +2,7 @@
 
 import re
 
-_SQL_CONN_TYPES = {"postgres", "sqlserver", "mysql", "bigquery", "redshift", "snowflake", "oracle", "teradata"}
+_SQL_CONN_TYPES = {"postgres", "sqlserver", "mysql", "bigquery", "redshift", "snowflake", "oracle", "teradata", "databricks"}
 
 DATATYPE_MAP = {
     "string": "string",
