@@ -55,7 +55,11 @@
       "Bash(xargs grep -l \"lineChart\")",
       "Bash(xargs -I{} python -c \"import json,sys; d=json.load\\(open\\(sys.argv[1]\\)\\); print\\(sys.argv[1], '->', d.get\\('visual',{}\\).get\\('visualType','n/a'\\)\\)\" {})",
       "WebFetch(domain:www.tableau.com)",
-      "PowerShell(Get-ChildItem -Path \"C:\\\\vibe_coding\\\\tabToPbi\\\\output\\\\db_sample\" -Recurse | ForEach-Object { $_.FullName })"
+      "PowerShell(Get-ChildItem -Path \"C:\\\\vibe_coding\\\\tabToPbi\\\\output\\\\db_sample\" -Recurse | ForEach-Object { $_.FullName })",
+      "WebFetch(domain:kb.tableau.com)",
+      "WebFetch(domain:community.fabric.microsoft.com)",
+      "WebFetch(domain:data-goblins.com)",
+      "WebFetch(domain:biztory.com)"
     ]
   }
 }

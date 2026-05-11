@@ -4,6 +4,48 @@ import re
 
 _SQL_CONN_TYPES = {"postgres", "sqlserver", "mysql", "bigquery", "redshift", "snowflake", "oracle", "teradata", "databricks"}
 
+_RESOLVABLE_TOKENS = {
+    "sheet_name": lambda ctx: ctx["sheet_name"],
+    "workbook_name": lambda ctx: ctx["workbook_name"],
+    "data_connection_name": lambda ctx: ctx["datasource_name"],
+    "default_caption": lambda ctx: ctx["sheet_name"],
+}
+
+
+def _resolve_title(title_info: dict | None, sheet_name: str, workbook_name: str, datasource_name: str = "") -> dict | None:
+    """Resolve parsed title runs to a flat title dict suitable for the generator.
+
+    Named tokens (sheet_name, workbook_name, data_connection_name) are resolved
+    to their values.  Unresolvable tokens and field-ref tokens cause a fallback
+    to the sheet name so the visual always shows a meaningful title.
+    Returns None when title_info is None (no title element in the source).
+    """
+    if title_info is None:
+        return None
+
+    ctx = {"sheet_name": sheet_name, "workbook_name": workbook_name, "datasource_name": datasource_name}
+    parts: list[str] = []
+    has_unresolvable = False
+
+    for run in title_info.get("runs", []):
+        kind = run["kind"]
+        if kind == "text":
+            parts.append(run["value"])
+        elif kind == "token":
+            resolver = _RESOLVABLE_TOKENS.get(run["token"])
+            if resolver:
+                parts.append(resolver(ctx))
+            else:
+                has_unresolvable = True
+        else:  # field_ref
+            has_unresolvable = True
+
+    text = "".join(parts).strip()
+    if has_unresolvable or not text:
+        text = sheet_name
+
+    return {"text": text, **title_info.get("formatting", {})}
+
 DATATYPE_MAP = {
     "string": "string",
     "integer": "int64",
@@ -58,7 +100,7 @@ def _apply_storage_mode(conn: dict) -> dict:
     return {**conn, "storage_mode": "import"}
 
 
-def transform(workbook: dict) -> dict:
+def transform(workbook: dict, workbook_name: str = "") -> dict:
     """Return transformed dict with tables, measures, visuals, relationships, and report."""
     tables = []
     relationships = []
@@ -108,7 +150,7 @@ def transform(workbook: dict) -> dict:
         physical_lookup[ds["name"]] = pmap
 
     measures: dict[tuple, dict] = {}
-    visuals, visual_warnings = _process_sheets(workbook, tables, field_lookup, calc_name_lookup, measures, calc_table_map, object_id_lookup, physical_lookup)
+    visuals, visual_warnings = _process_sheets(workbook, tables, field_lookup, calc_name_lookup, measures, calc_table_map, object_id_lookup, physical_lookup, workbook_name=workbook_name)
 
     sheet_filters = [
         {"sheet": s["name"], "filters": s.get("filters", [])}
@@ -358,6 +400,7 @@ def _process_sheets(
     calc_table_map: dict[str, str] | None = None,
     object_id_lookup: dict[str, dict[str, str]] | None = None,
     physical_lookup: dict[str, dict[str, str]] | None = None,
+    workbook_name: str = "",
 ) -> tuple[list[dict], list[str]]:
     """Map sheets to visual descriptors. Returns (visuals, unsupported_warnings)."""
     ds_list = workbook.get("datasources", [])
@@ -452,7 +495,12 @@ def _process_sheets(
             )
 
         show_data_labels = sheet.get("show_data_labels", False)
-        sheet_title = sheet.get("title")
+        sheet_title = _resolve_title(
+            sheet.get("title"),
+            sheet_name=sheet["name"],
+            workbook_name=workbook_name,
+            datasource_name=sheet.get("datasource", ""),
+        )
         if len(col_measures) > 1:
             # Multiple measures on cols shelf → one visual per measure on the same page
             for m in col_measures:

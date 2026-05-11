@@ -1,8 +1,23 @@
 """Parse .twb / .twbx files into a workbook dict."""
 
+import re
 import zipfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
+
+
+_NAMED_TOKENS = {
+    "<Sheet Name>": "sheet_name",
+    "<Workbook Name>": "workbook_name",
+    "<Data Connection Name>": "data_connection_name",
+    "<Default Caption>": "default_caption",
+    "<Page Name>": "page_name",
+    "<Page Number>": "page_number",
+    "<Page Count>": "page_count",
+    "<Data Update Time>": "data_update_time",
+    "<Full Name>": "user_full_name",
+    "<User Name>": "user_name",
+}
 
 
 def parse(path: Path) -> dict:
@@ -473,31 +488,26 @@ def _parse_object_id_map(ds: ET.Element) -> dict[str, str]:
 
 
 def _parse_title(ws: ET.Element) -> dict | None:
-    """Extract worksheet title text and run-level formatting.
+    """Extract worksheet title runs and formatting.
 
-    Returns None when no custom <title> element exists (PBI omits the title block).
-    For multi-run titles the text of all static runs is joined; formatting is taken
-    from the first static run.  CDATA dynamic field refs are skipped.
-    Tableau-proprietary fonts (prefix 'Tableau ') are dropped so PBI falls back to
-    its default font; bold/italic weight is preserved as a separate property.
+    Returns None when no custom <title> element exists.
+    Each run is classified as one of:
+      {"kind": "text",     "value": "..."}   — static text
+      {"kind": "token",    "token": "..."}   — named system token (e.g. sheet_name)
+      {"kind": "field_ref","value": "..."}   — field-reference token (CDATA, unresolvable)
+    Formatting is captured from the first styled run.
+    Tableau-proprietary fonts (prefix 'Tableau ') are dropped.
     """
     runs = ws.findall("./layout-options/title/formatted-text/run")
     if not runs:
         return None
 
-    text_parts: list[str] = []
+    parsed_runs: list[dict] = []
     formatting: dict = {}
 
     for run in runs:
-        text = (run.text or "").strip()
-        is_dynamic = text.startswith("<[")
+        text = run.text or ""
 
-        # Accumulate static text
-        if text and not is_dynamic:
-            text_parts.append(text)
-
-        # Capture formatting from the first run that carries any style attribute,
-        # regardless of whether it also has text (Tableau sometimes separates them).
         if not formatting and any(run.get(a) for a in ("fontsize", "fontname", "fontcolor", "bold", "italic", "underline")):
             if run.get("fontsize"):
                 formatting["font_size"] = int(float(run.get("fontsize")))
@@ -513,10 +523,24 @@ def _parse_title(ws: ET.Element) -> dict | None:
             if run.get("underline") == "true":
                 formatting["underline"] = True
 
-    text = " ".join(text_parts).strip()
-    if not text:
+        stripped = text.strip()
+        if not stripped:
+            continue
+
+        if stripped in _NAMED_TOKENS:
+            parsed_runs.append({"kind": "token", "token": _NAMED_TOKENS[stripped]})
+        elif re.search(r"<\[", stripped):
+            parsed_runs.append({"kind": "field_ref", "value": stripped})
+        else:
+            # Strip Tableau run-separator chars (Æ + newline used between styled runs)
+            cleaned = stripped.replace("Æ", "").strip()
+            if cleaned:
+                parsed_runs.append({"kind": "text", "value": text})
+
+    if not parsed_runs:
         return None
-    return {"text": text, **formatting}
+
+    return {"runs": parsed_runs, "formatting": formatting}
 
 
 def _field_axis(field_attr: str) -> str:

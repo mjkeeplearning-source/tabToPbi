@@ -39,7 +39,7 @@ def main():
     workbook = parse(input_path)
     _dump(workbook, output_dir / f"{input_path.stem}.parsed.json")
 
-    transformed = transform(workbook)
+    transformed = transform(workbook, workbook_name=input_path.stem)
     transformed = translate_calc_fields_in_transformed(transformed)
     _dump(transformed, output_dir / f"{input_path.stem}.transformed.json")
 
