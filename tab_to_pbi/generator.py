@@ -17,6 +17,7 @@ MARK_TO_VISUAL = {
     "Multipolygon": "filledMap",
     "PolyLine": "map",
     "Text": "tableEx",
+    "CrossTab": "pivotTable",
     "KPI": "cardVisual",
 }
 
@@ -623,13 +624,13 @@ def _build_m_expression(
         lines, _ = _chain_add_columns(base_lines, last_step, dpc)
         return lines, False
 
-    # SQL-based connections share the same structure; only the M connector function differs
+    # SQL-based connections share the same structure; only the M connector function differs.
+    # Snowflake and Databricks use hierarchical navigation and have their own branches below.
     _SQL_CONNECTOR = {
         "postgres":  "PostgreSQL.Database",
         "sqlserver": "Sql.Database",
         "mysql":     "MySQL.Database",
         "redshift":  "AmazonRedshift.Database",
-        "snowflake": "Snowflake.Databases",
         "oracle":    "Oracle.Database",
         "bigquery":  "GoogleBigQuery.Database",
         "teradata":  "Teradata.Database",
@@ -730,6 +731,95 @@ def _build_m_expression(
         ]
         if dpc and storage_mode != "directQuery":
             base_lines, _ = _chain_add_columns(base_lines, "nav", dpc)
+        return base_lines, False
+
+    if conn_type == "snowflake":
+        server    = conn.get("server", "")
+        warehouse = conn.get("warehouse", "")
+        dbname    = conn.get("dbname", "")
+        schema    = conn.get("schema", "")
+        table     = conn.get("table", "")
+        custom_sql = conn.get("custom_sql", "")
+        storage_mode = conn.get("storage_mode", "import")
+        # Warehouse is the 2nd positional arg; Implementation="2.0" selects the ADBC driver
+        # (default for new connections since March 2025 per Microsoft docs).
+        opts = f'"{warehouse}", [Implementation="2.0"]' if warehouse else '[Implementation="2.0"]'
+        source_line = f'    Source = Snowflake.Databases("{server}", {opts}),'
+        # Snowflake.Databases() returns a navigation table, not a connection.
+        # Value.NativeQuery requires the database-level object — navigate first.
+        db_var = f"{dbname}_Database"
+        db_nav_line = f'    {db_var} = Source{{[Name="{dbname}",Kind="Database"]}}[Data],'
+
+        if custom_sql:
+            if dpc and storage_mode == "directQuery":
+                dialect = _DATE_PART_SQL.get("snowflake", {})
+                select_parts = []
+                for dp in dpc:
+                    if dp["part"] not in dialect:
+                        continue
+                    sql_fn = dialect[dp["part"]].format(col=f't0.{dp["base_col"]}')
+                    alias = _m_sql_alias("snowflake", dp["derived"])
+                    select_parts.append(f"{sql_fn} AS {alias}")
+                if select_parts:
+                    wrapped = f'SELECT t0.*, {", ".join(select_parts)} FROM ({custom_sql}) t0'
+                    escaped = wrapped.replace('"', '""')
+                    return [
+                        "let",
+                        source_line,
+                        db_nav_line,
+                        f'    nav = Value.NativeQuery({db_var}, "{escaped}", null, [EnableFolding=true])',
+                        "in",
+                        "    nav",
+                    ], True
+            escaped_sql = custom_sql.replace('"', '""')
+            base_lines = [
+                "let",
+                source_line,
+                db_nav_line,
+                f'    nav = Value.NativeQuery({db_var}, "{escaped_sql}", null, [EnableFolding=true])',
+                "in",
+                "    nav",
+            ]
+            if dpc and storage_mode != "directQuery":
+                base_lines, _ = _chain_add_columns(base_lines, "nav", dpc)
+            return base_lines, True
+
+        if dpc and storage_mode == "directQuery":
+            dialect = _DATE_PART_SQL.get("snowflake", {})
+            select_parts = []
+            for dp in dpc:
+                sql_expr = dialect.get(dp["part"], "").format(col=dp["base_col"])
+                if not sql_expr:
+                    continue
+                alias = _m_sql_alias("snowflake", dp["derived"])
+                select_parts.append(f"{sql_expr} AS {alias}")
+            if select_parts:
+                qual = _m_sql_table("snowflake", schema, table)
+                sql = f"SELECT *, {', '.join(select_parts)} FROM {qual}"
+                return [
+                    "let",
+                    source_line,
+                    db_nav_line,
+                    f'    nav = Value.NativeQuery({db_var}, "{sql}", null, [EnableFolding=true])',
+                    "in",
+                    "    nav",
+                ], False
+
+        # Standard table navigation: Source → Database → Schema → Table
+        db_var  = f"{dbname}_Database"
+        sch_var = f"{schema}_Schema"
+        tbl_var = f"{table}_Table"
+        base_lines = [
+            "let",
+            source_line,
+            f'    {db_var} = Source{{[Name="{dbname}",Kind="Database"]}}[Data],',
+            f'    {sch_var} = {db_var}{{[Name="{schema}",Kind="Schema"]}}[Data],',
+            f'    {tbl_var} = {sch_var}{{[Name="{table}",Kind="Table"]}}[Data]',
+            "in",
+            f"    {tbl_var}",
+        ]
+        if dpc and storage_mode != "directQuery":
+            base_lines, _ = _chain_add_columns(base_lines, tbl_var, dpc)
         return base_lines, False
 
     if conn_type == "databricks":
@@ -948,6 +1038,49 @@ def _make_series_projection(default_table: str, field: dict | str) -> dict:
     }
 
 
+def _make_pivot_dim_projection(default_table: str, field: dict | str) -> dict:
+    """Build a pivotTable Rows/Columns projection: active=true + nativeQueryRef."""
+    if isinstance(field, dict):
+        name = field["name"]
+        table_name = field.get("table") or default_table
+    else:
+        name = field
+        table_name = default_table
+    return {
+        "field": {
+            "Column": {
+                "Expression": {"SourceRef": {"Entity": table_name}},
+                "Property": name,
+            }
+        },
+        "queryRef": f"{table_name}.{name}",
+        "nativeQueryRef": name,
+        "active": True,
+    }
+
+
+def _make_pivot_measure_projection(default_table: str, field: dict | str) -> dict:
+    """Build a pivotTable Values projection: nativeQueryRef only, no active flag."""
+    if isinstance(field, dict):
+        name = field["name"]
+        table_name = field.get("table") or default_table
+        field_type = "Measure" if field.get("is_measure") else "Column"
+    else:
+        name = field
+        table_name = default_table
+        field_type = "Column"
+    return {
+        "field": {
+            field_type: {
+                "Expression": {"SourceRef": {"Entity": table_name}},
+                "Property": name,
+            }
+        },
+        "queryRef": f"{table_name}.{name}",
+        "nativeQueryRef": name,
+    }
+
+
 def _build_sort_definition(sorts: list[dict]) -> dict | None:
     """Build PBI sortDefinition from enriched sort list. Returns None if no sorts."""
     if not sorts:
@@ -976,7 +1109,17 @@ def _write_visual(visual_dir: Path, visual_info: dict, x_offset: int = 20) -> No
     color_fields = visual_info.get("color_fields", [])
 
     col_formats = visual_info.get("col_formats") or {}
-    if visual_type == "cardVisual":
+    crosstab_measures = visual_info.get("crosstab_measures", [])
+    if visual_type == "pivotTable":
+        # CrossTab: row dimensions → Rows, col dimensions → Columns, measures → Values.
+        # Projection structure confirmed from PBI Desktop ground truth (db_crosstab.Report).
+        col_dims = [f for f in col_fields if not (f if isinstance(f, dict) else {}).get("is_measure")]
+        query_state = {
+            "Columns": {"projections": [_make_pivot_dim_projection(table_name, f) for f in col_dims]},
+            "Rows":    {"projections": [_make_pivot_dim_projection(table_name, f) for f in row_fields]},
+            "Values":  {"projections": [_make_pivot_measure_projection(table_name, f) for f in crosstab_measures]},
+        }
+    elif visual_type == "cardVisual":
         # Single-measure KPI card: measure comes from col_fields (text encoding), role is "Data"
         query_state = {
             "Data": {"projections": [_make_projection(table_name, f, col_formats) for f in col_fields]}

@@ -59,7 +59,11 @@
       "WebFetch(domain:kb.tableau.com)",
       "WebFetch(domain:community.fabric.microsoft.com)",
       "WebFetch(domain:data-goblins.com)",
-      "WebFetch(domain:biztory.com)"
+      "WebFetch(domain:biztory.com)",
+      "WebFetch(domain:powerquery.io)",
+      "WebFetch(domain:www.snowflake.com)",
+      "WebFetch(domain:bigdatadave.com)",
+      "Bash(xargs grep -l \"tableEx\\\\|matrix\")"
     ]
   }
 }

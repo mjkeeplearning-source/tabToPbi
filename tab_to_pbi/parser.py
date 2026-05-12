@@ -138,8 +138,9 @@ def _parse_connection(ds: ET.Element, query_caption_map: dict | None = None) -> 
             port = named.get("port", "")
             username = named.get("username", "")
             http_path = named.get("v-http-path", "")
+            warehouse = named.get("warehouse", "")
         else:
-            actual_class = filename = server = dbname = port = username = http_path = ""
+            actual_class = filename = server = dbname = port = username = http_path = warehouse = ""
 
         relation = conn.find("relation")
         rel_type = relation.get("type", "") if relation is not None else ""
@@ -161,6 +162,7 @@ def _parse_connection(ds: ET.Element, query_caption_map: dict | None = None) -> 
         port = conn.get("port", "")
         username = conn.get("username", "")
         http_path = ""
+        warehouse = conn.get("warehouse", "")
         relation = conn.find("relation")
         custom_sql = ""
         if relation is not None and relation.get("type") == "text":
@@ -185,6 +187,7 @@ def _parse_connection(ds: ET.Element, query_caption_map: dict | None = None) -> 
         "port": port,
         "username": username,
         "http_path": http_path,
+        "warehouse": warehouse,
         "table": table,
         "table_name": table_name,
         "custom_sql": custom_sql,
@@ -702,6 +705,14 @@ def _parse_sheets(root: ET.Element) -> list[dict]:
             if col_attr:
                 wedge_enc_fields.extend(_parse_shelf_fields(col_attr))
 
+        # CrossTab: both shelves have content + text encoding is the virtual "Multiple Values"
+        # field. Actual measures are listed in the :Measure Names categorical filter.
+        is_crosstab = (
+            mark_type == "Automatic"
+            and bool(rows_text.strip())
+            and bool(cols_text.strip())
+            and any(f.get("name") == "Multiple Values" for f in text_enc_fields)
+        )
         is_text_table = (
             mark_type == "Automatic"
             and bool(rows_text.strip())
@@ -717,7 +728,14 @@ def _parse_sheets(root: ET.Element) -> list[dict]:
             and bool(text_enc_fields)
         )
         rows_parsed = _parse_shelf_fields(rows_text)
-        if is_text_table:
+        if is_crosstab:
+            col_fields = _parse_shelf_fields(cols_text)
+            crosstab_measures = _extract_measure_names_filter(ws)
+            mark_type = "CrossTab"
+            encoding_fields = []
+            # Attach crosstab measures so transformer can place them in Values role
+            _crosstab_measures_tmp = crosstab_measures
+        elif is_text_table:
             col_fields = text_enc_fields
             mark_type = "Text"
             encoding_fields: list[dict] = []
@@ -738,7 +756,7 @@ def _parse_sheets(root: ET.Element) -> list[dict]:
             # so mark-type inference runs on shelf fields only, appended later
             encoding_fields = color_enc_fields
 
-        sheets.append({
+        sheet: dict = {
             "name": name,
             "title": _parse_title(ws),
             "datasource": datasource,
@@ -751,8 +769,41 @@ def _parse_sheets(root: ET.Element) -> list[dict]:
             "filters": _parse_filters(ws),
             "sorts": _parse_sorts(ws),
             "visual_format": _parse_worksheet_format(ws),
-        })
+        }
+        if is_crosstab:
+            sheet["crosstab_measures"] = _crosstab_measures_tmp
+        sheets.append(sheet)
     return sheets
+
+
+def _extract_measure_names_filter(ws: ET.Element) -> list[dict]:
+    """Extract actual measures from the :Measure Names categorical filter in a CrossTab sheet.
+
+    Tableau encodes crosstab cell measures as members of a categorical filter on
+    the virtual [:Measure Names] column, e.g. member="[ds].[sum:quantity:qk]".
+    Returns a list of parsed measure dicts (name, aggregation, is_measure=True).
+    """
+    measures = []
+    for f in ws.findall("./table/view/filter[@class='categorical']"):
+        col = f.get("column", "")
+        if "].[:" not in col:
+            continue
+        field_ref = col.split("].[", 1)[1].rstrip("]")
+        if not field_ref.startswith(":Measure Names"):
+            continue
+        for gf in f.iter("groupfilter"):
+            if gf.get("function") != "member":
+                continue
+            member = gf.get("member", "").strip('"')
+            if "].[" in member:
+                inner = member.split("].[", 1)[1].rstrip("]")
+            else:
+                inner = member.strip("[]")
+            parsed = _parse_shelf_fields(f"[placeholder].[{inner}]")
+            for field in parsed:
+                field["is_measure"] = True
+                measures.append(field)
+    return measures
 
 
 def _parse_filter_element(f: ET.Element) -> dict | None:

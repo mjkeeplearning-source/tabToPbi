@@ -387,7 +387,7 @@ def _map_multi_table_sql(
 _SUPPORTED_MARK_TYPES = {
     "Bar", "Column", "Line", "Area", "Pie",
     "Circle", "Shape", "Polygon", "Multipolygon", "PolyLine",
-    "Text", "Automatic",
+    "Text", "Automatic", "CrossTab", "KPI",
 }
 
 
@@ -437,6 +437,14 @@ def _process_sheets(
 
         row_fields = [r for f in rows for r in [_resolve_field(f, fmap, cmap, default_table, measures, calc_table_map, oid_map, date_part_columns, pmap)] if r]
         col_fields = [r for f in cols for r in [_resolve_field(f, fmap, cmap, default_table, measures, calc_table_map, oid_map, date_part_columns, pmap)] if r]
+
+        # CrossTab: resolve measures from :Measure Names filter and attach as crosstab_measures
+        crosstab_measures: list[dict] = []
+        if mark_type == "CrossTab":
+            for f in sheet.get("crosstab_measures", []):
+                r = _resolve_field(f, fmap, cmap, default_table, measures, calc_table_map, oid_map, date_part_columns, pmap)
+                if r:
+                    crosstab_measures.append(r)
 
         # Bar mark with measure on rows shelf = vertical bars → columnChart in PBI
         if mark_type == "Bar" and any(f.get("is_measure") for f in row_fields):
@@ -521,7 +529,7 @@ def _process_sheets(
                     "col_formats": col_formats,
                 })
         else:
-            visuals.append({
+            v: dict = {
                 "name": sheet["name"],
                 "page_name": sheet["name"],
                 "title": sheet_title,
@@ -536,7 +544,10 @@ def _process_sheets(
                 "sorts": enriched_sorts,
                 "visual_format": visual_fmt,
                 "col_formats": col_formats,
-            })
+            }
+            if crosstab_measures:
+                v["crosstab_measures"] = crosstab_measures
+            visuals.append(v)
     for table in tables:
         table["date_part_columns"] = date_part_columns.get(table["name"], [])
     return visuals, unsupported_warnings
@@ -689,10 +700,12 @@ def _infer_mark_type(rows: list, cols: list) -> str:
     cols_cont = any(f.get("continuous") for f in cols if isinstance(f, dict))
     cols_has_date = any(f.get("date_part") for f in cols if isinstance(f, dict))
 
+    rows_has_measure = any(f.get("aggregation") for f in rows if isinstance(f, dict))
+
     if cols_cont and not rows_cont:
         return "Bar"
     if (cols_cont or cols_has_date) and rows_cont:
         return "Line"
-    if rows_cont and not cols_cont and not cols_has_date:
+    if rows_cont and rows_has_measure and not cols_cont and not cols_has_date:
         return "Column"
     return "Automatic"
