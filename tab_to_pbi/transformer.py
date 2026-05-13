@@ -691,7 +691,7 @@ def _resolve_field(
             "table": tname,
             "dax": f"{agg}({tname_q}[{physical}])",
         }
-    return {"name": measure_name, "is_measure": True, "table": tname}
+    return {"name": measure_name, "is_measure": True, "table": tname, "base_name": physical}
 
 
 def _infer_mark_type(rows: list, cols: list) -> str:

@@ -1065,10 +1065,12 @@ def _make_pivot_measure_projection(default_table: str, field: dict | str) -> dic
         name = field["name"]
         table_name = field.get("table") or default_table
         field_type = "Measure" if field.get("is_measure") else "Column"
+        base = field.get("base_name", name)
     else:
         name = field
         table_name = default_table
         field_type = "Column"
+        base = name
     return {
         "field": {
             field_type: {
@@ -1077,7 +1079,8 @@ def _make_pivot_measure_projection(default_table: str, field: dict | str) -> dic
             }
         },
         "queryRef": f"{table_name}.{name}",
-        "nativeQueryRef": name,
+        "nativeQueryRef": base,
+        "displayName": base,
     }
 
 
@@ -1180,8 +1183,15 @@ def _build_objects(visual_info: dict, visual_type: str) -> dict:
 
     objects: dict = {}
 
-    if visual_info.get("show_data_labels") and visual_type != "tableEx":
+    if visual_info.get("show_data_labels") and visual_type not in ("tableEx", "pivotTable"):
         objects["labels"] = [{"properties": {"show": lit("true")}}]
+
+    if visual_type == "pivotTable" and visual_info.get("crosstab_measures") and not visual_info.get("row_fields"):
+        objects["values"] = [{"properties": {"valuesOnRow": lit("true")}}]
+        objects["subTotals"] = [{"properties": {
+            "rowSubtotals": lit("false"),
+            "columnSubtotals": lit("false"),
+        }}]
 
     fmt = visual_info.get("visual_format", {})
     if not fmt or visual_type not in _AXIS_VISUAL_TYPES:

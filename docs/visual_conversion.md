@@ -16,7 +16,8 @@ Tableau mark type → PBI `visualType` in `visual.json`.
 | `Line` | `lineChart` | High | Line chart; date/category on X, measure on Y |
 | `Area` | `areaChart` | High | Area chart; same shelf layout as Line |
 | `Pie` | `pieChart` | High | Pie chart; dimension on Color shelf = legend slices |
-| `Text` | `tableEx` | High | Cross-tab / text table |
+| `Text` | `tableEx` | High | Text table (flat row/col layout, no measure pivot) |
+| `CrossTab` *(internal)* | `pivotTable` | High | Matrix; Tableau `Automatic` mark with `Measure Names` on Rows and a dimension on Cols — see CrossTab section below |
 | `KPI` *(internal)* | `cardVisual` | High | Single-number summary; both shelves empty, measure in `<encodings><text>` |
 | `Automatic` | *(inferred)* | Medium | Inferred from shelf layout — see Automatic inference rules below |
 | `Circle` | `scatterChart` | Medium | Scatter plot |
@@ -132,6 +133,80 @@ Tableau serialises the Angle shelf as `<wedge-size>` when a measure is explicitl
 | PBI Role | Tableau Source | Field type |
 |----------|---------------|------------|
 | `Values` | All row + col fields combined | Any |
+
+### Matrix / CrossTab (`pivotTable`) ✓ Validated
+
+Tableau's CrossTab view places `Measure Names` (a virtual field) on the **Rows shelf** and a real dimension on the **Cols shelf**. This creates a matrix where measure names appear as row headers and dimension values span the columns.
+
+**Detection signal** (parser → `mark_type = "CrossTab"`):
+- Mark type is `Automatic`
+- Both Rows and Cols shelves are non-empty
+- `<encodings><text>` carries the virtual `Multiple Values` field
+- Actual measures are extracted from the `:Measure Names` categorical filter
+
+#### queryState Role Mapping
+
+| PBI Role | Tableau Source | Notes |
+|----------|---------------|-------|
+| `Columns` | Cols shelf dimension | `active: true` on projection |
+| `Rows` | *(empty)* | Rows shelf held `Measure Names` (virtual) — no real field to bind |
+| `Values` | Measures from `:Measure Names` filter | `nativeQueryRef` and `displayName` set to the **base field name** (see below) |
+
+#### Required `objects` Properties
+
+Two `objects` entries must be set for the CrossTab (Measure Names on Rows) pattern. These are absent from the generator's default output and must be explicitly written:
+
+```json
+"objects": {
+  "values": [
+    {
+      "properties": {
+        "valuesOnRow": { "expr": { "Literal": { "Value": "true" } } }
+      }
+    }
+  ],
+  "subTotals": [
+    {
+      "properties": {
+        "rowSubtotals":    { "expr": { "Literal": { "Value": "false" } } },
+        "columnSubtotals": { "expr": { "Literal": { "Value": "false" } } }
+      }
+    }
+  ]
+}
+```
+
+| Property | Value | Effect |
+|----------|-------|--------|
+| `objects.values[0].valuesOnRow` | `true` | Switches PBI Matrix from "measures as column sub-headers" (default) to "measures as row items" — matches Tableau's Measure Names on Rows layout |
+| `objects.subTotals[0].rowSubtotals` | `false` | Removes the Grand Total row (Tableau does not show it by default) |
+| `objects.subTotals[0].columnSubtotals` | `false` | Removes the Grand Total column (same reason) |
+
+**Important:** `objects.labels` (data labels) must NOT be set on `pivotTable` visuals. PBI Matrix does not support this formatting key; it is only valid on chart visual types.
+
+#### Values Projection: `nativeQueryRef` and `displayName`
+
+In "values on rows" mode, PBI uses `nativeQueryRef` as the row label shown in the matrix. The DAX measure name (e.g. `Sum profit`) must NOT be used here — it would show `Sum profit` as the row header instead of `profit` (matching Tableau's display).
+
+| Projection field | Value | Reason |
+|-----------------|-------|--------|
+| `Property` | DAX measure name (`Sum profit`) | Points to the actual measure in the semantic model |
+| `queryRef` | `<table>.Sum profit` | Standard query reference |
+| `nativeQueryRef` | Base field name (`profit`) | Used as the row label in "values on rows" mode |
+| `displayName` | Base field name (`profit`) | Explicit label override; matches Tableau row header |
+
+The base field name is the physical column name before the aggregation label prefix is applied (`_resolve_field` in `transformer.py` stores it as `base_name`).
+
+#### Trigger Condition in Code
+
+`_build_objects()` in `generator.py` emits the `valuesOnRow` + `subTotals` block when:
+- `visual_type == "pivotTable"`
+- `visual_info["crosstab_measures"]` is non-empty
+- `visual_info["row_fields"]` is empty
+
+This correctly excludes CrossTab visuals that have a real dimension on the Rows shelf (e.g. `db_crosstab` pattern: `product` on Rows, `country` on Cols), where "values on rows" should NOT be set and PBI's default column-sub-header layout is correct.
+
+**Validated:** `Sales Profit CrossTab` sheet (`simple_join_calculated_line_dashboard_multiple_visual_multiple_dashboard.twb`) — `region` on Cols, `SUM(profit)` + `SUM(quantity)` as Measure Values → `pivotTable` with `valuesOnRow: true`, row labels `profit` / `quantity`, regions as column headers.
 
 ---
 
