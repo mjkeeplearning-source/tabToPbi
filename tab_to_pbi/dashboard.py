@@ -165,12 +165,12 @@ def _resolve_field_entity(field_name: str, transformed: dict) -> str:
     return ""
 
 
-def _find_visual_for_sheet(sheet_name: str, transformed: dict) -> dict | None:
-    """Return first visual dict from transformed output matching the sheet page name."""
-    for v in transformed.get("visuals", []):
-        if v.get("page_name") == sheet_name or v.get("name") == sheet_name:
-            return v
-    return None
+def _find_visuals_for_sheet(sheet_name: str, transformed: dict) -> list[dict]:
+    """Return all visuals from transformed output matching the sheet page name."""
+    return [
+        v for v in transformed.get("visuals", [])
+        if v.get("page_name") == sheet_name or v.get("name") == sheet_name
+    ]
 
 
 def transform_dashboards(
@@ -193,25 +193,30 @@ def transform_dashboards(
             ph = _scale(zone["h"], _PBI_H)
 
             if zone["zone_type"] == "sheet":
-                source = _find_visual_for_sheet(zone["name"], transformed)
-                if source is None:
+                sources = _find_visuals_for_sheet(zone["name"], transformed)
+                if not sources:
                     continue
-                visuals.append({
-                    "visual_id": visual_id,
-                    "visual_type": "chart",
-                    "x": px, "y": py, "width": pw, "height": ph,
-                    "source_sheet": zone["name"],
-                    "mark_type": source["mark_type"],
-                    "table": source["table"],
-                    "row_fields": source.get("row_fields", []),
-                    "col_fields": source.get("col_fields", []),
-                    "show_data_labels": source.get("show_data_labels", False),
-                    "visual_format": source.get("visual_format", {}),
-                    "col_formats": source.get("col_formats", {}),
-                    "sorts": source.get("sorts", []),
-                    "title": source.get("title"),
-                })
-                visual_idx += 1
+                n = len(sources)
+                sub_w = pw // n
+                for i, source in enumerate(sources):
+                    sub_x = px + i * sub_w
+                    vid = f"dash_visual_{visual_idx + 1}"
+                    visuals.append({
+                        "visual_id": vid,
+                        "visual_type": "chart",
+                        "x": sub_x, "y": py, "width": sub_w, "height": ph,
+                        "source_sheet": zone["name"],
+                        "mark_type": source["mark_type"],
+                        "table": source["table"],
+                        "row_fields": source.get("row_fields", []),
+                        "col_fields": source.get("col_fields", []),
+                        "show_data_labels": source.get("show_data_labels", False),
+                        "visual_format": source.get("visual_format", {}),
+                        "col_formats": source.get("col_formats", {}),
+                        "sorts": source.get("sorts", []),
+                        "title": source.get("title"),
+                    })
+                    visual_idx += 1
 
             elif zone["zone_type"] == "filter":
                 entity = _resolve_field_entity(zone["param_field"], transformed)
