@@ -41,7 +41,8 @@ When starting a new implementation, pick the next ACTIVE plan from this table an
 
 | Plan | Title | Status | Spec |
 |------|-------|--------|------|
-| 1 | Dashboard Migration | 🔄 ACTIVE | `docs/superpowers/plans/2026-05-08-dashboard-migration.md` |
+| 1 | Dashboard Migration | ✅ DONE | `docs/superpowers/plans/2026-05-08-dashboard-migration.md` |
+| 2 | Visual Mapping Agent | 🔄 ACTIVE | `docs/superpowers/plans/2026-05-13-visual-mapping-agent.md` |
 
 **Statuses:** 🔄 ACTIVE — in progress · ✅ DONE — complete · ⏸ PAUSED — blocked/deferred
 

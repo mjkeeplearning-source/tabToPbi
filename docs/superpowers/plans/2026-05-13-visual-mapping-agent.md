@@ -1,6 +1,6 @@
 # Visual Mapping Agent Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **Execution approach:** Inline execution via `superpowers:executing-plans` in a single session with checkpoints for review.
 
 **Goal:** Build an offline registry builder (`visual_agent.py`) that scans existing pipeline output to auto-generate `samples/visual_mappings.json` and regenerate `docs/visual_conversion.md`, then wire a thin runtime reader (`visual_mapper.py`) into the pipeline so hardcoded visual dicts are replaced by registry lookups with hardcoded fallbacks.
 
