@@ -5,7 +5,12 @@ import zipfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-from tab_to_pbi.generator import MARK_TO_VISUAL, _VISUAL_ROLES, _make_projection, _build_objects, _build_title_objects
+from tab_to_pbi.generator import (
+    MARK_TO_VISUAL, _VISUAL_ROLES, _SERIES_VISUAL_TYPES,
+    _make_projection, _make_series_projection,
+    _make_pivot_dim_projection, _make_pivot_measure_projection,
+    _build_objects, _build_title_objects,
+)
 
 _SCHEMA_BASE = "https://developer.microsoft.com/json-schemas/fabric/item/report"
 _PBI_W = 1280
@@ -210,6 +215,8 @@ def transform_dashboards(
                         "table": source["table"],
                         "row_fields": source.get("row_fields", []),
                         "col_fields": source.get("col_fields", []),
+                        "color_fields": source.get("color_fields", []),
+                        "crosstab_measures": source.get("crosstab_measures", []),
                         "show_data_labels": source.get("show_data_labels", False),
                         "visual_format": source.get("visual_format", {}),
                         "col_formats": source.get("col_formats", {}),
@@ -360,8 +367,17 @@ def _build_chart_visual(name: str, visual: dict) -> dict:
     table = visual["table"]
     row_fields = visual.get("row_fields", [])
     col_fields = visual.get("col_fields", [])
+    color_fields = visual.get("color_fields", [])
+    crosstab_measures = visual.get("crosstab_measures", [])
 
-    if visual_type in _VISUAL_ROLES:
+    if visual_type == "pivotTable":
+        col_dims = [f for f in col_fields if not f.get("is_measure")]
+        query_state = {
+            "Columns": {"projections": [_make_pivot_dim_projection(table, f) for f in col_dims]},
+            "Rows":    {"projections": [_make_pivot_dim_projection(table, f) for f in row_fields]},
+            "Values":  {"projections": [_make_pivot_measure_projection(table, f) for f in crosstab_measures]},
+        }
+    elif visual_type in _VISUAL_ROLES:
         cat_role, val_role, cat_shelf, val_shelf = _VISUAL_ROLES[visual_type]
         cat_fields = row_fields if cat_shelf == "row" else col_fields
         val_fields = col_fields if val_shelf == "col" else row_fields
@@ -369,6 +385,10 @@ def _build_chart_visual(name: str, visual: dict) -> dict:
             cat_role: {"projections": [_make_projection(table, f) for f in cat_fields]},
             val_role: {"projections": [_make_projection(table, f) for f in val_fields]},
         }
+        if color_fields and visual_type in _SERIES_VISUAL_TYPES:
+            query_state["Series"] = {
+                "projections": [_make_series_projection(table, f) for f in color_fields]
+            }
     else:
         all_fields = row_fields + [f for f in col_fields if f not in row_fields]
         query_state = {
