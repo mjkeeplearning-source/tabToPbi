@@ -103,6 +103,7 @@ def _parse_datasources(root: ET.Element) -> tuple[list[dict], list[str]]:
         calc_name_map = {cf["internal_name"]: cf["name"] for cf in calculated_fields}
         column_formats = _parse_column_formats(ds)
         object_id_map = _parse_object_id_map(ds)
+        color_palettes = _parse_datasource_color_palette(ds)
 
         results.append({
             "name": name,
@@ -115,6 +116,7 @@ def _parse_datasources(root: ET.Element) -> tuple[list[dict], list[str]]:
             "relationships": relationships,
             "column_formats": column_formats,
             "object_id_map": object_id_map,
+            "color_palettes": color_palettes,
         })
     return results, all_join_flags
 
@@ -665,6 +667,26 @@ def _parse_worksheet_format(ws: ET.Element) -> dict:
     return result
 
 
+def _parse_datasource_color_palette(ds: ET.Element) -> dict[str, dict[str, str]]:
+    """Return {field_name: {value: hex}} from datasource color palette encodings."""
+    result: dict[str, dict[str, str]] = {}
+    for enc in ds.findall('.//encoding[@attr="color"][@type="palette"]'):
+        field_attr = enc.get("field", "").strip("[]")
+        segs = field_attr.split(":", 2)
+        field_name = segs[1] if len(segs) >= 2 else field_attr
+        if not field_name:
+            continue
+        palette: dict[str, str] = {}
+        for m in enc.findall("map"):
+            hex_color = m.get("to", "")
+            bucket = (m.findtext("bucket") or "").strip('"')
+            if hex_color and bucket:
+                palette[bucket] = hex_color
+        if palette:
+            result[field_name] = palette
+    return result
+
+
 def _parse_sheets(root: ET.Element) -> list[dict]:
     """Extract worksheet definitions."""
     sheets = []
@@ -763,6 +785,7 @@ def _parse_sheets(root: ET.Element) -> list[dict]:
             "rows": rows_parsed,
             "cols": col_fields,
             "encoding_fields": encoding_fields,
+            "color_dimension": color_enc_fields[0]["name"] if color_enc_fields else None,
             "mark_type": mark_type,
             "mark_orientation": mark_orientation,
             "show_data_labels": show_data_labels,

@@ -407,6 +407,8 @@ def _process_sheets(
     ds_default_table = {ds["name"]: tables[i]["name"] for i, ds in enumerate(ds_list) if i < len(tables)}
     # column_formats: ds_name → {col_name: format_string}
     ds_col_formats = {ds["name"]: ds.get("column_formats", {}) for ds in ds_list}
+    # color_palettes: ds_name → {field_name: {value: hex}}
+    ds_color_palettes = {ds["name"]: ds.get("color_palettes", {}) for ds in ds_list}
 
     # Accumulate date-part derived columns per table across all sheets and filters
     date_part_columns: dict[str, list] = {}
@@ -474,6 +476,21 @@ def _process_sheets(
             col_fields = col_fields + enc_measures
         color_fields = enc_dims  # dimension on color shelf → PBI Series role
 
+        # Resolve color palette: look up datasource palette by the Tableau color dimension field.
+        # color_dimension is the logical field name (e.g. "region (orders)", "category").
+        # Physical name (for PBI Property) comes from the physical_name_map.
+        color_dim_name = sheet.get("color_dimension")
+        pmap = (physical_lookup or {}).get(ds_name, {})
+        color_palette: dict = {}
+        color_field_entity = ""
+        color_field_property = ""
+        if color_dim_name:
+            palette_map = ds_color_palettes.get(ds_name, {}).get(color_dim_name, {})
+            if palette_map:
+                color_palette = palette_map
+                color_field_entity = fmap.get(color_dim_name, default_table)
+                color_field_property = pmap.get(color_dim_name, color_dim_name)
+
         col_measures = [f for f in col_fields if f and f.get("is_measure")]
         col_dims = [f for f in col_fields if f and not f.get("is_measure")]
 
@@ -521,6 +538,9 @@ def _process_sheets(
                     "row_fields": row_fields,
                     "col_fields": col_dims + [m],
                     "color_fields": color_fields,
+                    "color_palette": color_palette,
+                    "color_field_entity": color_field_entity,
+                    "color_field_property": color_field_property,
                     "mark_type": mark_type,
                     "show_data_labels": show_data_labels,
                     "filters": enriched_filters,
@@ -538,6 +558,9 @@ def _process_sheets(
                 "row_fields": row_fields,
                 "col_fields": col_fields,
                 "color_fields": color_fields,
+                "color_palette": color_palette,
+                "color_field_entity": color_field_entity,
+                "color_field_property": color_field_property,
                 "mark_type": mark_type,
                 "show_data_labels": show_data_labels,
                 "filters": enriched_filters,

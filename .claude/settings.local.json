@@ -66,7 +66,11 @@
       "Bash(xargs grep -l \"tableEx\\\\|matrix\")",
       "Bash(Select-Object -First 20)",
       "Bash(Format-Table FullName)",
-      "Bash(Select-Object Name, FullName)"
+      "Bash(Select-Object Name, FullName)",
+      "WebFetch(domain:www.sqlbi.com)",
+      "WebFetch(domain:tabulareditor.com)",
+      "WebFetch(domain:powerbimvp.com)",
+      "WebFetch(domain:www.thinkbi.de)"
     ]
   }
 }

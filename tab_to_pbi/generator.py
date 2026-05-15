@@ -1177,7 +1177,7 @@ _AXIS_VISUAL_TYPES = {"barChart", "columnChart", "lineChart", "areaChart", "pieC
 
 
 def _build_objects(visual_info: dict, visual_type: str) -> dict:
-    """Build the visual.objects dict from data-labels flag and visual_format."""
+    """Build the visual.objects dict from data-labels flag, color palette, and visual_format."""
     def lit(v: str) -> dict:
         return {"expr": {"Literal": {"Value": v}}}
 
@@ -1185,6 +1185,41 @@ def _build_objects(visual_info: dict, visual_type: str) -> dict:
 
     if visual_info.get("show_data_labels") and visual_type not in ("tableEx", "pivotTable"):
         objects["labels"] = [{"properties": {"show": lit("true")}}]
+
+    color_palette = visual_info.get("color_palette", {})
+    color_entity = visual_info.get("color_field_entity", "")
+    color_prop = visual_info.get("color_field_property", "")
+    if color_palette and color_entity and color_prop:
+        dp = []
+        for value, hex_color in color_palette.items():
+            dp.append({
+                "properties": {
+                    "fill": {
+                        "solid": {
+                            "color": {"expr": {"Literal": {"Value": f"'{hex_color}'"}}}
+                        }
+                    }
+                },
+                "selector": {
+                    "data": [
+                        {
+                            "scopeId": {
+                                "Comparison": {
+                                    "ComparisonKind": 0,
+                                    "Left": {
+                                        "Column": {
+                                            "Expression": {"SourceRef": {"Entity": color_entity}},
+                                            "Property": color_prop,
+                                        }
+                                    },
+                                    "Right": {"Literal": {"Value": f"'{value}'"}},
+                                }
+                            }
+                        }
+                    ]
+                },
+            })
+        objects["dataPoint"] = dp
 
     if visual_type == "pivotTable" and visual_info.get("crosstab_measures") and not visual_info.get("row_fields"):
         objects["values"] = [{"properties": {"valuesOnRow": lit("true")}}]
