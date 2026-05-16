@@ -653,6 +653,13 @@ def _parse_worksheet_format(ws: ET.Element) -> dict:
         elif element in _UNSUPPORTED_FORMAT_ELEMENTS:
             unsupported.append(element)
 
+    # mark-color lives in pane/style, not table/style — check pane path directly
+    mark_color_fmt = ws.find(
+        "./table/panes/pane/style/style-rule[@element='mark']/format[@attr='mark-color']"
+    )
+    if mark_color_fmt is not None:
+        plot_area["mark_color"] = mark_color_fmt.get("value", "")
+
     result: dict = {}
     if value_axis:
         result["value_axis"] = value_axis

@@ -1236,6 +1236,31 @@ def _build_objects(visual_info: dict, visual_type: str) -> dict:
             })
         objects["dataPoint"] = dp
 
+    mark_color = (visual_info.get("visual_format") or {}).get("plot_area", {}).get("mark_color")
+    if mark_color and not color_palette and visual_type not in ("tableEx", "pivotTable"):
+        table_name = visual_info.get("table", "")
+        row_fields = visual_info.get("row_fields", [])
+        col_fields = visual_info.get("col_fields", [])
+        y_measures: list[dict] = []
+        if visual_type in _VISUAL_ROLES:
+            _, _, _, val_shelf = _VISUAL_ROLES[visual_type]
+            val_fields = col_fields if val_shelf == "col" else row_fields
+            y_measures = [f for f in val_fields if isinstance(f, dict) and f.get("is_measure")]
+        if len(y_measures) > 1:
+            dp = []
+            for f in y_measures:
+                f_table = f.get("table") or table_name
+                query_ref = f"{f_table}.{f['name']}"
+                dp.append({
+                    "properties": {"fill": {"solid": {"color": lit(f"'{mark_color}'")}}},
+                    "selector": {"metadata": query_ref},
+                })
+            objects["dataPoint"] = dp
+        else:
+            objects["dataPoint"] = [
+                {"properties": {"fill": {"solid": {"color": lit(f"'{mark_color}'")}}}}
+            ]
+
     if visual_type == "pivotTable" and visual_info.get("crosstab_measures") and not visual_info.get("row_fields"):
         objects["values"] = [{"properties": {"valuesOnRow": lit("true")}}]
         objects["subTotals"] = [{"properties": {
