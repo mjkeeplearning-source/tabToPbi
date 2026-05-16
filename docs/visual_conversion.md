@@ -76,13 +76,25 @@ How Tableau shelves and encodings map to PBI `queryState` roles inside `visual.j
 **Validated:** `Sales Year` sheet — `order_date Year` on Cols, `SUM(sales)` on Rows, `category` on Color → multiple lines, one per category.
 **Validated:** `sql_custom_single_date.twb` Sheet 4 — `yr:order_date:ok` (ordinal YEAR, `Automatic` mark) on Cols, `SUM(sales)` on Rows → `lineChart`, `Category` bound to `order_date Year` derived column.
 
-### Area Chart (`areaChart`)
+### Area Chart (`areaChart` / `stackedAreaChart`)
+
+Tableau automatically stacks areas when a dimension is on the Color shelf.
+The output visual type depends on whether a color dimension is present:
+
+| Tableau config | PBI `visualType` |
+|---|---|
+| Area mark, **no color dimension** | `areaChart` (overlapping, each series from zero) |
+| Area mark, **dimension on Color shelf** | `stackedAreaChart` (stacked, cumulative) |
+
+Both types use identical roles:
 
 | PBI Role | Tableau Source | Field type |
 |----------|---------------|------------|
 | `Category` | Cols shelf | Dimension |
 | `Y` | Rows shelf | Measure |
-| `Series` | Color shelf (dimension) | Dimension — creates stacked/overlapping areas |
+| `Series` | Color shelf (dimension) | Dimension — triggers `stackedAreaChart` |
+
+**Validated:** `daatabricks.twb` Area Chart sheet — `product` on Cols, `SUM(quantity)` on Rows, `country` on Color → `stackedAreaChart` with `Category/Y/Series` roles. Ground truth from PBI Desktop 2.152 `visual.json`.
 
 ### Pie Chart (`pieChart`) ✓ Validated
 

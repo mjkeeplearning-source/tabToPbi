@@ -70,7 +70,8 @@
       "WebFetch(domain:www.sqlbi.com)",
       "WebFetch(domain:tabulareditor.com)",
       "WebFetch(domain:powerbimvp.com)",
-      "WebFetch(domain:www.thinkbi.de)"
+      "WebFetch(domain:www.thinkbi.de)",
+      "Skill(superpowers:test-driven-development)"
     ]
   }
 }

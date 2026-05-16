@@ -10,6 +10,7 @@ from tab_to_pbi.generator import (
     _make_projection, _make_series_projection,
     _make_pivot_dim_projection, _make_pivot_measure_projection,
     _build_objects, _build_title_objects,
+    resolve_visual_type,
 )
 
 _SCHEMA_BASE = "https://developer.microsoft.com/json-schemas/fabric/item/report"
@@ -366,7 +367,7 @@ def _base_container(name: str, visual: dict) -> dict:
 
 
 def _build_chart_visual(name: str, visual: dict) -> dict:
-    visual_type = MARK_TO_VISUAL.get(visual["mark_type"], "tableEx")
+    visual_type = resolve_visual_type(visual["mark_type"], visual.get("color_fields", []))
     table = visual["table"]
     row_fields = visual.get("row_fields", [])
     col_fields = visual.get("col_fields", [])

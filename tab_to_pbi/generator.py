@@ -965,15 +965,16 @@ def _write_page(page_dir: Path, page_visuals: list[dict], base_visual_idx: int) 
 
 
 # Visual types that support a Series role (dimension → multiple lines/grouped bars)
-_SERIES_VISUAL_TYPES = {"lineChart", "areaChart", "columnChart", "barChart"}
+_SERIES_VISUAL_TYPES = {"lineChart", "areaChart", "stackedAreaChart", "columnChart", "barChart"}
 
 # Maps visual type to (role1, role2, shelf_for_role1, shelf_for_role2)
 # shelf values: "row" or "col" — which Tableau shelf feeds each PBI role
 _VISUAL_ROLES = {
-    "barChart":    ("Category", "Y",        "row", "col"),
-    "columnChart": ("Category", "Y",        "col", "row"),
-    "lineChart":   ("Category", "Y",        "col", "row"),
-    "areaChart":   ("Category", "Y",        "col", "row"),
+    "barChart":        ("Category", "Y",    "row", "col"),
+    "columnChart":     ("Category", "Y",    "col", "row"),
+    "lineChart":       ("Category", "Y",    "col", "row"),
+    "areaChart":       ("Category", "Y",    "col", "row"),
+    "stackedAreaChart":("Category", "Y",    "col", "row"),
     "pieChart":    ("Category", "Y",        "row", "col"),
     "scatterChart":("X",        "Y",        "col", "row"),
     "map":         ("Location", "Size",     "row", "col"),
@@ -1103,9 +1104,23 @@ def _build_sort_definition(sorts: list[dict]) -> dict | None:
     return {"sort": items, "isDefaultSort": False}
 
 
+def resolve_visual_type(mark_type: str, color_fields: list) -> str:
+    """Return the PBI visualType string for a given Tableau mark type and color encoding.
+
+    Area mark with a dimension on the Color shelf stacks in Tableau — PBI equivalent
+    is stackedAreaChart.  All other mark types map directly via MARK_TO_VISUAL.
+    """
+    vtype = MARK_TO_VISUAL.get(mark_type, "tableEx")
+    if vtype == "areaChart" and color_fields:
+        return "stackedAreaChart"
+    return vtype
+
+
 def _write_visual(visual_dir: Path, visual_info: dict, x_offset: int = 20) -> None:
     """Write visual.json with role-based field projections per visual type."""
-    visual_type = MARK_TO_VISUAL.get(visual_info["mark_type"], "tableEx")
+    visual_type = resolve_visual_type(
+        visual_info["mark_type"], visual_info.get("color_fields", [])
+    )
     table_name = visual_info["table"]
     row_fields = visual_info.get("row_fields", [])
     col_fields = visual_info.get("col_fields", [])
@@ -1173,7 +1188,7 @@ def _write_visual(visual_dir: Path, visual_info: dict, x_offset: int = 20) -> No
 
 
 # Visual types that support axis formatting
-_AXIS_VISUAL_TYPES = {"barChart", "columnChart", "lineChart", "areaChart", "pieChart", "scatterChart"}
+_AXIS_VISUAL_TYPES = {"barChart", "columnChart", "lineChart", "areaChart", "stackedAreaChart", "pieChart", "scatterChart"}
 
 
 def _build_objects(visual_info: dict, visual_type: str) -> dict:
