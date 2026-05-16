@@ -1257,9 +1257,13 @@ def _build_objects(visual_info: dict, visual_type: str) -> dict:
                 })
             objects["dataPoint"] = dp
         else:
-            objects["dataPoint"] = [
-                {"properties": {"fill": {"solid": {"color": lit(f"'{mark_color}'")}}}}
-            ]
+            dp_entry: dict = {"properties": {"fill": {"solid": {"color": lit(f"'{mark_color}'")}}}}
+            # Line/area charts require selector.metadata to apply series color
+            if visual_type in ("lineChart", "areaChart") and y_measures:
+                f = y_measures[0]
+                f_table = f.get("table") or table_name
+                dp_entry["selector"] = {"metadata": f"{f_table}.{f['name']}"}
+            objects["dataPoint"] = [dp_entry]
 
     if visual_type == "pivotTable" and visual_info.get("crosstab_measures") and not visual_info.get("row_fields"):
         objects["values"] = [{"properties": {"valuesOnRow": lit("true")}}]
@@ -1311,6 +1315,8 @@ def _build_axis_props(axis_fmt: dict, title_fmt: dict, lit) -> dict:
         props["titleFontSize"] = lit(str(title_fmt["font_size"]))
     if title_fmt.get("bold"):
         props["titleBold"] = lit("true")
+    if axis_fmt.get("title_text"):
+        props["titleText"] = lit(f"'{axis_fmt['title_text']}'")
     return props
 
 

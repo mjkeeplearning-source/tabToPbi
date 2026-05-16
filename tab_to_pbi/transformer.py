@@ -21,7 +21,7 @@ def _resolve_title(title_info: dict | None, sheet_name: str, workbook_name: str,
     Returns None when title_info is None (no title element in the source).
     """
     if title_info is None:
-        return None
+        return {"text": sheet_name}
 
     ctx = {"sheet_name": sheet_name, "workbook_name": workbook_name, "datasource_name": datasource_name}
     parts: list[str] = []

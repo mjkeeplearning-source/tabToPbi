@@ -616,6 +616,10 @@ def _parse_worksheet_format(ws: ET.Element) -> dict:
                     target = value_axis if scope == "rows" else category_axis
                     if "axis_color" not in target:
                         target["axis_color"] = value
+                elif attr == "title":
+                    target = value_axis if scope == "rows" else category_axis
+                    if "title_text" not in target:
+                        target["title_text"] = value
 
         elif element == "field-labels":
             for fmt in rule.findall("format"):

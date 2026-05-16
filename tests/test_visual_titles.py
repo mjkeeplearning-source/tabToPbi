@@ -140,8 +140,9 @@ def test_resolve_preserves_formatting():
     assert result["bold"] is True
 
 
-def test_resolve_none_returns_none():
-    assert _resolve_title(None, "My Sheet", "wb") is None
+def test_resolve_none_falls_back_to_sheet_name():
+    result = _resolve_title(None, "My Sheet", "wb")
+    assert result == {"text": "My Sheet"}
 
 
 # ---------------------------------------------------------------------------
