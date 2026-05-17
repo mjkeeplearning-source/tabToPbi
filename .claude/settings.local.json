@@ -73,7 +73,13 @@
       "WebFetch(domain:www.thinkbi.de)",
       "Skill(superpowers:test-driven-development)",
       "Bash(python -c \"import zipfile; z=zipfile.ZipFile\\('input/tabpbi.twbx'\\); content = z.read\\('Superstore.twb'\\).decode\\('utf-8'\\); print\\(content\\)\")",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Bash(grep -rn '$schema\\\\|filterConfiguration\\\\|semantic.*query\\\\|SemanticQuery\\\\|1995L\\\\|integer.*literal\\\\|int.*literal' 'C:\\\\vibe_coding\\\\tabToPbi\\\\tab_to_pbi\\\\generator.py')",
+      "Bash(xargs grep -l \"filterConfig\")",
+      "Bash(xargs grep -l \"filter\")",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(xargs grep -l \"filter\\\\|literal\\\\|slicer\")",
+      "Bash(xargs grep -l \"filterConfig\\\\|filter\\\\|slicer\")"
     ]
   }
 }

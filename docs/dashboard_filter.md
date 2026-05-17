@@ -1,8 +1,6 @@
 # Dashboard Filter Reference: Tableau → PBI
 
-This document records how Tableau dashboard filter constructs map to PBI **visual-page elements** (slicer widgets on the canvas). It does NOT cover the PBI filter pane ("Filters on this visual / page / report") — those are handled separately via `filterConfig`.
-
-Source of truth for PBI property structures: PBI Desktop-generated PBIR files (reverse-engineered). Microsoft does not publish formal schemas for the `objects.*` properties inside `visualContainer`.
+Source of truth: PBI Desktop-generated PBIR files (reverse-engineered). Microsoft does not publish formal schemas for `objects.*` inside `visualContainer`.
 
 ---
 
@@ -139,12 +137,83 @@ pbi_h = round((tab_h / 100000) * 720)
 
 ---
 
-## Future filter types (to be documented)
+---
 
-| Tableau construct | PBI equivalent | Status |
+## 2. Worksheet-Level Filters → `page.json` filterConfig
+
+Tableau worksheet filters (`<filter>` inside `<worksheet><table><view>`) apply to the entire sheet. They map to **page-level** filters in PBI (`page.json` `filterConfig`), not visual-level. Writing them to `visual.json` scopes the filter to one visual only, which is wrong.
+
+### Categorical filter (string column)
+
+```json
+// page.json
+"filterConfig": {
+  "filters": [{
+    "name": "<hash>",
+    "field": { "Column": { "Expression": { "SourceRef": { "Entity": "Table" } }, "Property": "region" } },
+    "type": "Categorical",
+    "filter": {
+      "Version": 2,
+      "From": [{ "Name": "f", "Entity": "Table", "Type": 0 }],
+      "Where": [{ "Condition": { "In": {
+        "Expressions": [{ "Column": { "Expression": { "SourceRef": { "Source": "f" } }, "Property": "region" } }],
+        "Values": [ [{ "Literal": { "Value": "'East'" } }], [{ "Literal": { "Value": "'West'" } }] ]
+      }}}]
+    },
+    "howCreated": "User",
+    "isHiddenInViewMode": false
+  }]
+}
+```
+
+### Categorical filter on a date-part column (`yr:`, `qr:`, `mn:`, etc.)
+
+The Tableau column ref `yr:O_ORDERDATE:ok` creates a derived `int64` column `O_ORDERDATE Year` in the PBI semantic model. The filter values are **integer literals** (`L` suffix), not strings.
+
+```json
+"Values": [
+  [{ "Literal": { "Value": "1993L" } }],
+  [{ "Literal": { "Value": "1994L" } }]
+]
+```
+
+**Critical:** using `'1993'` (string literal) for an `int64` column causes PBI Desktop to silently strip the `filter.Where` clause on save, making the filter appear missing. Confirmed by PBI Desktop 2.152.
+
+### Quantitative filter
+
+Written to `page.json` using the same `Between` / `Comparison` structure as before. See `generator.py:_build_filter_entry`.
+
+---
+
+## 3. Date-Part Slicer (Dashboard filter zone on `yr:` / `qr:` / `mn:` field)
+
+When a dashboard `<zone type-v2='filter'>` has `param='[ds].[yr:O_ORDERDATE:ok]'`, the `yr:` prefix must be preserved:
+
+- Strip prefix to get base field: `O_ORDERDATE`
+- Map prefix via `_DATE_PART_MAP`: `yr` → `YEAR`
+- Construct derived column name: `O_ORDERDATE Year`
+- Slicer `Property` must be `"O_ORDERDATE Year"` (the `int64` derived column), **not** `"O_ORDERDATE"` (the raw `dateTime` column)
+
+Pointing the slicer at the raw `dateTime` column causes PBI to render a date-range slicer instead of a year list. Confirmed by PBI Desktop 2.152.
+
+**`int64` columns use `Basic` mode** — same slicer structure as string columns, not a numeric range slicer:
+
+```json
+"objects": {
+  "data": [{ "properties": { "mode": { "expr": { "Literal": { "Value": "'Basic'" } } } } }]
+}
+```
+
+---
+
+## Filter type summary
+
+| Tableau construct | PBI location | Notes |
 |---|---|---|
-| Dashboard filter zone (slicer) | `visualType: slicer` on canvas | Documented above |
-| Worksheet-level categorical filter | `filterConfig` on chart visual | See `generator.py` |
-| Worksheet-level quantitative filter | `filterConfig` (Between) on chart visual | See `generator.py` |
-| Dashboard filter scoped to subset of sheets | `visualInteractions` with `type: NoFilter` | See `dashboard.py` |
-| Parameter control | Not yet supported | — |
+| Worksheet categorical filter (string) | `page.json` filterConfig | String literals `'value'` |
+| Worksheet categorical filter (date-part) | `page.json` filterConfig | Integer literals `1993L` for `int64` columns |
+| Worksheet quantitative filter | `page.json` filterConfig | Between/Comparison |
+| Dashboard filter zone (string/numeric field) | slicer `visual.json` | `Basic` or `Between` mode |
+| Dashboard filter zone (date-part field `yr:` etc.) | slicer `visual.json`, `Property` = derived column | `Basic` mode, `int64` column |
+| Dashboard filter scoped to subset of sheets | `visualInteractions` `type: NoFilter` | See `dashboard.py` |
+| Parameter control | Not supported | — |

@@ -12,6 +12,7 @@ from tab_to_pbi.generator import (
     _build_objects, _build_title_objects,
     resolve_visual_type,
 )
+from tab_to_pbi.parser import _DATE_PART_MAP
 
 _SCHEMA_BASE = "https://developer.microsoft.com/json-schemas/fabric/item/report"
 _PBI_W = 1280
@@ -122,12 +123,15 @@ def _extract_filter_zone(zone: ET.Element) -> dict | None:
         field_ref = param.strip("[]")
 
     segments = field_ref.split(":", 2)
+    prefix = segments[0] if len(segments) == 3 else ""
     param_field = segments[1] if len(segments) == 3 else field_ref
+    date_part = _DATE_PART_MAP.get(prefix)
 
     return {
         "zone_type": "filter",
         "name": source_sheet,
         "param_field": param_field,
+        "date_part": date_part,
         "param_datasource_id": datasource_id,
         "mode": zone.get("mode", ""),
         "x": int(zone.get("x", 0)),
@@ -162,6 +166,9 @@ def _resolve_field_entity(field_name: str, transformed: dict) -> str:
     for table in transformed.get("tables", []):
         for col in table.get("columns", []):
             if col.get("name") == field_name:
+                return table["name"]
+        for dpc in table.get("date_part_columns", []):
+            if dpc.get("derived") == field_name:
                 return table["name"]
     for v in transformed.get("visuals", []):
         for f in v.get("row_fields", []) + v.get("col_fields", []):
@@ -230,7 +237,12 @@ def transform_dashboards(
                     visual_idx += 1
 
             elif zone["zone_type"] == "filter":
-                entity = _resolve_field_entity(zone["param_field"], transformed)
+                date_part = zone.get("date_part")
+                field_property = (
+                    f"{zone['param_field']} {date_part.capitalize()}"
+                    if date_part else zone["param_field"]
+                )
+                entity = _resolve_field_entity(field_property, transformed)
                 if not entity:
                     continue
                 slicer: dict = {
@@ -238,7 +250,7 @@ def transform_dashboards(
                     "visual_type": "slicer",
                     "x": px, "y": py, "width": pw, "height": ph,
                     "field_entity": entity,
-                    "field_property": zone["param_field"],
+                    "field_property": field_property,
                     "slicer_mode": _SLICER_MODE_MAP.get(zone["mode"], "Basic"),
                     "multi_select": zone["mode"] not in _SINGLE_SELECT_MODES,
                     "scoped_to_sheet": zone["name"],
@@ -393,6 +405,10 @@ def _build_chart_visual(name: str, visual: dict) -> dict:
             query_state["Series"] = {
                 "projections": [_make_series_projection(table, f) for f in color_fields]
             }
+    elif visual_type == "cardVisual":
+        query_state = {
+            "Data": {"projections": [_make_projection(table, f) for f in col_fields]}
+        }
     else:
         all_fields = row_fields + [f for f in col_fields if f not in row_fields]
         query_state = {

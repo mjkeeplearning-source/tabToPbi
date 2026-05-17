@@ -243,7 +243,7 @@ def _build_filter_entry(f: dict, idx: int) -> dict | None:
         condition = {
             "In": {
                 "Expressions": [col_expr],
-                "Values": [[{"Literal": {"Value": f"'{v}'"}}] for v in values],
+                "Values": [[{"Literal": {"Value": _format_literal(v)}}] for v in values],
             }
         }
         filter_type = "Categorical"
@@ -951,6 +951,10 @@ def _write_page(page_dir: Path, page_visuals: list[dict], base_visual_idx: int) 
         "height": 720,
         "width": 1280,
     }
+    sheet_filters = page_visuals[0].get("filters", [])
+    filter_config = _build_filter_config(sheet_filters)
+    if filter_config:
+        page["filterConfig"] = filter_config
     (page_dir / "page.json").write_text(json.dumps(page, indent=2))
 
     slot = 0
@@ -1179,10 +1183,6 @@ def _write_visual(visual_dir: Path, visual_info: dict, x_offset: int = 20) -> No
         "position": {"x": x_offset, "y": 20, "z": 0, "height": 360, "width": 560, "tabOrder": 0},
         "visual": visual_obj,
     }
-
-    filter_config = _build_filter_config(visual_info.get("filters", []))
-    if filter_config:
-        container["filterConfig"] = filter_config
 
     (visual_dir / "visual.json").write_text(json.dumps(container, indent=2))
 
