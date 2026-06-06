@@ -1,0 +1,106 @@
+table orders
+
+	column row_id
+		dataType: int64
+		sourceColumn: row_id
+
+	column order_id
+		dataType: string
+		sourceColumn: order_id
+
+	column order_date
+		dataType: dateTime
+		sourceColumn: order_date
+
+	column ship_date
+		dataType: dateTime
+		sourceColumn: ship_date
+
+	column ship_mode
+		dataType: string
+		sourceColumn: ship_mode
+
+	column customer_id
+		dataType: string
+		sourceColumn: customer_id
+
+	column customer_name
+		dataType: string
+		sourceColumn: customer_name
+
+	column segment
+		dataType: string
+		sourceColumn: segment
+
+	column country
+		dataType: string
+		sourceColumn: country
+
+	column city
+		dataType: string
+		sourceColumn: city
+
+	column state
+		dataType: string
+		sourceColumn: state
+
+	column postal_code
+		dataType: string
+		sourceColumn: postal_code
+
+	column region
+		dataType: string
+		sourceColumn: region
+
+	column product_id
+		dataType: string
+		sourceColumn: product_id
+
+	column category
+		dataType: string
+		sourceColumn: category
+
+	column sub_category
+		dataType: string
+		sourceColumn: sub_category
+
+	column product_name
+		dataType: string
+		sourceColumn: product_name
+
+	column sales
+		dataType: double
+		sourceColumn: sales
+
+	column quantity
+		dataType: int64
+		sourceColumn: quantity
+
+	column discount
+		dataType: double
+		sourceColumn: discount
+
+	column profit
+		dataType: double
+		sourceColumn: profit
+
+	measure 'Sum sales' = SUM(orders[sales])
+
+	measure 'Sum profit' = SUM(orders[profit])
+
+	measure 'Sum quantity' = SUM(orders[quantity])
+
+	measure 'Count orders' = COUNTROWS(orders)
+
+	column 'order_date Year'
+		dataType: int64
+		sourceColumn: order_date Year
+
+	partition orders = m
+		mode: directQuery
+		source =
+			let
+			    Source = PostgreSQL.Database("database-1.czag60868v0k.ap-south-1.rds.amazonaws.com", "postgres"),
+			    nav = Value.NativeQuery(Source, "SELECT *, EXTRACT(YEAR FROM order_date) AS ""order_date Year"" FROM ""superstore"".""orders""", null, [EnableFolding=true])
+			in
+			    nav

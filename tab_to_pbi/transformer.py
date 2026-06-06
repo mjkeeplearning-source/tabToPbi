@@ -1,6 +1,7 @@
 """Transform parsed workbook dict into PBIR-ready structure."""
 
 import re
+from tab_to_pbi.dashboard import _SLICER_MODE_MAP, _SINGLE_SELECT_MODES
 
 _SQL_CONN_TYPES = {"postgres", "sqlserver", "mysql", "bigquery", "redshift", "snowflake", "oracle", "teradata", "databricks"}
 
@@ -387,7 +388,7 @@ def _map_multi_table_sql(
 _SUPPORTED_MARK_TYPES = {
     "Bar", "Column", "Line", "Area", "Pie",
     "Circle", "Shape", "Polygon", "Multipolygon", "PolyLine",
-    "Text", "Automatic", "CrossTab", "KPI",
+    "Text", "Automatic", "CrossTab", "KPI", "Slicer",
 }
 
 
@@ -571,6 +572,31 @@ def _process_sheets(
             if crosstab_measures:
                 v["crosstab_measures"] = crosstab_measures
             visuals.append(v)
+
+        # Generate slicer visuals for <windows> filter cards on this sheet
+        for i, card in enumerate(workbook.get("window_filter_cards", {}).get(sheet["name"], [])):
+            field = card["field"]
+            physical = pmap.get(field, field)
+            entity = fmap.get(field, fmap.get(physical, default_table))
+            if not entity:
+                unsupported_warnings.append(
+                    f"Sheet '{sheet['name']}': slicer field '{field}' not found in field map — skipped"
+                )
+                continue
+            mode_raw = card["mode"]
+            visuals.append({
+                "mark_type": "Slicer",
+                "page_name": sheet["name"],
+                "name": f"slicer_{sheet['name']}_{physical}",
+                "field_entity": entity,
+                "field_property": physical,
+                "slicer_mode": _SLICER_MODE_MAP.get(mode_raw, "Basic"),
+                "multi_select": mode_raw not in _SINGLE_SELECT_MODES,
+                "x": 920,
+                "y": 20 + 60 * i,
+                "width": 340,
+                "height": 60,
+            })
     for table in tables:
         table["date_part_columns"] = date_part_columns.get(table["name"], [])
     return visuals, unsupported_warnings
@@ -723,7 +749,7 @@ def _infer_mark_type(rows: list, cols: list) -> str:
     cols_cont = any(f.get("continuous") for f in cols if isinstance(f, dict))
     cols_has_date = any(f.get("date_part") for f in cols if isinstance(f, dict))
 
-    rows_has_measure = any(f.get("aggregation") for f in rows if isinstance(f, dict))
+    rows_has_measure = any(f.get("aggregation") or f.get("continuous") for f in rows if isinstance(f, dict))
 
     if cols_cont and not rows_cont:
         return "Bar"

@@ -957,14 +957,23 @@ def _write_page(page_dir: Path, page_visuals: list[dict], base_visual_idx: int) 
         page["filterConfig"] = filter_config
     (page_dir / "page.json").write_text(json.dumps(page, indent=2))
 
+    has_slicers = any(v.get("mark_type") == "Slicer" for v in page_visuals)
+    chart_width = 900 if has_slicers else 560
+
     slot = 0
     for j, visual_info in enumerate(page_visuals):
-        if visual_info.get("row_fields") or visual_info.get("col_fields"):
+        if visual_info.get("mark_type") == "Slicer":
             visuals_dir = page_dir / "visuals"
             visuals_dir.mkdir(exist_ok=True)
             visual_dir = visuals_dir / f"visual_{base_visual_idx + j + 1}"
             visual_dir.mkdir(exist_ok=True)
-            _write_visual(visual_dir, visual_info, x_offset=20 + slot * 620)
+            _write_slicer_visual(visual_dir, visual_info)
+        elif visual_info.get("row_fields") or visual_info.get("col_fields"):
+            visuals_dir = page_dir / "visuals"
+            visuals_dir.mkdir(exist_ok=True)
+            visual_dir = visuals_dir / f"visual_{base_visual_idx + j + 1}"
+            visual_dir.mkdir(exist_ok=True)
+            _write_visual(visual_dir, visual_info, x_offset=20 + slot * 620, width=chart_width)
             slot += 1
 
 
@@ -1120,7 +1129,47 @@ def resolve_visual_type(mark_type: str, color_fields: list) -> str:
     return vtype
 
 
-def _write_visual(visual_dir: Path, visual_info: dict, x_offset: int = 20) -> None:
+def _write_slicer_visual(visual_dir: Path, visual: dict) -> None:
+    """Write visual.json for a PBI slicer visual (inlined — avoids circular import with dashboard.py)."""
+    projection = {
+        "field": {
+            "Column": {
+                "Expression": {"SourceRef": {"Entity": visual["field_entity"]}},
+                "Property": visual["field_property"],
+            }
+        },
+        "queryRef": f"{visual['field_entity']}.{visual['field_property']}",
+        "active": True,
+    }
+    objects: dict = {
+        "data": [{"properties": {
+            "mode": {"expr": {"Literal": {"Value": f"'{visual['slicer_mode']}'"}}},
+        }}],
+    }
+    if visual["slicer_mode"] != "Between" and visual.get("multi_select", False):
+        objects["selection"] = [{"properties": {
+            "singleSelect": {"expr": {"Literal": {"Value": "false"}}},
+            "strictSingleSelect": {"expr": {"Literal": {"Value": "false"}}},
+            "selectAllCheckboxEnabled": {"expr": {"Literal": {"Value": "true"}}},
+        }}]
+    container = {
+        "$schema": f"{_SCHEMA_BASE}/definition/visualContainer/1.0.0/schema.json",
+        "name": visual_dir.name,
+        "position": {
+            "x": visual["x"], "y": visual["y"], "z": 0,
+            "width": visual["width"], "height": visual["height"], "tabOrder": 0,
+        },
+        "visual": {
+            "visualType": "slicer",
+            "query": {"queryState": {"Values": {"projections": [projection]}}},
+            "objects": objects,
+            "drillFilterOtherVisuals": True,
+        },
+    }
+    (visual_dir / "visual.json").write_text(json.dumps(container, indent=2))
+
+
+def _write_visual(visual_dir: Path, visual_info: dict, x_offset: int = 20, width: int = 560) -> None:
     """Write visual.json with role-based field projections per visual type."""
     visual_type = resolve_visual_type(
         visual_info["mark_type"], visual_info.get("color_fields", [])
@@ -1180,7 +1229,7 @@ def _write_visual(visual_dir: Path, visual_info: dict, x_offset: int = 20) -> No
     container: dict = {
         "$schema": f"{_SCHEMA_BASE}/definition/visualContainer/1.0.0/schema.json",
         "name": visual_dir.name,
-        "position": {"x": x_offset, "y": 20, "z": 0, "height": 360, "width": 560, "tabOrder": 0},
+        "position": {"x": x_offset, "y": 20, "z": 0, "height": 360, "width": width, "tabOrder": 0},
         "visual": visual_obj,
     }
 

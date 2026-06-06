@@ -79,7 +79,9 @@
       "Bash(xargs grep -l \"filter\")",
       "Bash(Select-Object -ExpandProperty FullName)",
       "Bash(xargs grep -l \"filter\\\\|literal\\\\|slicer\")",
-      "Bash(xargs grep -l \"filterConfig\\\\|filter\\\\|slicer\")"
+      "Bash(xargs grep -l \"filterConfig\\\\|filter\\\\|slicer\")",
+      "Bash(.venv/Scripts/python.exe tests/regression/register.py input/simple.twb)",
+      "Bash(.venv/Scripts/python.exe -c \"import tab_to_pbi; print\\(tab_to_pbi.__file__\\)\")"
     ]
   }
 }

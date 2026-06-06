@@ -1,0 +1,13 @@
+relationship 'people_region -> orders_region'
+	fromColumn: people.region
+	toColumn: orders.region
+	fromCardinality: many
+	toCardinality: many
+	crossFilteringBehavior: bothDirections
+
+relationship 'orders_order_id -> returns_order_id'
+	fromColumn: orders.order_id
+	toColumn: returns.order_id
+	fromCardinality: many
+	toCardinality: many
+	crossFilteringBehavior: bothDirections

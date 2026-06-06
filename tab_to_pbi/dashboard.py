@@ -179,10 +179,14 @@ def _resolve_field_entity(field_name: str, transformed: dict) -> str:
 
 
 def _find_visuals_for_sheet(sheet_name: str, transformed: dict) -> list[dict]:
-    """Return all visuals from transformed output matching the sheet page name."""
+    """Return chart/crosstab visuals from transformed output matching the sheet page name.
+
+    Slicer visuals are excluded — they are sheet-level UI elements, not dashboard tiles.
+    """
     return [
         v for v in transformed.get("visuals", [])
-        if v.get("page_name") == sheet_name or v.get("name") == sheet_name
+        if (v.get("page_name") == sheet_name or v.get("name") == sheet_name)
+        and v.get("mark_type") != "Slicer"
     ]
 
 

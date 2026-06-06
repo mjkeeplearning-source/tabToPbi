@@ -1,0 +1,18 @@
+table people
+
+	column person
+		dataType: string
+		sourceColumn: person
+
+	column region
+		dataType: string
+		sourceColumn: region
+
+	partition people = m
+		mode: directQuery
+		source =
+			let
+			    Source = PostgreSQL.Database("database-1.czag60868v0k.ap-south-1.rds.amazonaws.com", "postgres"),
+			    nav = Source{[Schema="superstore", Item="people"]}[Data]
+			in
+			    nav

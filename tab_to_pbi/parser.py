@@ -37,6 +37,7 @@ def parse(path: Path) -> dict:
         "sheets": sheets,
         "unsupported": unsupported,
         "datasource_filters": _parse_datasource_filters(root),
+        "window_filter_cards": _parse_window_filter_cards(root),
     }
 
 
@@ -937,6 +938,28 @@ def _parse_datasource_filters(root: ET.Element) -> list[dict]:
             if entry is not None:
                 filters.append(entry)
     return filters
+
+
+def _parse_window_filter_cards(root: ET.Element) -> dict[str, list[dict]]:
+    """Return {sheet_name: [{"field": str, "mode": str}]} from <windows> filter cards.
+
+    <windows> is authoritative: only sheets with a <card type='filter'> entry will
+    have slicer visuals generated.
+    """
+    result: dict[str, list[dict]] = {}
+    for window in root.findall("./windows/window[@class='worksheet']"):
+        name = window.get("name", "")
+        if not name:
+            continue
+        cards = []
+        for card in window.findall("./cards/edge/strip/card[@type='filter']"):
+            param = card.get("param", "")
+            field = _extract_field_name(param) if param else ""
+            if field and not field.startswith(":"):
+                cards.append({"field": field, "mode": card.get("mode", "")})
+        if cards:
+            result[name] = cards
+    return result
 
 
 _DISCRETE_PREFIXES = {"none", "yr", "qr", "mn", "wk", "dt", "hr", "mt", "sg"}
