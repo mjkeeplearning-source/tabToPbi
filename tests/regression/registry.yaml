@@ -29,3 +29,9 @@ workbooks:
   expected_visual_count: 6
   expected_calc_field_count: 2
   snapshot_path: tests\snapshots\simple_join_sorted_dropdown_crosstab_dashboard_simple_filter
+- stem: daatabricks_custom_Sql_two_table
+  path: input\daatabricks_custom_Sql_two_table.twb
+  data_dir: data
+  expected_visual_count: 1
+  expected_calc_field_count: 0
+  snapshot_path: tests\snapshots\daatabricks_custom_Sql_two_table

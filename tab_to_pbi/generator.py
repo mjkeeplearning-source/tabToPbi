@@ -828,13 +828,28 @@ def _build_m_expression(
         catalog = conn.get("dbname", "")
         schema = conn.get("schema", "")
         table = conn.get("table", "")
+        custom_sql = conn.get("custom_sql", "")
         cat_var = f"{catalog}_Database"
+        source_line = f'    Source = DatabricksMultiCloud.Catalogs("{server}", "{http_path}", [Catalog=null, Database=null, QueryTags=null, EnableAutomaticProxyDiscovery=null, Implementation="2.0"]),'
+        cat_line = f'    {cat_var} = Source{{[Name="{catalog}",Kind="Database"]}}[Data],'
+
+        if custom_sql:
+            escaped_sql = custom_sql.replace('"', '""')
+            return [
+                "let",
+                source_line,
+                cat_line,
+                f'    nav = Value.NativeQuery({cat_var}, "{escaped_sql}", null, [EnableFolding=true])',
+                "in",
+                "    nav",
+            ], True
+
         sch_var = f"{schema}_Schema"
         tbl_var = f"{table}_Table"
         return [
             "let",
-            f'    Source = DatabricksMultiCloud.Catalogs("{server}", "{http_path}", [Catalog=null, Database=null, QueryTags=null, EnableAutomaticProxyDiscovery=null, Implementation="2.0"]),',
-            f'    {cat_var} = Source{{[Name="{catalog}",Kind="Database"]}}[Data],',
+            source_line,
+            cat_line,
             f'    {sch_var} = {cat_var}{{[Name="{schema}",Kind="Schema"]}}[Data],',
             f'    {tbl_var} = {sch_var}{{[Name="{table}",Kind="Table"]}}[Data]',
             "in",
