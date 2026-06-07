@@ -584,13 +584,23 @@ def _process_sheets(
                 )
                 continue
             mode_raw = card["mode"]
+            if mode_raw in _SLICER_MODE_MAP:
+                slicer_mode = _SLICER_MODE_MAP[mode_raw]
+            elif any(
+                f.get("class") == "quantitative" and f.get("included_values") == "in-range"
+                and (f.get("field") == field or f.get("field") == physical)
+                for f in sheet.get("filters", [])
+            ):
+                slicer_mode = "Between"
+            else:
+                slicer_mode = "Basic"
             visuals.append({
                 "mark_type": "Slicer",
                 "page_name": sheet["name"],
                 "name": f"slicer_{sheet['name']}_{physical}",
                 "field_entity": entity,
                 "field_property": physical,
-                "slicer_mode": _SLICER_MODE_MAP.get(mode_raw, "Basic"),
+                "slicer_mode": slicer_mode,
                 "multi_select": mode_raw not in _SINGLE_SELECT_MODES,
                 "x": 920,
                 "y": 20 + 60 * i,

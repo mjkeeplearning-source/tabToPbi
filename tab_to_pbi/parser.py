@@ -872,6 +872,9 @@ def _parse_filter_element(f: ET.Element) -> dict | None:
             entry["agg_prefix"] = segments[0]
         entry["min"] = f.findtext("min", "")
         entry["max"] = f.findtext("max", "")
+        included = f.get("included-values", "")
+        if included:
+            entry["included_values"] = included
     return entry
 
 

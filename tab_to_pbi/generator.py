@@ -252,7 +252,7 @@ def _build_filter_entry(f: dict, idx: int) -> dict | None:
         agg_prefix = f.get("agg_prefix")
         min_val = f.get("min", "")
         max_val = f.get("max", "")
-        if agg_prefix and agg_prefix in _PBI_AGG_FUNC:
+        if agg_prefix and agg_prefix in _PBI_AGG_FUNC and f.get("included_values") != "in-range":
             # Post-aggregation filter: use Aggregation expression + Advanced type
             agg_func = _PBI_AGG_FUNC[agg_prefix]
             agg_expr = {

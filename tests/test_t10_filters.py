@@ -6,6 +6,7 @@ import pytest
 
 from tab_to_pbi.parser import parse
 from tab_to_pbi.transformer import transform
+from tab_to_pbi.generator import _build_filter_entry
 
 
 SUPERSTORE = Path("input/Superstore.twb")
@@ -140,3 +141,45 @@ def test_transformer_datasource_filters_enriched():
     assert len(ds_filters) == 1
     assert ds_filters[0]["field"] == "region"
     assert ds_filters[0]["table"] == "orders"
+
+
+# --- in-range quantitative filter: parser captures included-values ---
+
+def test_simple_join_sheet1_quantitative_filter_captures_included_values():
+    """Parser must capture included-values='in-range' from the Tableau filter element."""
+    workbook = parse(SIMPLE_JOIN)
+    sheet1 = next(s for s in workbook["sheets"] if s["name"] == "Sheet 1")
+    f = sheet1["filters"][0]
+    assert f.get("included_values") == "in-range"
+
+
+# --- in-range quantitative filter: generator emits Range/Between, not Advanced ---
+
+def test_quantitative_in_range_slicer_visual_uses_between_mode():
+    """A slicer card for a field with an in-range quantitative filter must use 'Between' mode, not 'Basic'."""
+    transformed = transform(parse(SIMPLE_JOIN))
+    profit_slicer = next(
+        (v for v in transformed["visuals"] if v.get("mark_type") == "Slicer" and v.get("field_property") == "profit"),
+        None,
+    )
+    assert profit_slicer is not None, "No slicer visual found for profit field"
+    assert profit_slicer["slicer_mode"] == "Between"
+
+
+def test_in_range_quantitative_filter_generates_range_type():
+    """A quantitative filter with included_values='in-range' must produce type 'Range' (Between), not 'Advanced'."""
+    f = {
+        "field": "profit",
+        "class": "quantitative",
+        "min": "1013.13",
+        "max": "6719.98",
+        "agg_prefix": "max",
+        "included_values": "in-range",
+        "table": "orders",
+    }
+    entry = _build_filter_entry(f, 0)
+    assert entry is not None
+    assert entry["type"] == "Range"
+    where = entry["filter"]["Where"]
+    assert len(where) == 1
+    assert "Between" in where[0]["Condition"]

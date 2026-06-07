@@ -1,0 +1,2 @@
+database 'daatabricks'
+	compatibilityLevel: 1600

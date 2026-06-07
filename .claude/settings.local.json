@@ -81,7 +81,10 @@
       "Bash(xargs grep -l \"filter\\\\|literal\\\\|slicer\")",
       "Bash(xargs grep -l \"filterConfig\\\\|filter\\\\|slicer\")",
       "Bash(.venv/Scripts/python.exe tests/regression/register.py input/simple.twb)",
-      "Bash(.venv/Scripts/python.exe -c \"import tab_to_pbi; print\\(tab_to_pbi.__file__\\)\")"
+      "Bash(.venv/Scripts/python.exe -c \"import tab_to_pbi; print\\(tab_to_pbi.__file__\\)\")",
+      "PowerShell(Get-ChildItem -Path C:\\\\vibe_coding\\\\tabToPbi -Recurse | Select-Object -First 30 | % { $_.FullName })",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\vibe_coding\\\\tabToPbi\\\\output\" -Recurse -Include \"visual.json\" | Where-Object { \\(Get-Content $_.FullName\\) -match 'filterConfig' } | Select-Object -First 3 | % { $_.FullName })",
+      "Bash(xargs grep -l \"slicer\")"
     ]
   }
 }

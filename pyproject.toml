@@ -21,3 +21,7 @@ dev = [
     "pytest>=9.0.3",
     "pyyaml>=6.0.3",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--ignore=tests/test_pbi_desktop.py --ignore=tests/test_pbi_e2e_open.py"
