@@ -1,0 +1,6 @@
+relationship 'sales_customers_customerID -> sales_transactions_customerID'
+	fromColumn: sales_customers.customerID
+	toColumn: sales_transactions.customerID
+	fromCardinality: many
+	toCardinality: many
+	crossFilteringBehavior: bothDirections

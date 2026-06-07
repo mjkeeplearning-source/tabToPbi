@@ -658,12 +658,25 @@ def _parse_worksheet_format(ws: ET.Element) -> dict:
         elif element in _UNSUPPORTED_FORMAT_ELEMENTS:
             unsupported.append(element)
 
-    # mark-color lives in pane/style, not table/style — check pane path directly
-    mark_color_fmt = ws.find(
-        "./table/panes/pane/style/style-rule[@element='mark']/format[@attr='mark-color']"
-    )
-    if mark_color_fmt is not None:
-        plot_area["mark_color"] = mark_color_fmt.get("value", "")
+    # mark-color lives in pane/style — extract per-pane colors keyed by measure field.
+    # Tableau assigns one pane per row-shelf measure; y-axis-name identifies the measure.
+    # "[federated.xxx].[sum:quantity:qk]" → key "sum:quantity:qk"
+    pane_colors: dict[str, str] = {}
+    for pane in ws.findall("./table/panes/pane"):
+        color_fmt = pane.find("./style/style-rule[@element='mark']/format[@attr='mark-color']")
+        if color_fmt is None:
+            continue
+        hex_color = color_fmt.get("value", "")
+        y_axis = pane.get("y-axis-name", "")
+        if y_axis:
+            field_key = y_axis.split(".")[-1].strip("[]")
+            pane_colors[field_key] = hex_color
+        elif "mark_color" not in plot_area:
+            plot_area["mark_color"] = hex_color
+    if len(pane_colors) > 1:
+        plot_area["pane_mark_colors"] = pane_colors
+    elif pane_colors and "mark_color" not in plot_area:
+        plot_area["mark_color"] = next(iter(pane_colors.values()))
 
     result: dict = {}
     if value_axis:

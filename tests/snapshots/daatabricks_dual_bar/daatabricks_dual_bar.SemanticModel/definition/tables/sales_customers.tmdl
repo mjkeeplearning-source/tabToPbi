@@ -1,0 +1,60 @@
+table sales_customers
+
+	column customerID
+		dataType: int64
+		sourceColumn: customerID
+
+	column first_name
+		dataType: string
+		sourceColumn: first_name
+
+	column last_name
+		dataType: string
+		sourceColumn: last_name
+
+	column email_address
+		dataType: string
+		sourceColumn: email_address
+
+	column phone_number
+		dataType: string
+		sourceColumn: phone_number
+
+	column address
+		dataType: string
+		sourceColumn: address
+
+	column city
+		dataType: string
+		sourceColumn: city
+
+	column state
+		dataType: string
+		sourceColumn: state
+
+	column country
+		dataType: string
+		sourceColumn: country
+
+	column continent
+		dataType: string
+		sourceColumn: continent
+
+	column postal_zip_code
+		dataType: int64
+		sourceColumn: postal_zip_code
+
+	column gender
+		dataType: string
+		sourceColumn: gender
+
+	partition sales_customers = m
+		mode: directQuery
+		source =
+			let
+			    Source = DatabricksMultiCloud.Catalogs("dbc-b0e64326-49ff.cloud.databricks.com", "/sql/1.0/warehouses/7691ee00ee3de572", [Catalog=null, Database=null, QueryTags=null, EnableAutomaticProxyDiscovery=null, Implementation="2.0"]),
+			    samples_Database = Source{[Name="samples",Kind="Database"]}[Data],
+			    bakehouse_Schema = samples_Database{[Name="bakehouse",Kind="Schema"]}[Data],
+			    sales_customers_Table = bakehouse_Schema{[Name="sales_customers",Kind="Table"]}[Data]
+			in
+			    sales_customers_Table

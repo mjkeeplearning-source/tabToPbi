@@ -5,29 +5,27 @@ workbooks:
   expected_visual_count: 7
   expected_calc_field_count: 2
   snapshot_path: tests\snapshots\simple_join_sorted_dropdown_crosstab_dashboard_dropdown
-- stem: simple_join_calculated_line_dashboard_multiple_visual_multiple_dashboard
-  path: input\simple_join_calculated_line_dashboard_multiple_visual_multiple_dashboard.twb
-  data_dir: data
-  expected_visual_count: 18
-  expected_calc_field_count: 0
-  snapshot_path: tests\snapshots\mvmd
-  alias: mvmd
-- stem: simple_join_sorted_dropdown_crosstab_dashboard_simple_filter
-  path: input\simple_join_sorted_dropdown_crosstab_dashboard_simple_filter.twb
-  data_dir: data
-  expected_visual_count: 6
-  expected_calc_field_count: 2
-  snapshot_path: tests\snapshots\dasbord_simple_filter
-  alias: dasbord_simple_filter
 - stem: simple_join
   path: input\simple_join.twb
   data_dir: data
   expected_visual_count: 6
   expected_calc_field_count: 2
   snapshot_path: tests\snapshots\simple_join
+- stem: daatabricks_dual_bar
+  path: input\daatabricks_dual_bar.twb
+  data_dir: data
+  expected_visual_count: 1
+  expected_calc_field_count: 0
+  snapshot_path: tests\snapshots\daatabricks_dual_bar
 - stem: daatabricks
   path: input\daatabricks.twb
   data_dir: data
   expected_visual_count: 7
   expected_calc_field_count: 0
   snapshot_path: tests\snapshots\daatabricks
+- stem: simple_join_sorted_dropdown_crosstab_dashboard_simple_filter
+  path: input\simple_join_sorted_dropdown_crosstab_dashboard_simple_filter.twb
+  data_dir: data
+  expected_visual_count: 6
+  expected_calc_field_count: 2
+  snapshot_path: tests\snapshots\simple_join_sorted_dropdown_crosstab_dashboard_simple_filter

@@ -520,6 +520,22 @@ def _process_sheets(
                 f"Sheet '{sheet['name']}': Tableau style-rule element '{elem}' has no PBI equivalent — skipped"
             )
 
+        # Apply per-pane mark colors to row-shelf measures.
+        # Parser stores pane_mark_colors as {field_key: hex} e.g. "sum:quantity:qk".
+        # Resolved fields use base_name (e.g. "quantity") — match on the middle segment.
+        pane_mark_colors = visual_fmt.get("plot_area", {}).get("pane_mark_colors", {})
+        if pane_mark_colors:
+            by_base: dict[str, str] = {}
+            for key, color in pane_mark_colors.items():
+                parts = key.split(":")
+                if len(parts) >= 2:
+                    by_base[parts[1]] = color  # "sum:quantity:qk" → base "quantity"
+            for f in row_fields:
+                if f and f.get("is_measure"):
+                    base = f.get("base_name") or f.get("name", "")
+                    if base in by_base:
+                        f["mark_color"] = by_base[base]
+
         show_data_labels = sheet.get("show_data_labels", False)
         sheet_title = _resolve_title(
             sheet.get("title"),

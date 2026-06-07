@@ -1300,8 +1300,9 @@ def _build_objects(visual_info: dict, visual_type: str) -> dict:
             for f in y_measures:
                 f_table = f.get("table") or table_name
                 query_ref = f"{f_table}.{f['name']}"
+                field_color = f.get("mark_color") or mark_color
                 dp.append({
-                    "properties": {"fill": {"solid": {"color": lit(f"'{mark_color}'")}}},
+                    "properties": {"fill": {"solid": {"color": lit(f"'{field_color}'")}}},
                     "selector": {"metadata": query_ref},
                 })
             objects["dataPoint"] = dp
