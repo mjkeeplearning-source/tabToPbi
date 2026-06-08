@@ -1,0 +1,781 @@
+<?xml version='1.0' encoding='utf-8' ?>
+
+<!-- build 20261.26.0226.1626                               -->
+<workbook original-version='18.1' source-build='2026.1.0 (20261.26.0226.1626)' source-platform='win' version='18.1' xmlns:user='http://www.tableausoftware.com/xml/user'>
+  <document-format-change-manifest>
+    <AnimationOnByDefault />
+    <DatabricksCatalog />
+    <MarkAnimation />
+    <ObjectModelEncapsulateLegacy />
+    <ObjectModelTableType />
+    <SchemaViewerObjectModel />
+    <SheetIdentifierTracking />
+    <WindowsPersistSimpleIdentifiers />
+  </document-format-change-manifest>
+  <preferences>
+    <preference name='ui.encoding.shelf.height' value='24' />
+    <preference name='ui.shelf.height' value='26' />
+  </preferences>
+  <datasources>
+    <datasource caption='sales_customers (samples.bakehouse.sales_customers)+ (bakehouse)' inline='true' name='federated.0rbe41t0pgjxjs1bpbl111t07ecc' version='18.1'>
+      <connection class='federated'>
+        <named-connections>
+          <named-connection caption='dbc-b0e64326-49ff.cloud.databricks.com' name='databricks.0h6ichl1ym51a6141q6ty1c1rmkx'>
+            <connection authentication='oauth' authentication-type='' class='databricks' dbname='samples' instanceurl='https://dbc-b0e64326-49ff.cloud.databricks.com/oidc' oauth-config-id='default' odbc-connect-string-extras='' one-time-sql='' schema='bakehouse' server='dbc-b0e64326-49ff.cloud.databricks.com' server-oauth='' username='mjkeeplearning@gmail.com' v-http-path='/sql/1.0/warehouses/7691ee00ee3de572' v-query-tags=''>
+              <connection-customization class='databricks' enabled='false' version='18.1'>
+                <vendor name='databricks' />
+                <driver name='databricks' />
+                <customizations>
+                  <customization name='CAP_AUTH_DB_IMPERSONATE' value='no' />
+                  <customization name='CAP_AUTH_KERBEROS_IMPERSONATE' value='yes' />
+                  <customization name='CAP_COLLECT_TABLE_STATISTICS' value='no' />
+                  <customization name='CAP_CONNECT_STORED_PROCEDURE' value='no' />
+                  <customization name='CAP_CREATE_TEMP_TABLES' value='no' />
+                  <customization name='CAP_DATASERVER_MAGIC_NUMBER' value='no' />
+                  <customization name='CAP_DEFERS_CONNECTION_VERIFICATION' value='no' />
+                  <customization name='CAP_DISABLE_EXTRACT_TABLE_INDEXING' value='no' />
+                  <customization name='CAP_EQUALITY_JOINS_ONLY' value='no' />
+                  <customization name='CAP_EQUIJOINS_ONLY' value='no' />
+                  <customization name='CAP_FAST_METADATA' value='no' />
+                  <customization name='CAP_FORCE_COUNT_FOR_NUMBEROFRECORDS' value='no' />
+                  <customization name='CAP_GREENPLUM_TRUST_METADATA_CONTAINSNULL' value='no' />
+                  <customization name='CAP_HIVE_FIX_METADATA_NAMES' value='no' />
+                  <customization name='CAP_INCLUDE_OTHER_CATALOG_NAME' value='no' />
+                  <customization name='CAP_INDEX_TEMP_TABLES' value='no' />
+                  <customization name='CAP_INSERT_TEMP_EXEC_STORED_PROCEDURE' value='no' />
+                  <customization name='CAP_JDBC_QUERY_USE_PREPARE_PARAMETER_MARKER' value='no' />
+                  <customization name='CAP_LOCAL_ALIASES_CASE_INSENSITIVE' value='no' />
+                  <customization name='CAP_METADATA_SHOW_OTHER_CATALOGS' value='no' />
+                  <customization name='CAP_OAUTH_FEDERATE_ACCCESS_TOKEN' value='no' />
+                  <customization name='CAP_OAUTH_FEDERATE_ID_TOKEN' value='no' />
+                  <customization name='CAP_OAUTH_VALIDATE_ALWAYS' value='no' />
+                  <customization name='CAP_ODBC_ALWAYS_THROW_CONNECT_ERRORS' value='no' />
+                  <customization name='CAP_ODBC_BIND_FORCE_DATETIME_AS_CHAR' value='no' />
+                  <customization name='CAP_ODBC_BIND_FORCE_DATE_AS_CHAR' value='no' />
+                  <customization name='CAP_ODBC_BIND_FORCE_MAX_STRING_BUFFERS' value='no' />
+                  <customization name='CAP_ODBC_BIND_FORCE_MEDIUM_STRING_BUFFERS' value='no' />
+                  <customization name='CAP_ODBC_BIND_FORCE_SIGNED' value='no' />
+                  <customization name='CAP_ODBC_BIND_FORCE_SMALL_STRING_BUFFERS' value='no' />
+                  <customization name='CAP_ODBC_BIND_SUPPRESS_INT64' value='no' />
+                  <customization name='CAP_ODBC_BIND_SUPPRESS_PREFERRED_TYPES' value='no' />
+                  <customization name='CAP_ODBC_BIND_SUPPRESS_WIDE_CHAR' value='no' />
+                  <customization name='CAP_ODBC_CURSOR_DYNAMIC' value='no' />
+                  <customization name='CAP_ODBC_CURSOR_FORWARD_ONLY' value='yes' />
+                  <customization name='CAP_ODBC_CURSOR_KEYSET_DRIVEN' value='no' />
+                  <customization name='CAP_ODBC_CURSOR_STATIC' value='no' />
+                  <customization name='CAP_ODBC_DRIVER_HIVE_ASSUME_LATEST' value='no' />
+                  <customization name='CAP_ODBC_ERROR_IGNORE_FALSE_ALARM' value='no' />
+                  <customization name='CAP_ODBC_FETCH_BUFFERS_RESIZABLE' value='no' />
+                  <customization name='CAP_ODBC_FETCH_BUFFERS_SIZE_MASSIVE' value='no' />
+                  <customization name='CAP_ODBC_FETCH_CONTINUE_ON_ERROR' value='no' />
+                  <customization name='CAP_ODBC_FETCH_FORCE_VERIFY_TRUNCATE_BY_CELLSTATUS' value='no' />
+                  <customization name='CAP_ODBC_FETCH_INT_TRUNCATION_AS_ERROR' value='yes' />
+                  <customization name='CAP_ODBC_FORCE_SINGLE_ROW_BINDING' value='no' />
+                  <customization name='CAP_ODBC_IMPORT_GETDATA_BUFFER_LARGE' value='no' />
+                  <customization name='CAP_ODBC_METADATA_STRING_LENGTH_UNKNOWN' value='no' />
+                  <customization name='CAP_ODBC_METADATA_SUPPRESS_SQLCOLUMNS_API' value='no' />
+                  <customization name='CAP_ODBC_METADATA_SUPPRESS_SQLFOREIGNKEYS_API' value='no' />
+                  <customization name='CAP_ODBC_METADATA_SUPPRESS_SQLPRIMARYKEYS_API' value='no' />
+                  <customization name='CAP_ODBC_METADATA_SUPPRESS_SQLSTATISTICS_API' value='yes' />
+                  <customization name='CAP_ODBC_QUERY_USE_PREPARE_PARAMETER_MARKER' value='no' />
+                  <customization name='CAP_ODBC_REBIND_SKIP_UNBIND' value='no' />
+                  <customization name='CAP_ODBC_SCHEMAS_OPTIONAL' value='no' />
+                  <customization name='CAP_ODBC_TRIM_VARCHAR_PADDING' value='no' />
+                  <customization name='CAP_ODBC_UNBIND_AUTO' value='no' />
+                  <customization name='CAP_ODBC_UNBIND_BATCH' value='no' />
+                  <customization name='CAP_ODBC_UNBIND_EACH' value='yes' />
+                  <customization name='CAP_ODBC_USE_NATIVE_PROTOCOL' value='yes' />
+                  <customization name='CAP_PADDED_SEMANTICS_NCHAR_NVARCHAR' value='no' />
+                  <customization name='CAP_PERSIST_SQL_RELATION_ON_LEAF_CONNECTION' value='no' />
+                  <customization name='CAP_QUERY_ALLOW_JOIN_REORDER' value='yes' />
+                  <customization name='CAP_QUERY_ALLOW_PARTIAL_AGGREGATION' value='yes' />
+                  <customization name='CAP_QUERY_ALWAYS_USE_AQ_CACHE' value='no' />
+                  <customization name='CAP_QUERY_AVOID_EXPRESSION_INLINING' value='no' />
+                  <customization name='CAP_QUERY_BLENDING_ALWAYS_USE_LOCAL_MAPPING_TABLES' value='no' />
+                  <customization name='CAP_QUERY_BLENDING_PREFER_LOCAL_MAPPING_TABLES' value='yes' />
+                  <customization name='CAP_QUERY_BLENDING_REMOTE_MAPPING_TABLES' value='yes' />
+                  <customization name='CAP_QUERY_BOOLEXPR_TO_INTEXPR' value='no' />
+                  <customization name='CAP_QUERY_BOOL_IDENTIFIER_TO_LOGICAL' value='no' />
+                  <customization name='CAP_QUERY_CAST_MONEY_AS_NUMERIC' value='no' />
+                  <customization name='CAP_QUERY_CONVERT_DATETIMES_TO_DATES' value='no' />
+                  <customization name='CAP_QUERY_EMPTY_DOMAIN_TOP' value='no' />
+                  <customization name='CAP_QUERY_FORCE_AGGREGATE_MEASURES' value='no' />
+                  <customization name='CAP_QUERY_GROUP_BY_ALIAS' value='yes' />
+                  <customization name='CAP_QUERY_GROUP_BY_DEGREE' value='yes' />
+                  <customization name='CAP_QUERY_HAVING_REQUIRES_GROUP_BY' value='yes' />
+                  <customization name='CAP_QUERY_HAVING_UNSUPPORTED' value='no' />
+                  <customization name='CAP_QUERY_IGNORE_HINT_CHECK_NOT_NULL' value='no' />
+                  <customization name='CAP_QUERY_IGNORE_HINT_MAKE_DOMAIN_PREDICATE' value='no' />
+                  <customization name='CAP_QUERY_INLINE_COMPLEX_GROUPBYS_IN_SELECTS' value='yes' />
+                  <customization name='CAP_QUERY_JOIN_ACROSS_SCHEMAS' value='yes' />
+                  <customization name='CAP_QUERY_JOIN_ASSUME_CONSTRAINED' value='no' />
+                  <customization name='CAP_QUERY_JOIN_PUSH_DOWN_CONDITION_EXPRESSIONS' value='no' />
+                  <customization name='CAP_QUERY_JOIN_REQUIRES_SCOPE' value='no' />
+                  <customization name='CAP_QUERY_JOIN_REQUIRES_SUBQUERY' value='no' />
+                  <customization name='CAP_QUERY_MINMAX_FORCE_GROUPBYS' value='no' />
+                  <customization name='CAP_QUERY_NULL_REQUIRES_CAST' value='yes' />
+                  <customization name='CAP_QUERY_OUTER_JOIN_CONDITION_NO_TRIVIAL' value='no' />
+                  <customization name='CAP_QUERY_RECOMPILE_FAILED_QUERY' value='no' />
+                  <customization name='CAP_QUERY_SELECT_ALIASES_SORTED' value='no' />
+                  <customization name='CAP_QUERY_SORT_BY' value='yes' />
+                  <customization name='CAP_QUERY_SORT_BY_DEGREE' value='no' />
+                  <customization name='CAP_QUERY_SUBQUERIES' value='yes' />
+                  <customization name='CAP_QUERY_SUBQUERIES_WITH_TOP' value='yes' />
+                  <customization name='CAP_QUERY_SUBQUERIES_WITH_TOP_ALTERNATIVE' value='no' />
+                  <customization name='CAP_QUERY_SUBQUERY_QUERY_CONTEXT' value='yes' />
+                  <customization name='CAP_QUERY_SUPPORTS_LODJOINS' value='yes' />
+                  <customization name='CAP_QUERY_SUPPORT_ANALYTIC_FUNCTIONS' value='yes' />
+                  <customization name='CAP_QUERY_SUPPORT_EMPTY_GROUPBY' value='no' />
+                  <customization name='CAP_QUERY_SUPPRESS_CHECK_DOMAIN_LITERALS_THRESHOLD' value='no' />
+                  <customization name='CAP_QUERY_SUPPRESS_NULL_CHECK_QUERIES' value='no' />
+                  <customization name='CAP_QUERY_TAGS_IN_SQL_TEXT' value='no' />
+                  <customization name='CAP_QUERY_TIME_REQUIRES_CAST' value='no' />
+                  <customization name='CAP_QUERY_TOPSTYLE_LIMIT' value='no' />
+                  <customization name='CAP_QUERY_TOPSTYLE_ROWNUM' value='no' />
+                  <customization name='CAP_QUERY_TOPSTYLE_TOP' value='no' />
+                  <customization name='CAP_QUERY_TOP_0_METADATA' value='yes' />
+                  <customization name='CAP_QUERY_TOP_N' value='yes' />
+                  <customization name='CAP_QUERY_USE_DOMAIN_EXCEPT_OPTIMIZATION' value='no' />
+                  <customization name='CAP_QUERY_USE_DOMAIN_RANGES_OPTIMIZATION' value='yes' />
+                  <customization name='CAP_QUERY_USE_DOMAIN_RANGES_OPTIMIZATION_STRINGS' value='no' />
+                  <customization name='CAP_QUERY_USE_QUERY_FUSION' value='yes' />
+                  <customization name='CAP_QUERY_USE_STRCMP_WITH_WHERE_EXISTS' value='no' />
+                  <customization name='CAP_QUERY_WHERE_FALSE_METADATA' value='no' />
+                  <customization name='CAP_RELDATEFILT_CASTTODATE' value='no' />
+                  <customization name='CAP_RENAME_TABLE_USE_LEAF_CONNECTION_DIALECT' value='no' />
+                  <customization name='CAP_SDK_SUPPORTS_PREP_WRITE_TO_DB' value='no' />
+                  <customization name='CAP_SELECT_INTO' value='no' />
+                  <customization name='CAP_SELECT_TOP_INTO' value='no' />
+                  <customization name='CAP_STORED_PROCEDURE_PREFER_TEMP_TABLE' value='no' />
+                  <customization name='CAP_STORED_PROCEDURE_REPAIR_TEMP_TABLE_STRINGS' value='no' />
+                  <customization name='CAP_STORED_PROCEDURE_TEMP_TABLE_FROM_BUFFER' value='no' />
+                  <customization name='CAP_STORED_PROCEDURE_TEMP_TABLE_FROM_NEW_PROTOCOL' value='no' />
+                  <customization name='CAP_SUPPRESS_CONNECTION_POOLING' value='yes' />
+                  <customization name='CAP_SUPPRESS_DISCOVERY_QUERIES' value='no' />
+                  <customization name='CAP_SUPPRESS_ENUMERATE_SCHEMAS_VIA_SQL' value='yes' />
+                  <customization name='CAP_SUPPRESS_ENUMERATE_TABLES_VIA_SQL' value='yes' />
+                  <customization name='CAP_SUPPRESS_GET_SERVER_TIME' value='yes' />
+                  <customization name='CAP_SUPPRESS_QUICK_FILTER_ACCELERATION_VIEWS' value='no' />
+                  <customization name='CAP_SUPPRESS_TEMP_TABLE_CHECKS' value='no' />
+                </customizations>
+              </connection-customization>
+            </connection>
+          </named-connection>
+        </named-connections>
+        <relation connection='databricks.0h6ichl1ym51a6141q6ty1c1rmkx' name='Custom SQL Query' type='text'>SELECT&#13;
+    c.address,&#13;
+    c.city,&#13;
+    c.continent,&#13;
+    c.country,&#13;
+    c.customerID,&#13;
+    c.email_address,&#13;
+    c.first_name,&#13;
+    c.gender,&#13;
+    c.last_name,&#13;
+    c.phone_number,&#13;
+    c.postal_zip_code,&#13;
+    c.state,&#13;
+    t.cardNumber,&#13;
+    t.dateTime,&#13;
+    t.franchiseID,&#13;
+    t.paymentMethod,&#13;
+    t.product,&#13;
+    t.quantity,&#13;
+    t.totalPrice,&#13;
+    t.transactionID,&#13;
+    t.unitPrice&#13;
+  FROM `samples`.`bakehouse`.`sales_customers` c&#13;
+  JOIN `samples`.`bakehouse`.`sales_transactions` t&#13;
+    ON c.customerID = t.customerID</relation>
+        <metadata-records>
+          <metadata-record class='column'>
+            <remote-name>address</remote-name>
+            <remote-type>129</remote-type>
+            <local-name>[address]</local-name>
+            <parent-name>[Custom SQL Query]</parent-name>
+            <remote-alias>address</remote-alias>
+            <ordinal>1</ordinal>
+            <local-type>string</local-type>
+            <aggregation>Count</aggregation>
+            <width>255</width>
+            <contains-null>true</contains-null>
+            <collation flag='0' name='binary' />
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+              <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+            </attributes>
+            <object-id>[_A2514C8BBED6470994DF9083D8B2A05B]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>city</remote-name>
+            <remote-type>129</remote-type>
+            <local-name>[city]</local-name>
+            <parent-name>[Custom SQL Query]</parent-name>
+            <remote-alias>city</remote-alias>
+            <ordinal>2</ordinal>
+            <local-type>string</local-type>
+            <aggregation>Count</aggregation>
+            <width>255</width>
+            <contains-null>true</contains-null>
+            <collation flag='0' name='binary' />
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+              <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+            </attributes>
+            <object-id>[_A2514C8BBED6470994DF9083D8B2A05B]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>continent</remote-name>
+            <remote-type>129</remote-type>
+            <local-name>[continent]</local-name>
+            <parent-name>[Custom SQL Query]</parent-name>
+            <remote-alias>continent</remote-alias>
+            <ordinal>3</ordinal>
+            <local-type>string</local-type>
+            <aggregation>Count</aggregation>
+            <width>255</width>
+            <contains-null>true</contains-null>
+            <collation flag='0' name='binary' />
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+              <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+            </attributes>
+            <object-id>[_A2514C8BBED6470994DF9083D8B2A05B]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>country</remote-name>
+            <remote-type>129</remote-type>
+            <local-name>[country]</local-name>
+            <parent-name>[Custom SQL Query]</parent-name>
+            <remote-alias>country</remote-alias>
+            <ordinal>4</ordinal>
+            <local-type>string</local-type>
+            <aggregation>Count</aggregation>
+            <width>255</width>
+            <contains-null>true</contains-null>
+            <collation flag='0' name='binary' />
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+              <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+            </attributes>
+            <object-id>[_A2514C8BBED6470994DF9083D8B2A05B]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>customerID</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[customerID]</local-name>
+            <parent-name>[Custom SQL Query]</parent-name>
+            <remote-alias>customerID</remote-alias>
+            <ordinal>5</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <precision>19</precision>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_BIGINT&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_SBIGINT&quot;</attribute>
+            </attributes>
+            <object-id>[_A2514C8BBED6470994DF9083D8B2A05B]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>email_address</remote-name>
+            <remote-type>129</remote-type>
+            <local-name>[email_address]</local-name>
+            <parent-name>[Custom SQL Query]</parent-name>
+            <remote-alias>email_address</remote-alias>
+            <ordinal>6</ordinal>
+            <local-type>string</local-type>
+            <aggregation>Count</aggregation>
+            <width>255</width>
+            <contains-null>true</contains-null>
+            <collation flag='0' name='binary' />
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+              <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+            </attributes>
+            <object-id>[_A2514C8BBED6470994DF9083D8B2A05B]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>first_name</remote-name>
+            <remote-type>129</remote-type>
+            <local-name>[first_name]</local-name>
+            <parent-name>[Custom SQL Query]</parent-name>
+            <remote-alias>first_name</remote-alias>
+            <ordinal>7</ordinal>
+            <local-type>string</local-type>
+            <aggregation>Count</aggregation>
+            <width>255</width>
+            <contains-null>true</contains-null>
+            <collation flag='0' name='binary' />
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+              <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+            </attributes>
+            <object-id>[_A2514C8BBED6470994DF9083D8B2A05B]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>gender</remote-name>
+            <remote-type>129</remote-type>
+            <local-name>[gender]</local-name>
+            <parent-name>[Custom SQL Query]</parent-name>
+            <remote-alias>gender</remote-alias>
+            <ordinal>8</ordinal>
+            <local-type>string</local-type>
+            <aggregation>Count</aggregation>
+            <width>255</width>
+            <contains-null>true</contains-null>
+            <collation flag='0' name='binary' />
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+              <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+            </attributes>
+            <object-id>[_A2514C8BBED6470994DF9083D8B2A05B]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>last_name</remote-name>
+            <remote-type>129</remote-type>
+            <local-name>[last_name]</local-name>
+            <parent-name>[Custom SQL Query]</parent-name>
+            <remote-alias>last_name</remote-alias>
+            <ordinal>9</ordinal>
+            <local-type>string</local-type>
+            <aggregation>Count</aggregation>
+            <width>255</width>
+            <contains-null>true</contains-null>
+            <collation flag='0' name='binary' />
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+              <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+            </attributes>
+            <object-id>[_A2514C8BBED6470994DF9083D8B2A05B]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>phone_number</remote-name>
+            <remote-type>129</remote-type>
+            <local-name>[phone_number]</local-name>
+            <parent-name>[Custom SQL Query]</parent-name>
+            <remote-alias>phone_number</remote-alias>
+            <ordinal>10</ordinal>
+            <local-type>string</local-type>
+            <aggregation>Count</aggregation>
+            <width>255</width>
+            <contains-null>true</contains-null>
+            <collation flag='0' name='binary' />
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+              <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+            </attributes>
+            <object-id>[_A2514C8BBED6470994DF9083D8B2A05B]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>postal_zip_code</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[postal_zip_code]</local-name>
+            <parent-name>[Custom SQL Query]</parent-name>
+            <remote-alias>postal_zip_code</remote-alias>
+            <ordinal>11</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <precision>19</precision>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_BIGINT&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_SBIGINT&quot;</attribute>
+            </attributes>
+            <object-id>[_A2514C8BBED6470994DF9083D8B2A05B]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>state</remote-name>
+            <remote-type>129</remote-type>
+            <local-name>[state]</local-name>
+            <parent-name>[Custom SQL Query]</parent-name>
+            <remote-alias>state</remote-alias>
+            <ordinal>12</ordinal>
+            <local-type>string</local-type>
+            <aggregation>Count</aggregation>
+            <width>255</width>
+            <contains-null>true</contains-null>
+            <collation flag='0' name='binary' />
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+              <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+            </attributes>
+            <object-id>[_A2514C8BBED6470994DF9083D8B2A05B]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>cardNumber</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[cardNumber]</local-name>
+            <parent-name>[Custom SQL Query]</parent-name>
+            <remote-alias>cardNumber</remote-alias>
+            <ordinal>13</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <precision>19</precision>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_BIGINT&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_SBIGINT&quot;</attribute>
+            </attributes>
+            <object-id>[_A2514C8BBED6470994DF9083D8B2A05B]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>dateTime</remote-name>
+            <remote-type>7</remote-type>
+            <local-name>[dateTime]</local-name>
+            <parent-name>[Custom SQL Query]</parent-name>
+            <remote-alias>dateTime</remote-alias>
+            <ordinal>14</ordinal>
+            <local-type>datetime</local-type>
+            <aggregation>Year</aggregation>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_TYPE_TIMESTAMP&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_TYPE_TIMESTAMP&quot;</attribute>
+            </attributes>
+            <object-id>[_A2514C8BBED6470994DF9083D8B2A05B]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>franchiseID</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[franchiseID]</local-name>
+            <parent-name>[Custom SQL Query]</parent-name>
+            <remote-alias>franchiseID</remote-alias>
+            <ordinal>15</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <precision>19</precision>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_BIGINT&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_SBIGINT&quot;</attribute>
+            </attributes>
+            <object-id>[_A2514C8BBED6470994DF9083D8B2A05B]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>paymentMethod</remote-name>
+            <remote-type>129</remote-type>
+            <local-name>[paymentMethod]</local-name>
+            <parent-name>[Custom SQL Query]</parent-name>
+            <remote-alias>paymentMethod</remote-alias>
+            <ordinal>16</ordinal>
+            <local-type>string</local-type>
+            <aggregation>Count</aggregation>
+            <width>255</width>
+            <contains-null>true</contains-null>
+            <collation flag='0' name='binary' />
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+              <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+            </attributes>
+            <object-id>[_A2514C8BBED6470994DF9083D8B2A05B]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>product</remote-name>
+            <remote-type>129</remote-type>
+            <local-name>[product]</local-name>
+            <parent-name>[Custom SQL Query]</parent-name>
+            <remote-alias>product</remote-alias>
+            <ordinal>17</ordinal>
+            <local-type>string</local-type>
+            <aggregation>Count</aggregation>
+            <width>255</width>
+            <contains-null>true</contains-null>
+            <collation flag='0' name='binary' />
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+              <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+            </attributes>
+            <object-id>[_A2514C8BBED6470994DF9083D8B2A05B]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>quantity</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[quantity]</local-name>
+            <parent-name>[Custom SQL Query]</parent-name>
+            <remote-alias>quantity</remote-alias>
+            <ordinal>18</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <precision>19</precision>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_BIGINT&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_SBIGINT&quot;</attribute>
+            </attributes>
+            <object-id>[_A2514C8BBED6470994DF9083D8B2A05B]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>totalPrice</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[totalPrice]</local-name>
+            <parent-name>[Custom SQL Query]</parent-name>
+            <remote-alias>totalPrice</remote-alias>
+            <ordinal>19</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <precision>19</precision>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_BIGINT&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_SBIGINT&quot;</attribute>
+            </attributes>
+            <object-id>[_A2514C8BBED6470994DF9083D8B2A05B]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>transactionID</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[transactionID]</local-name>
+            <parent-name>[Custom SQL Query]</parent-name>
+            <remote-alias>transactionID</remote-alias>
+            <ordinal>20</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <precision>19</precision>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_BIGINT&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_SBIGINT&quot;</attribute>
+            </attributes>
+            <object-id>[_A2514C8BBED6470994DF9083D8B2A05B]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>unitPrice</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[unitPrice]</local-name>
+            <parent-name>[Custom SQL Query]</parent-name>
+            <remote-alias>unitPrice</remote-alias>
+            <ordinal>21</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <precision>19</precision>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_BIGINT&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_SBIGINT&quot;</attribute>
+            </attributes>
+            <object-id>[_A2514C8BBED6470994DF9083D8B2A05B]</object-id>
+          </metadata-record>
+        </metadata-records>
+      </connection>
+      <aliases enabled='yes' />
+      <column caption='Custom SQL Query' datatype='table' name='[__tableau_internal_object_id__].[_A2514C8BBED6470994DF9083D8B2A05B]' role='measure' type='quantitative' />
+      <column caption='sales_transactions' datatype='table' name='[__tableau_internal_object_id__].[sales_transactions (samples.bakehouse.sales_transactions)_EF9B11F1A89942AA9A5CECF6669FA740]' role='measure' type='quantitative' />
+      <column datatype='string' name='[city]' role='dimension' semantic-role='[City].[Name]' type='nominal' />
+      <column caption='Country' datatype='string' name='[country]' role='dimension' semantic-role='[Country].[ISO3166_2]' type='nominal' />
+      <column caption='Payment Method' datatype='string' name='[paymentMethod]' role='dimension' type='nominal' />
+      <column aggregation='Sum' datatype='integer' default-format='*00000' name='[postal_zip_code]' role='dimension' semantic-role='[ZipCode].[Name]' type='ordinal' />
+      <column datatype='string' name='[state]' role='dimension' semantic-role='[State].[Name]' type='nominal' />
+      <layout dim-ordering='alphabetic' measure-ordering='alphabetic' show-structure='true' />
+      <semantic-values>
+        <semantic-value key='[Country].[Name]' value='&quot;United States&quot;' />
+      </semantic-values>
+      <object-graph>
+        <objects>
+          <object caption='Custom SQL Query' id='_A2514C8BBED6470994DF9083D8B2A05B'>
+            <properties context=''>
+              <relation connection='databricks.0h6ichl1ym51a6141q6ty1c1rmkx' name='Custom SQL Query' type='text'>SELECT&#13;
+    c.address,&#13;
+    c.city,&#13;
+    c.continent,&#13;
+    c.country,&#13;
+    c.customerID,&#13;
+    c.email_address,&#13;
+    c.first_name,&#13;
+    c.gender,&#13;
+    c.last_name,&#13;
+    c.phone_number,&#13;
+    c.postal_zip_code,&#13;
+    c.state,&#13;
+    t.cardNumber,&#13;
+    t.dateTime,&#13;
+    t.franchiseID,&#13;
+    t.paymentMethod,&#13;
+    t.product,&#13;
+    t.quantity,&#13;
+    t.totalPrice,&#13;
+    t.transactionID,&#13;
+    t.unitPrice&#13;
+  FROM `samples`.`bakehouse`.`sales_customers` c&#13;
+  JOIN `samples`.`bakehouse`.`sales_transactions` t&#13;
+    ON c.customerID = t.customerID</relation>
+            </properties>
+          </object>
+        </objects>
+      </object-graph>
+    </datasource>
+  </datasources>
+  <worksheets>
+    <worksheet name='Sheet 2'>
+      <table>
+        <view>
+          <datasources>
+            <datasource caption='sales_customers (samples.bakehouse.sales_customers)+ (bakehouse)' name='federated.0rbe41t0pgjxjs1bpbl111t07ecc' />
+          </datasources>
+          <datasource-dependencies datasource='federated.0rbe41t0pgjxjs1bpbl111t07ecc'>
+            <column caption='Country' datatype='string' name='[country]' role='dimension' semantic-role='[Country].[ISO3166_2]' type='nominal' />
+            <column datatype='integer' name='[customerID]' role='measure' type='quantitative' />
+            <column-instance column='[country]' derivation='None' name='[none:country:nk]' pivot='key' type='nominal' />
+            <column-instance column='[customerID]' derivation='Sum' name='[sum:customerID:qk]' pivot='key' type='quantitative' />
+          </datasource-dependencies>
+          <aggregation value='true' />
+        </view>
+        <style />
+        <panes>
+          <pane selection-relaxation-option='selection-relaxation-allow'>
+            <view>
+              <breakdown value='auto' />
+            </view>
+            <mark class='Automatic' />
+          </pane>
+        </panes>
+        <rows>[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[sum:customerID:qk]</rows>
+        <cols>[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[none:country:nk]</cols>
+      </table>
+      <simple-id uuid='{526C74BE-E6AB-4330-88E6-51CF7455C9FB}' />
+    </worksheet>
+  </worksheets>
+  <windows source-height='30'>
+    <window class='worksheet' maximized='true' name='Sheet 2'>
+      <cards>
+        <edge name='left'>
+          <strip size='160'>
+            <card type='pages' />
+            <card type='filters' />
+            <card type='marks' />
+          </strip>
+        </edge>
+        <edge name='top'>
+          <strip size='2147483647'>
+            <card type='columns' />
+          </strip>
+          <strip size='2147483647'>
+            <card type='rows' />
+          </strip>
+          <strip size='31'>
+            <card type='title' />
+          </strip>
+        </edge>
+      </cards>
+      <viewpoint>
+        <highlight>
+          <color-one-way>
+            <field>[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[none:country:nk]</field>
+          </color-one-way>
+        </highlight>
+      </viewpoint>
+      <simple-id uuid='{65C0E8A9-D402-4FCF-BEEA-19FBBF799249}' />
+    </window>
+  </windows>
+  <thumbnails>
+    <thumbnail height='192' name='Sheet 2' width='192'>
+      iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAYAAABS3GwHAAAACXBIWXMAAA7DAAAOwwHHb6hk
+      AAATl0lEQVR4nO3dWWxc13nA8f+5d/YZcriNuO+USEmWZEuyJDuJ7MR14sZJkYcWSNGX9qVB
+      gwZ9yUOAFGiLIkVRoEXbp/YpDdC3tM1WJI3jeIkl25ElW5K1i+K+iTuHs9/l9IGUKIp0KiT1
+      DKnz/QAC4pDiPTOc/713KOp+SmutEcJASillVXoRQlSSBCCMJgEIo0kAwmgSgDCaBCCMJgEI
+      o0kAwmgSgDBaoNILEL85LzPNO2feZSof5eDTp9jfWoOlKr2q3UGOALuZ1qyOn+ef/+ZveX3E
+      oz66zNWb45RcjVvKs7y4QCbvoAGtfVzXQ+u1P3ueh0bjeQ7Z9AqZgoPWPoP/80/8+XfewHFc
+      fF/jey6e71PKZSk4Lq638TVc18Xf5b9JI0eAXc3nzsV3yHe8xNf+6HPUhNf2Z6XMXV770fe4
+      ueQSCNZx6nMvc7Bxmbf+e4RDLz9HojjMxXN5Dr/YwA+++yr5pWWWSy387h+c4MLFywyOz/Fv
+      oVVOP/9p9O3/ZtLqZOrCBVo+80n8mSzHPvEModU7vHtjjmMnTlIbtSv8OPz65Aiwi2nfZ2Uh
+      Q7KjnVho41s5e+0Nzo3HOf3SFzlQN8+br5xjMTfDhdc/YMmBYmaCD88NkWcRv/s4n37xKfTF
+      d7hTqqWro5VU90E+deIwjckwQ2//B9/5/hkSTzxLf7XNlUu/ZHB2hakb57h6exms3f0UkiPA
+      LqYUBII2TqGEp4H18/6VmQmC+17iYE8n84Ve3n9lnGzh4LZfo7Grl97GGKmohW/HSdXXU+22
+      MtDbubaNSJJTv/1lvvhCOwEvzdE6zVvv32Bg8Q5tT/4xyfDufrGxu/M1nbJp6e5k/vIZBu9m
+      8J0MC8tZoskaShNjrJQ0mYVF/FAd4RBordHaI7u4TP4jvqQdCJDP5vHW37dsi1g8vrantBMc
+      frqP0fM/4cOxag7sTe36J9BuX7/ZlKL96G/x+Scsvv3XX+erX/sG//7mDWoHnqMz8xrf+ubX
+      +defTHH8hedJxZqJW+f5u6//Gf/yyi1CiQgWAcKWAmxiyWrCFjQdfJqGwR/x1W/+PW/fXiQc
+      ryEWureXt6gZOMFJNU52/4v0Vu/ec/97lPyHmMeD7xQoeBaRSGhtr+a75PIF7EicsK0AjeeU
+      KHmKcDj0K39Mqr0S+aImHA1jP/B5bjHL1J0L/Oi7P+fIV/6CTzbt7v2nUkrJa4DHhBWMEAs+
+      eEOAWDzxwA0KOxgmGnz4b26l7BCx2NbbvVKeiZFJmp/7PU7s8if/PXIEEI9Max/XcbECQezH
+      4F/alFLK2ABc1yUQkAOgyYz+P8Gu61Z6CWIHMDYAIUACEIaTAITRJABhNAlAGE0CEEaTAITR
+      JABhNAlAGE0CEEaTAITRJABhNAlAGE0CEEaTAITRJABhNAlAGE0CEEaTAITRyh+A1nhOkUwm
+      QzZf3HR1Ya19SoU8RddDA2iPYi7DymoWx/PXb9M4xRzplVUKzvqVin2PQj6P4/kbX8t3yec2
+      3ybEw8p8WQSf7MIUwxOTpDMuWDa13QfZ31wFQCkzzdmfvkfsqZOc6NlDenqIa7eHWS4ESHX2
+      8URfG2RmuXHjGjOLLommdg707yVamOftX7xF/akXebK5BoDC4nW+/7NRjp1+jn2tVeW9m2LX
+      KPsRwMeiqrGPk88+w9HuMEOji+sfcZi8epWMHccrFdFOhuHxWWr6TvHZ04coTo0xl84wMz2G
+      m9jLCy9+iobSAqOzC7gOxAJZhmfS97ezPHST5WCQYkGu/iA+WpmPAIpEfTMJwCutMj2xSKy6
+      BbTHyvAH3Anu5VDbLDOAkyvgKpvWuirsSIL2iGY+lyaWy5BobyYQtGlNJbiQzaEjUaItnVTP
+      jrPgdlDPLINzKQ6063sXTF6/MOzmSyB5nvfwAvmTf/gxuaLzsT8SH8VSim9/43cqtn3TlD0A
+      pcDNTHH+vZu4yTaO9zZQTN/l6iQ8eayJ/LXZtU/VCtu2sWwFSmHbRbJ5j4RSEAigAMt2yOXd
+      tdcGVg0DrXNcmyhwnFGcjm5qC0P3t+z7/qYnvNYax9n6RE/niuSLlTtqKMW26xIfj7JfGk3n
+      p3nn7VvUDzxBb2sDYctj7OpFLl4Y5NrtDyksLpILRFAvfgnLdXAdDSGXXM4m3hrATWt0sQiE
+      KBYgElb39/KJ7n14717hRkLT3RNjeWRju7ZtY9sbVzMuFApEIpEt69v4apWz3brEx6PMATiM
+      XLrOcjBKi7vK5OgqVryezqde4itHNOAxfuECU/FGjvfXcu3CCKN3hqGuyLCKc7S6jmK2msGh
+      68yoOoZnC7T1NmCpAgB2pJUW+20uFZ/ipXiM5fLeObELlf0IENuTIjk0y+jIyNoCUkG6GpOs
+      7ZwVtW0dBEJxrECc/n3dfHj7LpOzPu1d3SSrotjBXpZzd5iemiNc30ZrY5JgIUBTczMhy6ah
+      9xiH3FoikSDNrd1YUdmbio+24y+Oq30PXyss29o4OdE+nq9Rlv1rjwP9qFOg3/+r/6zoi2Cl
+      4Pvf+nLFtm+SXTEfQFk2W+aQKAt79w8nETuA/CqEMJoEIIwmAQijSQDCaBKAMJoEIIwmAQij
+      SQDCaBKAMJoEIIwmAQijSQDCaBKAMJoEIIwmAQijSQDCaBKAMJoEIIwmAQijSQDCaBKAMJoE
+      IIwmAQijSQDCaBKAMJoEIIwmAQijSQDCaBKAMFr5rw6tNW4px2q2iApGqIpHsS3QnkNmNYuD
+      TSweJxywUdoll0mTKVlUJ6sJBy2U9inmV0lnHKLVSeLhINp3yGXzBGMJwoG1pn2/RGa1QDiW
+      IByUzsX2yj4mdXV2nDuTMziOhfZdoh0HOFDrM3hnmJWCC9rDDTZx/HA72clBro9OkXdsqho7
+      OLSvE1anuXbzFitZCNWmGOjvJ1Zc4JdvvEntM5/laEstAIX5a/zg1XFOnH6O/rbq8t5Nsa1X
+      3rtDtlCq6BpePrWPUHDj2vplPwKoYJQ97f001lfjzn3Iq8NL7K+rp6q+hbaGBqIqzTuv3WA1
+      X83Y9AINfSforStw7uwN5prq8O5OoJL9nH66jqEL7zM2O8/emCIRKTAyvXo/gOWh2+QiSUrF
+      rZMgRWX81y+uM72QqegaXjjWU8kAFPHaFHHAzS8zMjRLVV0LdiRBc3MC7TvMj46wGIoRKpTw
+      LJu62jh2KE5b1Gc2lyaRzxLraMQOWLTsifFepoCORgk3d1M/N8Ks08Eeprm10MLBduf+VBnf
+      9zeNSdVa47rbTYOs/MCc7de1++2EWUSe5216fCsyJtVJj/HuuUGCjT0c665Hrc1O5eb7F5hy
+      qzh6pJ+wWsW2AihLgQLLKlEo+FRbCmwbBSjlkC+sj0lVVextX+D6WJ6EGkd3dRDP3bm/Za01
+      vu9vWs12c4J3wPdo23U9Hir/6Pqet+nxLXMAGi8zydm3h2l78igdqSQhW6H9PHcunGcx2sHT
+      /Z0kwjZeOo3jlHBKPjrokMkFSLQFcdMaP19A6zD5PMQiG7PD4t39qLOXuJqw6e2LsjC8seWH
+      x6R6nkc4HN6ywp0wJnW7dT0OlKr8YxsMhTY9vmUOwGXkw+ssWUFSC5PcXpjErm6i077LpekV
+      OrtyjA3eAOJ07GsgbnsM3biFW1diRMU5nqyjlKvhxuAVqvxaRu8WaO1vwFJ5AOxQM82BM1ws
+      PclALMZCee+c2IXKfgqUbO2gdXyelZWVtQUE6rCaGtjXtshqLs3azwg0rmpn774+bgzPsZTV
+      9Pb1kIxHsNp7yZRGSS9nqW3poi1VTaAUpNW2CVsWqf6THHWTRCMh2jr2YkWi5b2LYlcpcwAB
+      Gjr6aejo3/KRQ8f3bP30ZDOHjjTia7Cs9VOdSJK9B57A02ApC6WAQIxULAZATXMPNet/PdXY
+      +nHdEfGY2PljUpWF/fCp43a3CfFrkH8iFUaTAITRJABhNAlAGE0CEEaTAITRJABhNAlAGE0C
+      EEaTAITRJABhNAlAGE0CEEaTAITRJABhNAlAGE0CEEaTAITRJABhNAlAGE0CEEaTAITRJABh
+      tB1/XSDx0Uqux5/+448ruoa//MPnaWmoqugafhMSwC6mNdxdzFZ0Da7n/9+ftIPJKZAwmgQg
+      jCYBCKNJAMJo5Q9Aa5z8CnenZ5hbWsX118bmaLfA/PQEk3PLlFx/bZiO75BemGF8ao5cyVu7
+      Tfvk0wtMjE+xnCvha/DdEsuLi+SdjdE3vldgcX6RfOlxHTck/j+UfUzqyvQwt6bmCdph/GKW
+      iZaDPNUWZuT6VaZWCvg+zLb2cbg7xdLoLW5OLaB9i8n5Jg4N9KDSk1y9PUTRDcDMHPv695Mo
+      LXL+9ddIPvsST7fWAVCYv8oPfzbJqeeeZ6BdxqSK7ZX9CBCM19LVe4DDRw7zRHeC6akVnKW7
+      jGct9h89xakjLUwOTVDKLTM2u0Jj33GePXkANT/DXDrNzOwkwdoBTj17nGZyjM/N47lQXeUx
+      PpVeH8OmWRgcwq2O4sgRQPwKZT4CWMSSdcSAYmaOwduz1DS2kllZIloVIR4NEIw10lwcZTqX
+      R1s2NckYVihKa9RnJrdKVT5HpKOBgG3T1BBhdLWAjsUINXaRmhthptRFs55iMN3G/ubipjGp
+      D06J1FrjOM6WFeodMMlwu3Vtx3Mr/zN4z/Meeb16B8xJ9VwXx9nY71fkRbCzPMTZM5fJ1+/j
+      ya46wCJgW6w9WxWqVKSoFZZlo6z12yyHYsnHstTGtEflUiyuv14gwd4Oj5ujOTLjE1hdbcQe
+      2q7W+v7bw+8/eHulbbeu7d58XfkAtPYfeb07gf/Qeso+JtVZGeXNdybZd+okLck4AUvhBTyy
+      SyU8V6PJsmzHaA7AmFOkWPTQQYeVrE11ewhvBdxcDl0bIZvVxKIbY1JjXQcIvHWBD6ti9O6N
+      MffAUHLLsrCsjd49zyMUCm1Z4U4Yk7rdurajVeVP7wKB4COvd0eMSQ1uXm+ZA3AYvXKTJRfm
+      hm4yB9g17RxpqcUausy1G3dIFCdxmltoqK5lJTDE7SvXKNSVGLMSnKiuxcnVcOXWJaLFGsbv
+      Fmg/kMJi7dcBrGCKxtCbXCwe4VAsylx575zYhcr+GqC+Zy/90WW89b2BZSlUtJ4jB/cyMpfD
+      jzXxZEsbgUCE3v4B1Pg8JR1g/0Az1fEIVnsffXqSvKNp6dlLayqBXQrQEQoRsSyaDnyCU14V
+      kXCIzp79WKGHT4SE2FD2Mam1zT3UNm/9SDzVwYEGH1Cg1k5EglUp9u1vQGtQ1vrJSbiKzr5+
+      fL12SFUKiEapi67NA65KtXPvdxPr6hvLcq/E7rWjfhtUqa2vye8/yTffiFX500nxGJBfhRBG
+      kwCE0SQAYTQJQBhNAhBGkwCE0SQAYTQJQBhNAhBGkwCE0SQAYTQJQBhNAhBGkwCE0SQAYTQJ
+      QBhNAhBGkwCE0SQAYTQJQBhNAhBGkwCE0SQAYTQJQBhNAhBGkwCE0SQAYTQJQBhNAhBGkwCE
+      0SoUgM/SzCjzq/eGq2mc9DSXz5/j/OVbLOWctblfbpaxK+/y8zMfcDddWp8T7LAwdoU3XjvL
+      nbureBqcfJrb16+zkC3e34JbWuL65evMrxa3bl6IdWUPwM3Nce4n3+On711iYr60dtvKBGfe
+      v02ipYeO6hxvvXuFYqnA8OVLjHt1HGwLc+3yZZZyDoujN7kyUWBvfxtzgx8wMpullM4y+sFZ
+      Ls4s3d9Obvx9Xr1wg7vz+XLfRbGLlD0Axw2y7/Tn+dRAHWp9Snwhk0OHYqQa6qhvaiCUyZHN
+      LjPvWvR099LU2cMer8jc6hJz6WX2tO2npbWd7mSc2eV5PK1o6KgjPb7I2jGlyPjgCk1dtWh/
+      Z0wnFDtT2SfERKtriML6WLs18VQLXYsXefWHP4SARar/GHGtsC2LUNgGZZEMFxnPFKhzSlix
+      KAqLRFyzsuigq8MQb6VreZyR7AH2+mNMBvvoTCze34bnebiue/993/fJ57ceHXbCnODt1rWd
+      klv5KZHFYvGR17sTdkbFQoG82hgvuwNGJGkKS3OMr0Z45jOfIerN897FCVZTHaDU+jxXje8r
+      LGvt7d40eF/zwKikEF0DtZy/PkMiOE99XzfW3Y0ALMvaNB6zWCzu2DGp4XD4kT5P2ZUPIBQK
+      Pfp6d8CY1FA4TDi88X3fAT8F0qwur6KCUWpqqkg2NFGXS7MSgFKhQDZbQrsZZgsB6uNRtLbJ
+      Li/ha4+FtEsyFr4fQSA1QP3iOS5l4nRWRzdtZW3W2MYbbMwOfvBtJ9huXdu9bTdTrdyUUo+8
+      3h2wb9m0Xij7EcBjZWqIq7dGmZkZJqPSLC30cWygkcDwL3n1Z5PYTgGvupv+eB2xWouzb77B
+      SE2JFauD/mQNuClef/cMq5Mx5tMBTnxqD6qw9uJXWTGqog7DJZto9NGGNwuzlX1OcHVTLycb
+      e9D6eUCtF6k49eIXKBVyuASJREPYShHb/wxf6ilQdBXhWJiAsqC5n5e/0E2u5BGKRAnZCpKN
+      HN6zB6UUvZ/4Ej0oLKU4cuw0O2K3I3asMgegUJbC3u4jtk0kXrXl84ORGMFNt1nYoQhVD+3g
+      753WKGVvuU2Ij1L5k0ghKkgCEEaTAITRJABhNAlAGE0CEEaTAITRJABhNAlAGE0CEEaTAITR
+      JABhNAlAGE0CEEaTAITRJABhNAlAGE0CEEaTAITRJABhNAlAGE0CEEaTAITRJABhtP8FqLGc
+      6NM1pwEAAAAASUVORK5CYII=
+    </thumbnail>
+  </thumbnails>
+</workbook>

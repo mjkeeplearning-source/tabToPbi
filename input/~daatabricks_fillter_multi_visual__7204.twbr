@@ -1,0 +1,1645 @@
+<?xml version='1.0' encoding='utf-8' ?>
+
+<!-- build 20261.26.0226.1626                               -->
+<workbook original-version='18.1' source-build='2026.1.0 (20261.26.0226.1626)' source-platform='win' version='18.1' xmlns:user='http://www.tableausoftware.com/xml/user'>
+  <document-format-change-manifest>
+    <AccessibleZoneTabOrder />
+    <AnimationOnByDefault />
+    <AutoCreateAndUpdateDSDPhoneLayouts />
+    <DatabricksCatalog />
+    <IntuitiveSorting />
+    <IntuitiveSorting_SP2 />
+    <MarkAnimation />
+    <ObjectModelEncapsulateLegacy />
+    <ObjectModelTableType />
+    <SchemaViewerObjectModel />
+    <SetMembershipControl />
+    <SheetIdentifierTracking />
+    <WindowsPersistSimpleIdentifiers />
+    <ZoneBackgroundTransparency />
+  </document-format-change-manifest>
+  <preferences>
+    <preference name='ui.encoding.shelf.height' value='24' />
+    <preference name='ui.shelf.height' value='26' />
+  </preferences>
+  <datasources>
+    <datasource caption='sales_customers (samples.bakehouse.sales_customers)+ (bakehouse)' inline='true' name='federated.0rbe41t0pgjxjs1bpbl111t07ecc' version='18.1'>
+      <connection class='federated'>
+        <named-connections>
+          <named-connection caption='dbc-b0e64326-49ff.cloud.databricks.com' name='databricks.0h6ichl1ym51a6141q6ty1c1rmkx'>
+            <connection authentication='oauth' authentication-type='' class='databricks' dbname='samples' instanceurl='https://dbc-b0e64326-49ff.cloud.databricks.com/oidc' oauth-config-id='default' odbc-connect-string-extras='' one-time-sql='' schema='bakehouse' server='dbc-b0e64326-49ff.cloud.databricks.com' server-oauth='' username='mjkeeplearning@gmail.com' v-http-path='/sql/1.0/warehouses/7691ee00ee3de572' v-query-tags=''>
+              <connection-customization class='databricks' enabled='false' version='18.1'>
+                <vendor name='databricks' />
+                <driver name='databricks' />
+                <customizations>
+                  <customization name='CAP_AUTH_DB_IMPERSONATE' value='no' />
+                  <customization name='CAP_AUTH_KERBEROS_IMPERSONATE' value='yes' />
+                  <customization name='CAP_COLLECT_TABLE_STATISTICS' value='no' />
+                  <customization name='CAP_CONNECT_STORED_PROCEDURE' value='no' />
+                  <customization name='CAP_CREATE_TEMP_TABLES' value='no' />
+                  <customization name='CAP_DATASERVER_MAGIC_NUMBER' value='no' />
+                  <customization name='CAP_DEFERS_CONNECTION_VERIFICATION' value='no' />
+                  <customization name='CAP_DISABLE_EXTRACT_TABLE_INDEXING' value='no' />
+                  <customization name='CAP_EQUALITY_JOINS_ONLY' value='no' />
+                  <customization name='CAP_EQUIJOINS_ONLY' value='no' />
+                  <customization name='CAP_FAST_METADATA' value='no' />
+                  <customization name='CAP_FORCE_COUNT_FOR_NUMBEROFRECORDS' value='no' />
+                  <customization name='CAP_GREENPLUM_TRUST_METADATA_CONTAINSNULL' value='no' />
+                  <customization name='CAP_HIVE_FIX_METADATA_NAMES' value='no' />
+                  <customization name='CAP_INCLUDE_OTHER_CATALOG_NAME' value='no' />
+                  <customization name='CAP_INDEX_TEMP_TABLES' value='no' />
+                  <customization name='CAP_INSERT_TEMP_EXEC_STORED_PROCEDURE' value='no' />
+                  <customization name='CAP_JDBC_QUERY_USE_PREPARE_PARAMETER_MARKER' value='no' />
+                  <customization name='CAP_LOCAL_ALIASES_CASE_INSENSITIVE' value='no' />
+                  <customization name='CAP_METADATA_SHOW_OTHER_CATALOGS' value='no' />
+                  <customization name='CAP_OAUTH_FEDERATE_ACCCESS_TOKEN' value='no' />
+                  <customization name='CAP_OAUTH_FEDERATE_ID_TOKEN' value='no' />
+                  <customization name='CAP_OAUTH_VALIDATE_ALWAYS' value='no' />
+                  <customization name='CAP_ODBC_ALWAYS_THROW_CONNECT_ERRORS' value='no' />
+                  <customization name='CAP_ODBC_BIND_FORCE_DATETIME_AS_CHAR' value='no' />
+                  <customization name='CAP_ODBC_BIND_FORCE_DATE_AS_CHAR' value='no' />
+                  <customization name='CAP_ODBC_BIND_FORCE_MAX_STRING_BUFFERS' value='no' />
+                  <customization name='CAP_ODBC_BIND_FORCE_MEDIUM_STRING_BUFFERS' value='no' />
+                  <customization name='CAP_ODBC_BIND_FORCE_SIGNED' value='no' />
+                  <customization name='CAP_ODBC_BIND_FORCE_SMALL_STRING_BUFFERS' value='no' />
+                  <customization name='CAP_ODBC_BIND_SUPPRESS_INT64' value='no' />
+                  <customization name='CAP_ODBC_BIND_SUPPRESS_PREFERRED_TYPES' value='no' />
+                  <customization name='CAP_ODBC_BIND_SUPPRESS_WIDE_CHAR' value='no' />
+                  <customization name='CAP_ODBC_CURSOR_DYNAMIC' value='no' />
+                  <customization name='CAP_ODBC_CURSOR_FORWARD_ONLY' value='yes' />
+                  <customization name='CAP_ODBC_CURSOR_KEYSET_DRIVEN' value='no' />
+                  <customization name='CAP_ODBC_CURSOR_STATIC' value='no' />
+                  <customization name='CAP_ODBC_DRIVER_HIVE_ASSUME_LATEST' value='no' />
+                  <customization name='CAP_ODBC_ERROR_IGNORE_FALSE_ALARM' value='no' />
+                  <customization name='CAP_ODBC_FETCH_BUFFERS_RESIZABLE' value='no' />
+                  <customization name='CAP_ODBC_FETCH_BUFFERS_SIZE_MASSIVE' value='no' />
+                  <customization name='CAP_ODBC_FETCH_CONTINUE_ON_ERROR' value='no' />
+                  <customization name='CAP_ODBC_FETCH_FORCE_VERIFY_TRUNCATE_BY_CELLSTATUS' value='no' />
+                  <customization name='CAP_ODBC_FETCH_INT_TRUNCATION_AS_ERROR' value='yes' />
+                  <customization name='CAP_ODBC_FORCE_SINGLE_ROW_BINDING' value='no' />
+                  <customization name='CAP_ODBC_IMPORT_GETDATA_BUFFER_LARGE' value='no' />
+                  <customization name='CAP_ODBC_METADATA_STRING_LENGTH_UNKNOWN' value='no' />
+                  <customization name='CAP_ODBC_METADATA_SUPPRESS_SQLCOLUMNS_API' value='no' />
+                  <customization name='CAP_ODBC_METADATA_SUPPRESS_SQLFOREIGNKEYS_API' value='no' />
+                  <customization name='CAP_ODBC_METADATA_SUPPRESS_SQLPRIMARYKEYS_API' value='no' />
+                  <customization name='CAP_ODBC_METADATA_SUPPRESS_SQLSTATISTICS_API' value='yes' />
+                  <customization name='CAP_ODBC_QUERY_USE_PREPARE_PARAMETER_MARKER' value='no' />
+                  <customization name='CAP_ODBC_REBIND_SKIP_UNBIND' value='no' />
+                  <customization name='CAP_ODBC_SCHEMAS_OPTIONAL' value='no' />
+                  <customization name='CAP_ODBC_TRIM_VARCHAR_PADDING' value='no' />
+                  <customization name='CAP_ODBC_UNBIND_AUTO' value='no' />
+                  <customization name='CAP_ODBC_UNBIND_BATCH' value='no' />
+                  <customization name='CAP_ODBC_UNBIND_EACH' value='yes' />
+                  <customization name='CAP_ODBC_USE_NATIVE_PROTOCOL' value='yes' />
+                  <customization name='CAP_PADDED_SEMANTICS_NCHAR_NVARCHAR' value='no' />
+                  <customization name='CAP_PERSIST_SQL_RELATION_ON_LEAF_CONNECTION' value='no' />
+                  <customization name='CAP_QUERY_ALLOW_JOIN_REORDER' value='yes' />
+                  <customization name='CAP_QUERY_ALLOW_PARTIAL_AGGREGATION' value='yes' />
+                  <customization name='CAP_QUERY_ALWAYS_USE_AQ_CACHE' value='no' />
+                  <customization name='CAP_QUERY_AVOID_EXPRESSION_INLINING' value='no' />
+                  <customization name='CAP_QUERY_BLENDING_ALWAYS_USE_LOCAL_MAPPING_TABLES' value='no' />
+                  <customization name='CAP_QUERY_BLENDING_PREFER_LOCAL_MAPPING_TABLES' value='yes' />
+                  <customization name='CAP_QUERY_BLENDING_REMOTE_MAPPING_TABLES' value='yes' />
+                  <customization name='CAP_QUERY_BOOLEXPR_TO_INTEXPR' value='no' />
+                  <customization name='CAP_QUERY_BOOL_IDENTIFIER_TO_LOGICAL' value='no' />
+                  <customization name='CAP_QUERY_CAST_MONEY_AS_NUMERIC' value='no' />
+                  <customization name='CAP_QUERY_CONVERT_DATETIMES_TO_DATES' value='no' />
+                  <customization name='CAP_QUERY_EMPTY_DOMAIN_TOP' value='no' />
+                  <customization name='CAP_QUERY_FORCE_AGGREGATE_MEASURES' value='no' />
+                  <customization name='CAP_QUERY_GROUP_BY_ALIAS' value='yes' />
+                  <customization name='CAP_QUERY_GROUP_BY_DEGREE' value='yes' />
+                  <customization name='CAP_QUERY_HAVING_REQUIRES_GROUP_BY' value='yes' />
+                  <customization name='CAP_QUERY_HAVING_UNSUPPORTED' value='no' />
+                  <customization name='CAP_QUERY_IGNORE_HINT_CHECK_NOT_NULL' value='no' />
+                  <customization name='CAP_QUERY_IGNORE_HINT_MAKE_DOMAIN_PREDICATE' value='no' />
+                  <customization name='CAP_QUERY_INLINE_COMPLEX_GROUPBYS_IN_SELECTS' value='yes' />
+                  <customization name='CAP_QUERY_JOIN_ACROSS_SCHEMAS' value='yes' />
+                  <customization name='CAP_QUERY_JOIN_ASSUME_CONSTRAINED' value='no' />
+                  <customization name='CAP_QUERY_JOIN_PUSH_DOWN_CONDITION_EXPRESSIONS' value='no' />
+                  <customization name='CAP_QUERY_JOIN_REQUIRES_SCOPE' value='no' />
+                  <customization name='CAP_QUERY_JOIN_REQUIRES_SUBQUERY' value='no' />
+                  <customization name='CAP_QUERY_MINMAX_FORCE_GROUPBYS' value='no' />
+                  <customization name='CAP_QUERY_NULL_REQUIRES_CAST' value='yes' />
+                  <customization name='CAP_QUERY_OUTER_JOIN_CONDITION_NO_TRIVIAL' value='no' />
+                  <customization name='CAP_QUERY_RECOMPILE_FAILED_QUERY' value='no' />
+                  <customization name='CAP_QUERY_SELECT_ALIASES_SORTED' value='no' />
+                  <customization name='CAP_QUERY_SORT_BY' value='yes' />
+                  <customization name='CAP_QUERY_SORT_BY_DEGREE' value='no' />
+                  <customization name='CAP_QUERY_SUBQUERIES' value='yes' />
+                  <customization name='CAP_QUERY_SUBQUERIES_WITH_TOP' value='yes' />
+                  <customization name='CAP_QUERY_SUBQUERIES_WITH_TOP_ALTERNATIVE' value='no' />
+                  <customization name='CAP_QUERY_SUBQUERY_QUERY_CONTEXT' value='yes' />
+                  <customization name='CAP_QUERY_SUPPORTS_LODJOINS' value='yes' />
+                  <customization name='CAP_QUERY_SUPPORT_ANALYTIC_FUNCTIONS' value='yes' />
+                  <customization name='CAP_QUERY_SUPPORT_EMPTY_GROUPBY' value='no' />
+                  <customization name='CAP_QUERY_SUPPRESS_CHECK_DOMAIN_LITERALS_THRESHOLD' value='no' />
+                  <customization name='CAP_QUERY_SUPPRESS_NULL_CHECK_QUERIES' value='no' />
+                  <customization name='CAP_QUERY_TAGS_IN_SQL_TEXT' value='no' />
+                  <customization name='CAP_QUERY_TIME_REQUIRES_CAST' value='no' />
+                  <customization name='CAP_QUERY_TOPSTYLE_LIMIT' value='no' />
+                  <customization name='CAP_QUERY_TOPSTYLE_ROWNUM' value='no' />
+                  <customization name='CAP_QUERY_TOPSTYLE_TOP' value='no' />
+                  <customization name='CAP_QUERY_TOP_0_METADATA' value='yes' />
+                  <customization name='CAP_QUERY_TOP_N' value='yes' />
+                  <customization name='CAP_QUERY_USE_DOMAIN_EXCEPT_OPTIMIZATION' value='no' />
+                  <customization name='CAP_QUERY_USE_DOMAIN_RANGES_OPTIMIZATION' value='yes' />
+                  <customization name='CAP_QUERY_USE_DOMAIN_RANGES_OPTIMIZATION_STRINGS' value='no' />
+                  <customization name='CAP_QUERY_USE_QUERY_FUSION' value='yes' />
+                  <customization name='CAP_QUERY_USE_STRCMP_WITH_WHERE_EXISTS' value='no' />
+                  <customization name='CAP_QUERY_WHERE_FALSE_METADATA' value='no' />
+                  <customization name='CAP_RELDATEFILT_CASTTODATE' value='no' />
+                  <customization name='CAP_RENAME_TABLE_USE_LEAF_CONNECTION_DIALECT' value='no' />
+                  <customization name='CAP_SDK_SUPPORTS_PREP_WRITE_TO_DB' value='no' />
+                  <customization name='CAP_SELECT_INTO' value='no' />
+                  <customization name='CAP_SELECT_TOP_INTO' value='no' />
+                  <customization name='CAP_STORED_PROCEDURE_PREFER_TEMP_TABLE' value='no' />
+                  <customization name='CAP_STORED_PROCEDURE_REPAIR_TEMP_TABLE_STRINGS' value='no' />
+                  <customization name='CAP_STORED_PROCEDURE_TEMP_TABLE_FROM_BUFFER' value='no' />
+                  <customization name='CAP_STORED_PROCEDURE_TEMP_TABLE_FROM_NEW_PROTOCOL' value='no' />
+                  <customization name='CAP_SUPPRESS_CONNECTION_POOLING' value='yes' />
+                  <customization name='CAP_SUPPRESS_DISCOVERY_QUERIES' value='no' />
+                  <customization name='CAP_SUPPRESS_ENUMERATE_SCHEMAS_VIA_SQL' value='yes' />
+                  <customization name='CAP_SUPPRESS_ENUMERATE_TABLES_VIA_SQL' value='yes' />
+                  <customization name='CAP_SUPPRESS_GET_SERVER_TIME' value='yes' />
+                  <customization name='CAP_SUPPRESS_QUICK_FILTER_ACCELERATION_VIEWS' value='no' />
+                  <customization name='CAP_SUPPRESS_TEMP_TABLE_CHECKS' value='no' />
+                </customizations>
+              </connection-customization>
+            </connection>
+          </named-connection>
+        </named-connections>
+        <relation type='collection'>
+          <relation connection='databricks.0h6ichl1ym51a6141q6ty1c1rmkx' name='sales_customers' table='[samples].[bakehouse].[sales_customers]' type='table' />
+          <relation connection='databricks.0h6ichl1ym51a6141q6ty1c1rmkx' name='sales_transactions' table='[samples].[bakehouse].[sales_transactions]' type='table' />
+        </relation>
+        <cols>
+          <map key='[address]' value='[sales_customers].[address]' />
+          <map key='[cardNumber]' value='[sales_transactions].[cardNumber]' />
+          <map key='[city]' value='[sales_customers].[city]' />
+          <map key='[continent]' value='[sales_customers].[continent]' />
+          <map key='[country]' value='[sales_customers].[country]' />
+          <map key='[customerID (sales_transactions)]' value='[sales_transactions].[customerID]' />
+          <map key='[customerID]' value='[sales_customers].[customerID]' />
+          <map key='[dateTime]' value='[sales_transactions].[dateTime]' />
+          <map key='[email_address]' value='[sales_customers].[email_address]' />
+          <map key='[first_name]' value='[sales_customers].[first_name]' />
+          <map key='[franchiseID]' value='[sales_transactions].[franchiseID]' />
+          <map key='[gender]' value='[sales_customers].[gender]' />
+          <map key='[last_name]' value='[sales_customers].[last_name]' />
+          <map key='[paymentMethod]' value='[sales_transactions].[paymentMethod]' />
+          <map key='[phone_number]' value='[sales_customers].[phone_number]' />
+          <map key='[postal_zip_code]' value='[sales_customers].[postal_zip_code]' />
+          <map key='[product]' value='[sales_transactions].[product]' />
+          <map key='[quantity]' value='[sales_transactions].[quantity]' />
+          <map key='[state]' value='[sales_customers].[state]' />
+          <map key='[totalPrice]' value='[sales_transactions].[totalPrice]' />
+          <map key='[transactionID]' value='[sales_transactions].[transactionID]' />
+          <map key='[unitPrice]' value='[sales_transactions].[unitPrice]' />
+        </cols>
+        <metadata-records>
+          <metadata-record class='column'>
+            <remote-name>customerID</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[customerID]</local-name>
+            <parent-name>[sales_customers]</parent-name>
+            <remote-alias>customerID</remote-alias>
+            <ordinal>1</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <precision>19</precision>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_BIGINT&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_SBIGINT&quot;</attribute>
+            </attributes>
+            <object-id>[sales_customers (samples.bakehouse.sales_customers)_2920AECF67184046BFFF16B5287FA767]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>first_name</remote-name>
+            <remote-type>129</remote-type>
+            <local-name>[first_name]</local-name>
+            <parent-name>[sales_customers]</parent-name>
+            <remote-alias>first_name</remote-alias>
+            <ordinal>2</ordinal>
+            <local-type>string</local-type>
+            <aggregation>Count</aggregation>
+            <width>255</width>
+            <contains-null>true</contains-null>
+            <collation flag='0' name='binary' />
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+              <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+            </attributes>
+            <object-id>[sales_customers (samples.bakehouse.sales_customers)_2920AECF67184046BFFF16B5287FA767]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>last_name</remote-name>
+            <remote-type>129</remote-type>
+            <local-name>[last_name]</local-name>
+            <parent-name>[sales_customers]</parent-name>
+            <remote-alias>last_name</remote-alias>
+            <ordinal>3</ordinal>
+            <local-type>string</local-type>
+            <aggregation>Count</aggregation>
+            <width>255</width>
+            <contains-null>true</contains-null>
+            <collation flag='0' name='binary' />
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+              <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+            </attributes>
+            <object-id>[sales_customers (samples.bakehouse.sales_customers)_2920AECF67184046BFFF16B5287FA767]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>email_address</remote-name>
+            <remote-type>129</remote-type>
+            <local-name>[email_address]</local-name>
+            <parent-name>[sales_customers]</parent-name>
+            <remote-alias>email_address</remote-alias>
+            <ordinal>4</ordinal>
+            <local-type>string</local-type>
+            <aggregation>Count</aggregation>
+            <width>255</width>
+            <contains-null>true</contains-null>
+            <collation flag='0' name='binary' />
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+              <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+            </attributes>
+            <object-id>[sales_customers (samples.bakehouse.sales_customers)_2920AECF67184046BFFF16B5287FA767]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>phone_number</remote-name>
+            <remote-type>129</remote-type>
+            <local-name>[phone_number]</local-name>
+            <parent-name>[sales_customers]</parent-name>
+            <remote-alias>phone_number</remote-alias>
+            <ordinal>5</ordinal>
+            <local-type>string</local-type>
+            <aggregation>Count</aggregation>
+            <width>255</width>
+            <contains-null>true</contains-null>
+            <collation flag='0' name='binary' />
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+              <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+            </attributes>
+            <object-id>[sales_customers (samples.bakehouse.sales_customers)_2920AECF67184046BFFF16B5287FA767]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>address</remote-name>
+            <remote-type>129</remote-type>
+            <local-name>[address]</local-name>
+            <parent-name>[sales_customers]</parent-name>
+            <remote-alias>address</remote-alias>
+            <ordinal>6</ordinal>
+            <local-type>string</local-type>
+            <aggregation>Count</aggregation>
+            <width>255</width>
+            <contains-null>true</contains-null>
+            <collation flag='0' name='binary' />
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+              <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+            </attributes>
+            <object-id>[sales_customers (samples.bakehouse.sales_customers)_2920AECF67184046BFFF16B5287FA767]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>city</remote-name>
+            <remote-type>129</remote-type>
+            <local-name>[city]</local-name>
+            <parent-name>[sales_customers]</parent-name>
+            <remote-alias>city</remote-alias>
+            <ordinal>7</ordinal>
+            <local-type>string</local-type>
+            <aggregation>Count</aggregation>
+            <width>255</width>
+            <contains-null>true</contains-null>
+            <collation flag='0' name='binary' />
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+              <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+            </attributes>
+            <object-id>[sales_customers (samples.bakehouse.sales_customers)_2920AECF67184046BFFF16B5287FA767]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>state</remote-name>
+            <remote-type>129</remote-type>
+            <local-name>[state]</local-name>
+            <parent-name>[sales_customers]</parent-name>
+            <remote-alias>state</remote-alias>
+            <ordinal>8</ordinal>
+            <local-type>string</local-type>
+            <aggregation>Count</aggregation>
+            <width>255</width>
+            <contains-null>true</contains-null>
+            <collation flag='0' name='binary' />
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+              <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+            </attributes>
+            <object-id>[sales_customers (samples.bakehouse.sales_customers)_2920AECF67184046BFFF16B5287FA767]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>country</remote-name>
+            <remote-type>129</remote-type>
+            <local-name>[country]</local-name>
+            <parent-name>[sales_customers]</parent-name>
+            <remote-alias>country</remote-alias>
+            <ordinal>9</ordinal>
+            <local-type>string</local-type>
+            <aggregation>Count</aggregation>
+            <width>255</width>
+            <contains-null>true</contains-null>
+            <collation flag='0' name='binary' />
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+              <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+            </attributes>
+            <object-id>[sales_customers (samples.bakehouse.sales_customers)_2920AECF67184046BFFF16B5287FA767]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>continent</remote-name>
+            <remote-type>129</remote-type>
+            <local-name>[continent]</local-name>
+            <parent-name>[sales_customers]</parent-name>
+            <remote-alias>continent</remote-alias>
+            <ordinal>10</ordinal>
+            <local-type>string</local-type>
+            <aggregation>Count</aggregation>
+            <width>255</width>
+            <contains-null>true</contains-null>
+            <collation flag='0' name='binary' />
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+              <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+            </attributes>
+            <object-id>[sales_customers (samples.bakehouse.sales_customers)_2920AECF67184046BFFF16B5287FA767]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>postal_zip_code</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[postal_zip_code]</local-name>
+            <parent-name>[sales_customers]</parent-name>
+            <remote-alias>postal_zip_code</remote-alias>
+            <ordinal>11</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <precision>19</precision>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_BIGINT&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_SBIGINT&quot;</attribute>
+            </attributes>
+            <object-id>[sales_customers (samples.bakehouse.sales_customers)_2920AECF67184046BFFF16B5287FA767]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>gender</remote-name>
+            <remote-type>129</remote-type>
+            <local-name>[gender]</local-name>
+            <parent-name>[sales_customers]</parent-name>
+            <remote-alias>gender</remote-alias>
+            <ordinal>12</ordinal>
+            <local-type>string</local-type>
+            <aggregation>Count</aggregation>
+            <width>255</width>
+            <contains-null>true</contains-null>
+            <collation flag='0' name='binary' />
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+              <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+            </attributes>
+            <object-id>[sales_customers (samples.bakehouse.sales_customers)_2920AECF67184046BFFF16B5287FA767]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>transactionID</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[transactionID]</local-name>
+            <parent-name>[sales_transactions]</parent-name>
+            <remote-alias>transactionID</remote-alias>
+            <ordinal>14</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <precision>19</precision>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_BIGINT&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_SBIGINT&quot;</attribute>
+            </attributes>
+            <object-id>[sales_transactions (samples.bakehouse.sales_transactions)_EF9B11F1A89942AA9A5CECF6669FA740]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>customerID</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[customerID (sales_transactions)]</local-name>
+            <parent-name>[sales_transactions]</parent-name>
+            <remote-alias>customerID</remote-alias>
+            <ordinal>15</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <precision>19</precision>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_BIGINT&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_SBIGINT&quot;</attribute>
+            </attributes>
+            <object-id>[sales_transactions (samples.bakehouse.sales_transactions)_EF9B11F1A89942AA9A5CECF6669FA740]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>franchiseID</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[franchiseID]</local-name>
+            <parent-name>[sales_transactions]</parent-name>
+            <remote-alias>franchiseID</remote-alias>
+            <ordinal>16</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <precision>19</precision>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_BIGINT&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_SBIGINT&quot;</attribute>
+            </attributes>
+            <object-id>[sales_transactions (samples.bakehouse.sales_transactions)_EF9B11F1A89942AA9A5CECF6669FA740]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>dateTime</remote-name>
+            <remote-type>7</remote-type>
+            <local-name>[dateTime]</local-name>
+            <parent-name>[sales_transactions]</parent-name>
+            <remote-alias>dateTime</remote-alias>
+            <ordinal>17</ordinal>
+            <local-type>datetime</local-type>
+            <aggregation>Year</aggregation>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_TYPE_TIMESTAMP&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_TYPE_TIMESTAMP&quot;</attribute>
+            </attributes>
+            <object-id>[sales_transactions (samples.bakehouse.sales_transactions)_EF9B11F1A89942AA9A5CECF6669FA740]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>product</remote-name>
+            <remote-type>129</remote-type>
+            <local-name>[product]</local-name>
+            <parent-name>[sales_transactions]</parent-name>
+            <remote-alias>product</remote-alias>
+            <ordinal>18</ordinal>
+            <local-type>string</local-type>
+            <aggregation>Count</aggregation>
+            <width>255</width>
+            <contains-null>true</contains-null>
+            <collation flag='0' name='binary' />
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+              <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+            </attributes>
+            <object-id>[sales_transactions (samples.bakehouse.sales_transactions)_EF9B11F1A89942AA9A5CECF6669FA740]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>quantity</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[quantity]</local-name>
+            <parent-name>[sales_transactions]</parent-name>
+            <remote-alias>quantity</remote-alias>
+            <ordinal>19</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <precision>19</precision>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_BIGINT&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_SBIGINT&quot;</attribute>
+            </attributes>
+            <object-id>[sales_transactions (samples.bakehouse.sales_transactions)_EF9B11F1A89942AA9A5CECF6669FA740]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>unitPrice</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[unitPrice]</local-name>
+            <parent-name>[sales_transactions]</parent-name>
+            <remote-alias>unitPrice</remote-alias>
+            <ordinal>20</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <precision>19</precision>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_BIGINT&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_SBIGINT&quot;</attribute>
+            </attributes>
+            <object-id>[sales_transactions (samples.bakehouse.sales_transactions)_EF9B11F1A89942AA9A5CECF6669FA740]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>totalPrice</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[totalPrice]</local-name>
+            <parent-name>[sales_transactions]</parent-name>
+            <remote-alias>totalPrice</remote-alias>
+            <ordinal>21</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <precision>19</precision>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_BIGINT&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_SBIGINT&quot;</attribute>
+            </attributes>
+            <object-id>[sales_transactions (samples.bakehouse.sales_transactions)_EF9B11F1A89942AA9A5CECF6669FA740]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>paymentMethod</remote-name>
+            <remote-type>129</remote-type>
+            <local-name>[paymentMethod]</local-name>
+            <parent-name>[sales_transactions]</parent-name>
+            <remote-alias>paymentMethod</remote-alias>
+            <ordinal>22</ordinal>
+            <local-type>string</local-type>
+            <aggregation>Count</aggregation>
+            <width>255</width>
+            <contains-null>true</contains-null>
+            <collation flag='0' name='binary' />
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+              <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+            </attributes>
+            <object-id>[sales_transactions (samples.bakehouse.sales_transactions)_EF9B11F1A89942AA9A5CECF6669FA740]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>cardNumber</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[cardNumber]</local-name>
+            <parent-name>[sales_transactions]</parent-name>
+            <remote-alias>cardNumber</remote-alias>
+            <ordinal>23</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <precision>19</precision>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_BIGINT&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_SBIGINT&quot;</attribute>
+            </attributes>
+            <object-id>[sales_transactions (samples.bakehouse.sales_transactions)_EF9B11F1A89942AA9A5CECF6669FA740]</object-id>
+          </metadata-record>
+        </metadata-records>
+      </connection>
+      <aliases enabled='yes' />
+      <column caption='Total Revenue' datatype='integer' name='[Calculation_0536564188569600]' role='measure' type='quantitative'>
+        <calculation class='tableau' formula='[quantity]*[unitPrice]' />
+      </column>
+      <column caption='sales_customers' datatype='table' name='[__tableau_internal_object_id__].[sales_customers (samples.bakehouse.sales_customers)_2920AECF67184046BFFF16B5287FA767]' role='measure' type='quantitative' />
+      <column caption='sales_transactions' datatype='table' name='[__tableau_internal_object_id__].[sales_transactions (samples.bakehouse.sales_transactions)_EF9B11F1A89942AA9A5CECF6669FA740]' role='measure' type='quantitative' />
+      <column caption='Address' datatype='string' name='[address]' role='dimension' type='nominal' />
+      <column caption='Card Number' datatype='integer' name='[cardNumber]' role='dimension' type='ordinal' />
+      <column caption='City' datatype='string' name='[city]' role='dimension' semantic-role='[City].[Name]' type='nominal' />
+      <column caption='Continent' datatype='string' name='[continent]' role='dimension' type='nominal' />
+      <column caption='Country' datatype='string' name='[country]' role='dimension' semantic-role='[Country].[ISO3166_2]' type='nominal' />
+      <column caption='customerID (sales transactions)' datatype='integer' name='[customerID (sales_transactions)]' role='dimension' type='ordinal' />
+      <column caption='Customer ID' datatype='integer' name='[customerID]' role='dimension' type='ordinal' />
+      <column caption='Date Time' datatype='datetime' name='[dateTime]' role='dimension' type='ordinal' />
+      <column caption='Email Address' datatype='string' name='[email_address]' role='dimension' type='nominal' />
+      <column caption='First Name' datatype='string' name='[first_name]' role='dimension' type='nominal' />
+      <column caption='Franchise ID' datatype='integer' name='[franchiseID]' role='dimension' type='ordinal' />
+      <column caption='Gender' datatype='string' name='[gender]' role='dimension' type='nominal' />
+      <column caption='Last Name' datatype='string' name='[last_name]' role='dimension' type='nominal' />
+      <column caption='Payment Method' datatype='string' name='[paymentMethod]' role='dimension' type='nominal' />
+      <column caption='Phone Number' datatype='string' name='[phone_number]' role='dimension' type='nominal' />
+      <column aggregation='Sum' caption='Postal Zip Code' datatype='integer' default-format='*00000' name='[postal_zip_code]' role='dimension' semantic-role='[ZipCode].[Name]' type='ordinal' />
+      <column caption='Product' datatype='string' name='[product]' role='dimension' type='nominal' />
+      <column caption='Quantity' datatype='integer' name='[quantity]' role='measure' type='quantitative' />
+      <column caption='State' datatype='string' name='[state]' role='dimension' semantic-role='[State].[Name]' type='nominal' />
+      <column caption='Total Price' datatype='integer' name='[totalPrice]' role='measure' type='quantitative' />
+      <column caption='Transaction ID' datatype='integer' name='[transactionID]' role='dimension' type='ordinal' />
+      <column caption='Unit Price' datatype='integer' name='[unitPrice]' role='measure' type='quantitative' />
+      <column-instance column='[__tableau_internal_object_id__].[sales_customers (samples.bakehouse.sales_customers)_2920AECF67184046BFFF16B5287FA767]' derivation='Count' name='[__tableau_internal_object_id__].[cnt:sales_customers (samples.bakehouse.sales_customers)_2920AECF67184046BFFF16B5287FA767:ok]' pivot='key' type='ordinal' />
+      <column-instance column='[country]' derivation='None' name='[none:country:nk]' pivot='key' type='nominal' />
+      <column-instance column='[gender]' derivation='None' name='[none:gender:nk]' pivot='key' type='nominal' />
+      <layout dim-ordering='alphabetic' measure-ordering='alphabetic' show-structure='true' />
+      <style>
+        <style-rule element='mark'>
+          <encoding attr='color' field='[none:country:nk]' type='palette'>
+            <map to='#2a5783'>
+              <bucket>&quot;Australia&quot;</bucket>
+            </map>
+            <map to='#6a9bc3'>
+              <bucket>&quot;Japan&quot;</bucket>
+            </map>
+            <map to='#afd6ed'>
+              <bucket>&quot;USA&quot;</bucket>
+            </map>
+          </encoding>
+          <encoding attr='color' field='[__tableau_internal_object_id__].[cnt:sales_customers (samples.bakehouse.sales_customers)_2920AECF67184046BFFF16B5287FA767:ok]' type='palette'>
+            <map to='#4e79a7'>
+              <bucket>300</bucket>
+            </map>
+            <map to='#76b7b2'>
+              <bucket>108</bucket>
+            </map>
+            <map to='#e15759'>
+              <bucket>99</bucket>
+            </map>
+            <map to='#f28e2b'>
+              <bucket>93</bucket>
+            </map>
+          </encoding>
+          <encoding attr='color' field='[none:gender:nk]' type='palette'>
+            <map to='#305d8a'>
+              <bucket>&quot;female&quot;</bucket>
+            </map>
+            <map to='#afd6ed'>
+              <bucket>&quot;male&quot;</bucket>
+            </map>
+          </encoding>
+        </style-rule>
+      </style>
+      <semantic-values>
+        <semantic-value key='[Country].[Name]' value='&quot;United States&quot;' />
+      </semantic-values>
+      <object-graph>
+        <objects>
+          <object caption='sales_customers' id='sales_customers (samples.bakehouse.sales_customers)_2920AECF67184046BFFF16B5287FA767'>
+            <properties context=''>
+              <relation connection='databricks.0h6ichl1ym51a6141q6ty1c1rmkx' name='sales_customers' table='[samples].[bakehouse].[sales_customers]' type='table' />
+            </properties>
+          </object>
+          <object caption='sales_transactions' id='sales_transactions (samples.bakehouse.sales_transactions)_EF9B11F1A89942AA9A5CECF6669FA740'>
+            <properties context=''>
+              <relation connection='databricks.0h6ichl1ym51a6141q6ty1c1rmkx' name='sales_transactions' table='[samples].[bakehouse].[sales_transactions]' type='table' />
+            </properties>
+          </object>
+        </objects>
+        <relationships>
+          <relationship>
+            <expression op='='>
+              <expression op='[customerID]' />
+              <expression op='[customerID (sales_transactions)]' />
+            </expression>
+            <first-end-point object-id='sales_customers (samples.bakehouse.sales_customers)_2920AECF67184046BFFF16B5287FA767' />
+            <second-end-point object-id='sales_transactions (samples.bakehouse.sales_transactions)_EF9B11F1A89942AA9A5CECF6669FA740' />
+          </relationship>
+        </relationships>
+      </object-graph>
+    </datasource>
+  </datasources>
+  <worksheets>
+    <worksheet name='Area Chart'>
+      <table>
+        <view>
+          <datasources>
+            <datasource caption='sales_customers (samples.bakehouse.sales_customers)+ (bakehouse)' name='federated.0rbe41t0pgjxjs1bpbl111t07ecc' />
+          </datasources>
+          <datasource-dependencies datasource='federated.0rbe41t0pgjxjs1bpbl111t07ecc'>
+            <column caption='Country' datatype='string' name='[country]' role='dimension' semantic-role='[Country].[ISO3166_2]' type='nominal' />
+            <column-instance column='[country]' derivation='None' name='[none:country:nk]' pivot='key' type='nominal' />
+            <column-instance column='[product]' derivation='None' name='[none:product:nk]' pivot='key' type='nominal' />
+            <column caption='Product' datatype='string' name='[product]' role='dimension' type='nominal' />
+            <column caption='Quantity' datatype='integer' name='[quantity]' role='measure' type='quantitative' />
+            <column-instance column='[quantity]' derivation='Sum' name='[sum:quantity:qk]' pivot='key' type='quantitative' />
+          </datasource-dependencies>
+          <aggregation value='true' />
+        </view>
+        <style>
+          <style-rule element='cell'>
+            <format attr='width' field='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[none:product:nk]' value='99' />
+          </style-rule>
+        </style>
+        <panes>
+          <pane selection-relaxation-option='selection-relaxation-allow'>
+            <view>
+              <breakdown value='auto' />
+            </view>
+            <mark class='Area' />
+            <encodings>
+              <color column='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[none:country:nk]' />
+            </encodings>
+            <style>
+              <style-rule element='pane'>
+                <format attr='minwidth' value='-1' />
+                <format attr='maxwidth' value='-1' />
+              </style-rule>
+            </style>
+          </pane>
+        </panes>
+        <rows>[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[sum:quantity:qk]</rows>
+        <cols>[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[none:product:nk]</cols>
+      </table>
+      <simple-id uuid='{907A80DC-AAAA-4B24-94BE-CF70ABCE3B19}' />
+    </worksheet>
+    <worksheet name='Continet Customer Count'>
+      <table>
+        <view>
+          <datasources>
+            <datasource caption='sales_customers (samples.bakehouse.sales_customers)+ (bakehouse)' name='federated.0rbe41t0pgjxjs1bpbl111t07ecc' />
+          </datasources>
+          <datasource-dependencies datasource='federated.0rbe41t0pgjxjs1bpbl111t07ecc'>
+            <column-instance column='[__tableau_internal_object_id__].[sales_customers (samples.bakehouse.sales_customers)_2920AECF67184046BFFF16B5287FA767]' derivation='Count' name='[__tableau_internal_object_id__].[cnt:sales_customers (samples.bakehouse.sales_customers)_2920AECF67184046BFFF16B5287FA767:qk]' pivot='key' type='quantitative' />
+            <column caption='sales_customers' datatype='table' name='[__tableau_internal_object_id__].[sales_customers (samples.bakehouse.sales_customers)_2920AECF67184046BFFF16B5287FA767]' role='measure' type='quantitative' />
+            <column caption='Continent' datatype='string' name='[continent]' role='dimension' type='nominal' />
+            <column-instance column='[continent]' derivation='None' name='[none:continent:nk]' pivot='key' type='nominal' />
+          </datasource-dependencies>
+          <aggregation value='true' />
+        </view>
+        <style />
+        <panes>
+          <pane selection-relaxation-option='selection-relaxation-allow'>
+            <view>
+              <breakdown value='auto' />
+            </view>
+            <mark class='Pie' />
+            <encodings>
+              <color column='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[none:continent:nk]' />
+              <text column='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[__tableau_internal_object_id__].[cnt:sales_customers (samples.bakehouse.sales_customers)_2920AECF67184046BFFF16B5287FA767:qk]' />
+            </encodings>
+            <style>
+              <style-rule element='mark'>
+                <format attr='mark-labels-show' value='true' />
+                <format attr='mark-labels-cull' value='true' />
+              </style-rule>
+            </style>
+          </pane>
+        </panes>
+        <rows />
+        <cols />
+      </table>
+      <simple-id uuid='{5C93B505-C74A-4071-A1E9-AFD079F33E0B}' />
+    </worksheet>
+    <worksheet name='Product Performance'>
+      <layout-options>
+        <title>
+          <formatted-text>
+            <run>&lt;Sheet Name&gt;</run>
+          </formatted-text>
+        </title>
+      </layout-options>
+      <table>
+        <view>
+          <datasources>
+            <datasource caption='sales_customers (samples.bakehouse.sales_customers)+ (bakehouse)' name='federated.0rbe41t0pgjxjs1bpbl111t07ecc' />
+          </datasources>
+          <datasource-dependencies datasource='federated.0rbe41t0pgjxjs1bpbl111t07ecc'>
+            <column-instance column='[dateTime]' derivation='Attribute' name='[attr:dateTime:ok]' pivot='key' type='ordinal' />
+            <column caption='Date Time' datatype='datetime' name='[dateTime]' role='dimension' type='ordinal' />
+            <column-instance column='[product]' derivation='None' name='[none:product:nk]' pivot='key' type='nominal' />
+            <column caption='Product' datatype='string' name='[product]' role='dimension' type='nominal' />
+            <column caption='Quantity' datatype='integer' name='[quantity]' role='measure' type='quantitative' />
+            <column-instance column='[quantity]' derivation='Sum' name='[sum:quantity:qk]' pivot='key' type='quantitative' />
+            <column-instance column='[totalPrice]' derivation='Sum' name='[sum:totalPrice:qk]' pivot='key' type='quantitative' />
+            <column caption='Total Price' datatype='integer' name='[totalPrice]' role='measure' type='quantitative' />
+          </datasource-dependencies>
+          <aggregation value='true' />
+        </view>
+        <style>
+          <style-rule element='cell'>
+            <format attr='width' field='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[none:product:nk]' value='75' />
+          </style-rule>
+        </style>
+        <panes>
+          <pane selection-relaxation-option='selection-relaxation-allow'>
+            <view>
+              <breakdown value='auto' />
+            </view>
+            <mark class='Automatic' />
+            <encodings>
+              <text column='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[sum:quantity:qk]' />
+              <tooltip column='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[attr:dateTime:ok]' />
+            </encodings>
+            <style>
+              <style-rule element='mark'>
+                <format attr='mark-labels-show' value='true' />
+                <format attr='mark-labels-cull' value='true' />
+                <format attr='mark-color' value='#f28e2b' />
+              </style-rule>
+              <style-rule element='pane'>
+                <format attr='minwidth' value='-1' />
+                <format attr='maxwidth' value='-1' />
+              </style-rule>
+            </style>
+          </pane>
+          <pane id='1' selection-relaxation-option='selection-relaxation-allow' y-axis-name='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[sum:quantity:qk]'>
+            <view>
+              <breakdown value='auto' />
+            </view>
+            <mark class='Automatic' />
+            <encodings>
+              <text column='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[sum:quantity:qk]' />
+              <tooltip column='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[attr:dateTime:ok]' />
+            </encodings>
+            <style>
+              <style-rule element='mark'>
+                <format attr='mark-labels-show' value='true' />
+                <format attr='mark-labels-cull' value='true' />
+                <format attr='mark-color' value='#f28e2b' />
+              </style-rule>
+            </style>
+          </pane>
+          <pane id='2' selection-relaxation-option='selection-relaxation-allow' y-axis-name='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[sum:totalPrice:qk]'>
+            <view>
+              <breakdown value='auto' />
+            </view>
+            <mark class='Automatic' />
+            <encodings>
+              <text column='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[sum:quantity:qk]' />
+              <tooltip column='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[attr:dateTime:ok]' />
+            </encodings>
+            <style>
+              <style-rule element='mark'>
+                <format attr='mark-labels-show' value='true' />
+                <format attr='mark-labels-cull' value='true' />
+                <format attr='mark-color' value='#f28e2b' />
+              </style-rule>
+            </style>
+          </pane>
+        </panes>
+        <rows>([federated.0rbe41t0pgjxjs1bpbl111t07ecc].[sum:quantity:qk] + [federated.0rbe41t0pgjxjs1bpbl111t07ecc].[sum:totalPrice:qk])</rows>
+        <cols>[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[none:product:nk]</cols>
+      </table>
+      <simple-id uuid='{C479D5DB-B227-40E3-B875-F45F0D92DFC1}' />
+    </worksheet>
+    <worksheet name='Product Performance CrossTab'>
+      <layout-options>
+        <title>
+          <formatted-text>
+            <run>Product Wise Quality</run>
+          </formatted-text>
+        </title>
+      </layout-options>
+      <table>
+        <view>
+          <datasources>
+            <datasource caption='sales_customers (samples.bakehouse.sales_customers)+ (bakehouse)' name='federated.0rbe41t0pgjxjs1bpbl111t07ecc' />
+          </datasources>
+          <datasource-dependencies datasource='federated.0rbe41t0pgjxjs1bpbl111t07ecc'>
+            <column-instance column='[product]' derivation='None' name='[none:product:nk]' pivot='key' type='nominal' />
+            <column caption='Product' datatype='string' name='[product]' role='dimension' type='nominal' />
+            <column caption='Quantity' datatype='integer' name='[quantity]' role='measure' type='quantitative' />
+            <column-instance column='[quantity]' derivation='Sum' name='[sum:quantity:qk]' pivot='key' type='quantitative' />
+            <column-instance column='[totalPrice]' derivation='Sum' name='[sum:totalPrice:qk]' pivot='key' type='quantitative' />
+            <column caption='Total Price' datatype='integer' name='[totalPrice]' role='measure' type='quantitative' />
+          </datasource-dependencies>
+          <filter class='categorical' column='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[:Measure Names]'>
+            <groupfilter function='union' user:op='manual'>
+              <groupfilter function='member' level='[:Measure Names]' member='&quot;[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[sum:quantity:qk]&quot;' />
+              <groupfilter function='member' level='[:Measure Names]' member='&quot;[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[sum:totalPrice:qk]&quot;' />
+            </groupfilter>
+          </filter>
+          <slices>
+            <column>[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[:Measure Names]</column>
+          </slices>
+          <aggregation value='true' />
+        </view>
+        <style />
+        <panes>
+          <pane id='1' selection-relaxation-option='selection-relaxation-allow'>
+            <view>
+              <breakdown value='auto' />
+            </view>
+            <mark class='Automatic' />
+            <encodings>
+              <text column='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[Multiple Values]' />
+            </encodings>
+          </pane>
+        </panes>
+        <rows>[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[:Measure Names]</rows>
+        <cols>[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[none:product:nk]</cols>
+      </table>
+      <simple-id uuid='{79B1C07C-8093-4964-B47B-7D85138E0D2A}' />
+    </worksheet>
+    <worksheet name='Sales  Transaction'>
+      <layout-options>
+        <title>
+          <formatted-text>
+            <run>&lt;Sheet Name&gt;</run>
+          </formatted-text>
+        </title>
+      </layout-options>
+      <table>
+        <view>
+          <datasources>
+            <datasource caption='sales_customers (samples.bakehouse.sales_customers)+ (bakehouse)' name='federated.0rbe41t0pgjxjs1bpbl111t07ecc' />
+          </datasources>
+          <datasource-dependencies datasource='federated.0rbe41t0pgjxjs1bpbl111t07ecc'>
+            <column-instance column='[__tableau_internal_object_id__].[sales_transactions (samples.bakehouse.sales_transactions)_EF9B11F1A89942AA9A5CECF6669FA740]' derivation='Count' name='[__tableau_internal_object_id__].[cnt:sales_transactions (samples.bakehouse.sales_transactions)_EF9B11F1A89942AA9A5CECF6669FA740:qk]' pivot='key' type='quantitative' />
+            <column caption='sales_transactions' datatype='table' name='[__tableau_internal_object_id__].[sales_transactions (samples.bakehouse.sales_transactions)_EF9B11F1A89942AA9A5CECF6669FA740]' role='measure' type='quantitative' />
+            <column caption='Country' datatype='string' name='[country]' role='dimension' semantic-role='[Country].[ISO3166_2]' type='nominal' />
+            <column-instance column='[country]' derivation='None' name='[none:country:nk]' pivot='key' type='nominal' />
+            <column-instance column='[paymentMethod]' derivation='None' name='[none:paymentMethod:nk]' pivot='key' type='nominal' />
+            <column caption='Payment Method' datatype='string' name='[paymentMethod]' role='dimension' type='nominal' />
+          </datasource-dependencies>
+          <filter class='categorical' column='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[none:country:nk]'>
+            <groupfilter function='level-members' level='[none:country:nk]' user:ui-enumeration='all' user:ui-marker='enumerate' />
+          </filter>
+          <slices>
+            <column>[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[none:country:nk]</column>
+          </slices>
+          <aggregation value='true' />
+        </view>
+        <style />
+        <panes>
+          <pane selection-relaxation-option='selection-relaxation-allow'>
+            <view>
+              <breakdown value='auto' />
+            </view>
+            <mark class='Automatic' />
+            <encodings>
+              <text column='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[__tableau_internal_object_id__].[cnt:sales_transactions (samples.bakehouse.sales_transactions)_EF9B11F1A89942AA9A5CECF6669FA740:qk]' />
+            </encodings>
+            <style>
+              <style-rule element='mark'>
+                <format attr='mark-labels-show' value='true' />
+                <format attr='mark-labels-cull' value='true' />
+                <format attr='mark-color' value='#ff557f' />
+              </style-rule>
+            </style>
+          </pane>
+        </panes>
+        <rows>([federated.0rbe41t0pgjxjs1bpbl111t07ecc].[none:country:nk] / [federated.0rbe41t0pgjxjs1bpbl111t07ecc].[none:paymentMethod:nk])</rows>
+        <cols>[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[__tableau_internal_object_id__].[cnt:sales_transactions (samples.bakehouse.sales_transactions)_EF9B11F1A89942AA9A5CECF6669FA740:qk]</cols>
+      </table>
+      <simple-id uuid='{AA1D66FA-2227-4B68-AB21-CC5076ACD731}' />
+    </worksheet>
+    <worksheet name='Sheet 6'>
+      <layout-options>
+        <title>
+          <formatted-text>
+            <run>Gender  Wise Customer</run>
+          </formatted-text>
+        </title>
+      </layout-options>
+      <table>
+        <view>
+          <datasources>
+            <datasource caption='sales_customers (samples.bakehouse.sales_customers)+ (bakehouse)' name='federated.0rbe41t0pgjxjs1bpbl111t07ecc' />
+          </datasources>
+          <datasource-dependencies datasource='federated.0rbe41t0pgjxjs1bpbl111t07ecc'>
+            <column-instance column='[__tableau_internal_object_id__].[sales_customers (samples.bakehouse.sales_customers)_2920AECF67184046BFFF16B5287FA767]' derivation='Count' name='[__tableau_internal_object_id__].[cnt:sales_customers (samples.bakehouse.sales_customers)_2920AECF67184046BFFF16B5287FA767:qk]' pivot='key' type='quantitative' />
+            <column caption='sales_customers' datatype='table' name='[__tableau_internal_object_id__].[sales_customers (samples.bakehouse.sales_customers)_2920AECF67184046BFFF16B5287FA767]' role='measure' type='quantitative' />
+            <column caption='Country' datatype='string' name='[country]' role='dimension' semantic-role='[Country].[ISO3166_2]' type='nominal' />
+            <column caption='Gender' datatype='string' name='[gender]' role='dimension' type='nominal' />
+            <column-instance column='[country]' derivation='None' name='[none:country:nk]' pivot='key' type='nominal' />
+            <column-instance column='[gender]' derivation='None' name='[none:gender:nk]' pivot='key' type='nominal' />
+          </datasource-dependencies>
+          <shelf-sorts>
+            <shelf-sort-v2 dimension-to-sort='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[none:country:nk]' direction='DESC' is-on-innermost-dimension='true' measure-to-sort-by='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[__tableau_internal_object_id__].[cnt:sales_customers (samples.bakehouse.sales_customers)_2920AECF67184046BFFF16B5287FA767:qk]' shelf='columns' />
+          </shelf-sorts>
+          <aggregation value='true' />
+        </view>
+        <style>
+          <style-rule element='axis'>
+            <format attr='title' class='0' field='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[__tableau_internal_object_id__].[cnt:sales_customers (samples.bakehouse.sales_customers)_2920AECF67184046BFFF16B5287FA767:qk]' scope='rows' value='# Customers' />
+          </style-rule>
+        </style>
+        <panes>
+          <pane selection-relaxation-option='selection-relaxation-allow'>
+            <view>
+              <breakdown value='auto' />
+            </view>
+            <mark class='Automatic' />
+            <encodings>
+              <color column='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[none:gender:nk]' />
+              <text column='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[__tableau_internal_object_id__].[cnt:sales_customers (samples.bakehouse.sales_customers)_2920AECF67184046BFFF16B5287FA767:qk]' />
+            </encodings>
+            <style>
+              <style-rule element='mark'>
+                <format attr='mark-labels-show' value='true' />
+                <format attr='mark-labels-cull' value='true' />
+              </style-rule>
+            </style>
+          </pane>
+        </panes>
+        <rows>[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[__tableau_internal_object_id__].[cnt:sales_customers (samples.bakehouse.sales_customers)_2920AECF67184046BFFF16B5287FA767:qk]</rows>
+        <cols>[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[none:country:nk]</cols>
+      </table>
+      <simple-id uuid='{8AA075B6-4D02-4F55-8AD4-FEF579596173}' />
+    </worksheet>
+    <worksheet name='Sheet 8'>
+      <table>
+        <view>
+          <datasources>
+            <datasource caption='sales_customers (samples.bakehouse.sales_customers)+ (bakehouse)' name='federated.0rbe41t0pgjxjs1bpbl111t07ecc' />
+          </datasources>
+          <datasource-dependencies datasource='federated.0rbe41t0pgjxjs1bpbl111t07ecc'>
+            <column caption='Date Time' datatype='datetime' name='[dateTime]' role='dimension' type='ordinal' />
+            <column-instance column='[dateTime]' derivation='Year' name='[yr:dateTime:ok]' pivot='key' type='ordinal' />
+          </datasource-dependencies>
+          <aggregation value='true' />
+        </view>
+        <style />
+        <panes>
+          <pane selection-relaxation-option='selection-relaxation-allow'>
+            <view>
+              <breakdown value='auto' />
+            </view>
+            <mark class='Automatic' />
+          </pane>
+        </panes>
+        <rows />
+        <cols>[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[yr:dateTime:ok]</cols>
+      </table>
+      <simple-id uuid='{AFE49799-8DB6-4ACD-9A53-AF0218B52BD3}' />
+    </worksheet>
+    <worksheet name='Total Revenu'>
+      <layout-options>
+        <title>
+          <formatted-text>
+            <run fontname='Verdana' fontsize='10'>Revenue</run>
+          </formatted-text>
+        </title>
+      </layout-options>
+      <table>
+        <view>
+          <datasources>
+            <datasource caption='sales_customers (samples.bakehouse.sales_customers)+ (bakehouse)' name='federated.0rbe41t0pgjxjs1bpbl111t07ecc' />
+          </datasources>
+          <datasource-dependencies datasource='federated.0rbe41t0pgjxjs1bpbl111t07ecc'>
+            <column caption='Total Revenue' datatype='integer' name='[Calculation_0536564188569600]' role='measure' type='quantitative'>
+              <calculation class='tableau' formula='[quantity]*[unitPrice]' />
+            </column>
+            <column caption='Continent' datatype='string' name='[continent]' role='dimension' type='nominal' />
+            <column-instance column='[continent]' derivation='None' name='[none:continent:nk]' pivot='key' type='nominal' />
+            <column caption='Quantity' datatype='integer' name='[quantity]' role='measure' type='quantitative' />
+            <column-instance column='[Calculation_0536564188569600]' derivation='Sum' name='[sum:Calculation_0536564188569600:qk]' pivot='key' type='quantitative' />
+            <column caption='Unit Price' datatype='integer' name='[unitPrice]' role='measure' type='quantitative' />
+          </datasource-dependencies>
+          <filter class='categorical' column='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[none:continent:nk]'>
+            <groupfilter function='level-members' level='[none:continent:nk]' user:ui-enumeration='all' user:ui-marker='enumerate' />
+          </filter>
+          <slices>
+            <column>[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[none:continent:nk]</column>
+          </slices>
+          <aggregation value='true' />
+        </view>
+        <style>
+          <style-rule element='cell'>
+            <format attr='font-family' data-class='subtotal' value='Verdana' />
+            <format attr='font-size' data-class='subtotal' value='18' />
+          </style-rule>
+        </style>
+        <panes>
+          <pane selection-relaxation-option='selection-relaxation-allow'>
+            <view>
+              <breakdown value='auto' />
+            </view>
+            <mark class='Automatic' />
+            <encodings>
+              <text column='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[sum:Calculation_0536564188569600:qk]' />
+            </encodings>
+            <style>
+              <style-rule element='mark'>
+                <format attr='mark-labels-show' value='true' />
+              </style-rule>
+            </style>
+          </pane>
+        </panes>
+        <rows />
+        <cols />
+      </table>
+      <simple-id uuid='{B3D24318-A097-4E36-B399-86B731D49534}' />
+    </worksheet>
+  </worksheets>
+  <dashboards>
+    <dashboard enable-sort-zone-taborder='true' name='Company Dashboard'>
+      <style />
+      <size maxheight='800' maxwidth='1000' minheight='800' minwidth='1000' />
+      <datasources>
+        <datasource caption='sales_customers (samples.bakehouse.sales_customers)+ (bakehouse)' name='federated.0rbe41t0pgjxjs1bpbl111t07ecc' />
+      </datasources>
+      <datasource-dependencies datasource='federated.0rbe41t0pgjxjs1bpbl111t07ecc'>
+        <column caption='Continent' datatype='string' name='[continent]' role='dimension' type='nominal' />
+        <column-instance column='[continent]' derivation='None' name='[none:continent:nk]' pivot='key' type='nominal' />
+      </datasource-dependencies>
+      <zones>
+        <zone h='100000' id='4' type-v2='layout-basic' w='100000' x='0' y='0'>
+          <zone h='98000' id='7' param='horz' type-v2='layout-flow' w='98400' x='800' y='1000'>
+            <zone h='98000' id='5' type-v2='layout-basic' w='82400' x='800' y='1000'>
+              <zone h='49000' id='3' name='Continet Customer Count' w='30800' x='800' y='1000'>
+                <zone-style>
+                  <format attr='border-color' value='#000000' />
+                  <format attr='border-style' value='none' />
+                  <format attr='border-width' value='0' />
+                  <format attr='margin' value='4' />
+                </zone-style>
+              </zone>
+              <zone h='49000' id='11' name='Product Performance CrossTab' w='51600' x='31600' y='1000'>
+                <zone-style>
+                  <format attr='border-color' value='#000000' />
+                  <format attr='border-style' value='none' />
+                  <format attr='border-width' value='0' />
+                  <format attr='margin' value='4' />
+                </zone-style>
+              </zone>
+              <zone h='49000' id='12' name='Sheet 6' w='56400' x='26800' y='50000'>
+                <zone-style>
+                  <format attr='border-color' value='#000000' />
+                  <format attr='border-style' value='none' />
+                  <format attr='border-width' value='0' />
+                  <format attr='margin' value='4' />
+                </zone-style>
+              </zone>
+              <zone h='49000' id='14' name='Total Revenu' w='26000' x='800' y='50000'>
+                <zone-style>
+                  <format attr='border-color' value='#000000' />
+                  <format attr='border-style' value='none' />
+                  <format attr='border-width' value='0' />
+                  <format attr='margin' value='4' />
+                </zone-style>
+              </zone>
+            </zone>
+            <zone fixed-size='160' h='98000' id='6' is-fixed='true' param='vert' type-v2='layout-flow' w='16000' x='83200' y='1000'>
+              <zone h='10750' id='8' name='Continet Customer Count' pane-specification-id='0' param='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[none:continent:nk]' type-v2='color' w='16000' x='83200' y='1000'>
+                <zone-style>
+                  <format attr='border-color' value='#000000' />
+                  <format attr='border-style' value='none' />
+                  <format attr='border-width' value='0' />
+                  <format attr='margin' value='4' />
+                </zone-style>
+              </zone>
+              <zone h='8250' id='13' name='Sheet 6' pane-specification-id='0' param='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[none:gender:nk]' type-v2='color' w='16000' x='83200' y='11750'>
+                <zone-style>
+                  <format attr='border-color' value='#000000' />
+                  <format attr='border-style' value='none' />
+                  <format attr='border-width' value='0' />
+                  <format attr='margin' value='4' />
+                </zone-style>
+              </zone>
+              <zone h='13500' id='15' name='Total Revenu' param='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[none:continent:nk]' type-v2='filter' w='16000' x='83200' y='20000'>
+                <zone-style>
+                  <format attr='border-color' value='#000000' />
+                  <format attr='border-style' value='none' />
+                  <format attr='border-width' value='0' />
+                  <format attr='margin' value='4' />
+                </zone-style>
+              </zone>
+            </zone>
+          </zone>
+          <zone-style>
+            <format attr='border-color' value='#000000' />
+            <format attr='border-style' value='none' />
+            <format attr='border-width' value='0' />
+            <format attr='margin' value='8' />
+          </zone-style>
+        </zone>
+      </zones>
+      <devicelayouts>
+        <devicelayout auto-generated='true' name='Phone'>
+          <size maxheight='1350' minheight='1350' sizing-mode='vscroll' />
+          <zones>
+            <zone h='100000' id='19' type-v2='layout-basic' w='100000' x='0' y='0'>
+              <zone h='98000' id='18' param='vert' type-v2='layout-flow' w='98400' x='800' y='1000'>
+                <zone fixed-size='280' h='49000' id='3' is-fixed='true' name='Continet Customer Count' w='30800' x='800' y='1000'>
+                  <zone-style>
+                    <format attr='border-color' value='#000000' />
+                    <format attr='border-style' value='none' />
+                    <format attr='border-width' value='0' />
+                    <format attr='margin' value='4' />
+                    <format attr='padding' value='0' />
+                  </zone-style>
+                </zone>
+                <zone h='10750' id='8' name='Continet Customer Count' pane-specification-id='0' param='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[none:continent:nk]' type-v2='color' w='16000' x='83200' y='1000'>
+                  <zone-style>
+                    <format attr='border-color' value='#000000' />
+                    <format attr='border-style' value='none' />
+                    <format attr='border-width' value='0' />
+                    <format attr='margin' value='4' />
+                    <format attr='padding' value='0' />
+                  </zone-style>
+                </zone>
+                <zone fixed-size='280' h='49000' id='11' is-fixed='true' name='Product Performance CrossTab' w='51600' x='31600' y='1000'>
+                  <zone-style>
+                    <format attr='border-color' value='#000000' />
+                    <format attr='border-style' value='none' />
+                    <format attr='border-width' value='0' />
+                    <format attr='margin' value='4' />
+                    <format attr='padding' value='0' />
+                  </zone-style>
+                </zone>
+                <zone h='13500' id='15' mode='checkdropdown' name='Total Revenu' param='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[none:continent:nk]' type-v2='filter' w='16000' x='83200' y='20000'>
+                  <zone-style>
+                    <format attr='border-color' value='#000000' />
+                    <format attr='border-style' value='none' />
+                    <format attr='border-width' value='0' />
+                    <format attr='margin' value='4' />
+                    <format attr='padding' value='0' />
+                  </zone-style>
+                </zone>
+                <zone fixed-size='280' h='49000' id='14' is-fixed='true' name='Total Revenu' w='26000' x='800' y='50000'>
+                  <zone-style>
+                    <format attr='border-color' value='#000000' />
+                    <format attr='border-style' value='none' />
+                    <format attr='border-width' value='0' />
+                    <format attr='margin' value='4' />
+                    <format attr='padding' value='0' />
+                  </zone-style>
+                </zone>
+                <zone fixed-size='280' h='49000' id='12' is-fixed='true' name='Sheet 6' w='56400' x='26800' y='50000'>
+                  <zone-style>
+                    <format attr='border-color' value='#000000' />
+                    <format attr='border-style' value='none' />
+                    <format attr='border-width' value='0' />
+                    <format attr='margin' value='4' />
+                    <format attr='padding' value='0' />
+                  </zone-style>
+                </zone>
+                <zone h='8250' id='13' name='Sheet 6' pane-specification-id='0' param='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[none:gender:nk]' type-v2='color' w='16000' x='83200' y='11750'>
+                  <zone-style>
+                    <format attr='border-color' value='#000000' />
+                    <format attr='border-style' value='none' />
+                    <format attr='border-width' value='0' />
+                    <format attr='margin' value='4' />
+                    <format attr='padding' value='0' />
+                  </zone-style>
+                </zone>
+              </zone>
+              <zone-style>
+                <format attr='border-color' value='#000000' />
+                <format attr='border-style' value='none' />
+                <format attr='border-width' value='0' />
+                <format attr='margin' value='8' />
+              </zone-style>
+            </zone>
+          </zones>
+        </devicelayout>
+      </devicelayouts>
+      <simple-id uuid='{F065AA01-FF1A-49B6-BC52-DE2DA1126291}' />
+    </dashboard>
+    <dashboard enable-sort-zone-taborder='true' name='Sales Dashboard'>
+      <style />
+      <size maxheight='800' maxwidth='1000' minheight='800' minwidth='1000' />
+      <datasources>
+        <datasource caption='sales_customers (samples.bakehouse.sales_customers)+ (bakehouse)' name='federated.0rbe41t0pgjxjs1bpbl111t07ecc' />
+      </datasources>
+      <datasource-dependencies datasource='federated.0rbe41t0pgjxjs1bpbl111t07ecc'>
+        <column caption='Country' datatype='string' name='[country]' role='dimension' semantic-role='[Country].[ISO3166_2]' type='nominal' />
+        <column-instance column='[country]' derivation='None' name='[none:country:nk]' pivot='key' type='nominal' />
+      </datasource-dependencies>
+      <zones>
+        <zone h='100000' id='4' type-v2='layout-basic' w='100000' x='0' y='0'>
+          <zone h='98000' id='27' param='horz' type-v2='layout-flow' w='98400' x='800' y='1000'>
+            <zone h='98000' id='25' type-v2='layout-basic' w='82400' x='800' y='1000'>
+              <zone h='49000' id='5' name='Product Performance' w='82400' x='800' y='50000'>
+                <zone-style>
+                  <format attr='border-color' value='#000000' />
+                  <format attr='border-style' value='none' />
+                  <format attr='border-width' value='0' />
+                  <format attr='margin' value='4' />
+                </zone-style>
+              </zone>
+              <zone h='49000' id='24' name='Area Chart' w='41200' x='42000' y='1000'>
+                <zone-style>
+                  <format attr='border-color' value='#000000' />
+                  <format attr='border-style' value='none' />
+                  <format attr='border-width' value='0' />
+                  <format attr='margin' value='4' />
+                </zone-style>
+              </zone>
+              <zone h='49000' id='33' name='Sales  Transaction' w='41200' x='800' y='1000'>
+                <zone-style>
+                  <format attr='border-color' value='#000000' />
+                  <format attr='border-style' value='none' />
+                  <format attr='border-width' value='0' />
+                  <format attr='margin' value='4' />
+                </zone-style>
+              </zone>
+            </zone>
+            <zone fixed-size='160' h='98000' id='26' is-fixed='true' param='vert' type-v2='layout-flow' w='16000' x='83200' y='1000'>
+              <zone h='10750' id='28' name='Area Chart' pane-specification-id='0' param='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[none:country:nk]' type-v2='color' w='16000' x='83200' y='1000'>
+                <zone-style>
+                  <format attr='border-color' value='#000000' />
+                  <format attr='border-style' value='none' />
+                  <format attr='border-width' value='0' />
+                  <format attr='margin' value='4' />
+                </zone-style>
+              </zone>
+              <zone h='13500' id='34' name='Sales  Transaction' param='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[none:country:nk]' type-v2='filter' w='16000' x='83200' y='11750'>
+                <zone-style>
+                  <format attr='border-color' value='#000000' />
+                  <format attr='border-style' value='none' />
+                  <format attr='border-width' value='0' />
+                  <format attr='margin' value='4' />
+                </zone-style>
+              </zone>
+            </zone>
+          </zone>
+          <zone-style>
+            <format attr='border-color' value='#000000' />
+            <format attr='border-style' value='none' />
+            <format attr='border-width' value='0' />
+            <format attr='margin' value='8' />
+          </zone-style>
+        </zone>
+      </zones>
+      <devicelayouts>
+        <devicelayout auto-generated='true' name='Phone'>
+          <size maxheight='1000' minheight='1000' sizing-mode='vscroll' />
+          <zones>
+            <zone h='100000' id='40' type-v2='layout-basic' w='100000' x='0' y='0'>
+              <zone h='98000' id='39' param='vert' type-v2='layout-flow' w='98400' x='800' y='1000'>
+                <zone h='13500' id='34' mode='checkdropdown' name='Sales  Transaction' param='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[none:country:nk]' type-v2='filter' w='16000' x='83200' y='11750'>
+                  <zone-style>
+                    <format attr='border-color' value='#000000' />
+                    <format attr='border-style' value='none' />
+                    <format attr='border-width' value='0' />
+                    <format attr='margin' value='4' />
+                    <format attr='padding' value='0' />
+                  </zone-style>
+                </zone>
+                <zone fixed-size='280' h='49000' id='33' is-fixed='true' name='Sales  Transaction' w='41200' x='800' y='1000'>
+                  <zone-style>
+                    <format attr='border-color' value='#000000' />
+                    <format attr='border-style' value='none' />
+                    <format attr='border-width' value='0' />
+                    <format attr='margin' value='4' />
+                    <format attr='padding' value='0' />
+                  </zone-style>
+                </zone>
+                <zone fixed-size='280' h='49000' id='24' is-fixed='true' name='Area Chart' w='41200' x='42000' y='1000'>
+                  <zone-style>
+                    <format attr='border-color' value='#000000' />
+                    <format attr='border-style' value='none' />
+                    <format attr='border-width' value='0' />
+                    <format attr='margin' value='4' />
+                    <format attr='padding' value='0' />
+                  </zone-style>
+                </zone>
+                <zone h='10750' id='28' name='Area Chart' pane-specification-id='0' param='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[none:country:nk]' type-v2='color' w='16000' x='83200' y='1000'>
+                  <zone-style>
+                    <format attr='border-color' value='#000000' />
+                    <format attr='border-style' value='none' />
+                    <format attr='border-width' value='0' />
+                    <format attr='margin' value='4' />
+                    <format attr='padding' value='0' />
+                  </zone-style>
+                </zone>
+                <zone fixed-size='280' h='49000' id='5' is-fixed='true' name='Product Performance' w='82400' x='800' y='50000'>
+                  <zone-style>
+                    <format attr='border-color' value='#000000' />
+                    <format attr='border-style' value='none' />
+                    <format attr='border-width' value='0' />
+                    <format attr='margin' value='4' />
+                    <format attr='padding' value='0' />
+                  </zone-style>
+                </zone>
+              </zone>
+              <zone-style>
+                <format attr='border-color' value='#000000' />
+                <format attr='border-style' value='none' />
+                <format attr='border-width' value='0' />
+                <format attr='margin' value='8' />
+              </zone-style>
+            </zone>
+          </zones>
+        </devicelayout>
+      </devicelayouts>
+      <simple-id uuid='{7CA8C962-5F84-4628-9057-285A4F56B15F}' />
+    </dashboard>
+  </dashboards>
+  <windows source-height='30'>
+    <window class='worksheet' maximized='true' name='Sales  Transaction'>
+      <cards>
+        <edge name='left'>
+          <strip size='160'>
+            <card type='pages' />
+            <card type='filters' />
+            <card type='marks' />
+          </strip>
+        </edge>
+        <edge name='top'>
+          <strip size='2147483647'>
+            <card type='columns' />
+          </strip>
+          <strip size='2147483647'>
+            <card type='rows' />
+          </strip>
+          <strip size='31'>
+            <card type='title' />
+          </strip>
+        </edge>
+        <edge name='right'>
+          <strip size='160'>
+            <card param='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[none:country:nk]' type='filter' />
+          </strip>
+        </edge>
+      </cards>
+      <simple-id uuid='{CD888D32-0470-44DD-AD7C-EF55FA048775}' />
+    </window>
+    <window class='worksheet' name='Product Performance'>
+      <cards>
+        <edge name='left'>
+          <strip size='160'>
+            <card type='pages' />
+            <card type='filters' />
+            <card type='marks' />
+          </strip>
+        </edge>
+        <edge name='top'>
+          <strip size='2147483647'>
+            <card type='columns' />
+          </strip>
+          <strip size='2147483647'>
+            <card type='rows' />
+          </strip>
+          <strip size='31'>
+            <card type='title' />
+          </strip>
+        </edge>
+      </cards>
+      <simple-id uuid='{C4F7DFD6-A7A1-404E-9027-EBBCFF60097D}' />
+    </window>
+    <window class='worksheet' name='Product Performance CrossTab'>
+      <cards>
+        <edge name='left'>
+          <strip size='160'>
+            <card type='pages' />
+            <card type='filters' />
+            <card type='marks' />
+            <card type='measures' />
+          </strip>
+        </edge>
+        <edge name='top'>
+          <strip size='2147483647'>
+            <card type='columns' />
+          </strip>
+          <strip size='2147483647'>
+            <card type='rows' />
+          </strip>
+          <strip size='31'>
+            <card type='title' />
+          </strip>
+        </edge>
+      </cards>
+      <simple-id uuid='{B53BAF56-2E2F-4D57-BF3E-F3ED5B66A26A}' />
+    </window>
+    <window class='worksheet' name='Area Chart'>
+      <cards>
+        <edge name='left'>
+          <strip size='160'>
+            <card type='pages' />
+            <card type='filters' />
+            <card type='marks' />
+          </strip>
+        </edge>
+        <edge name='top'>
+          <strip size='2147483647'>
+            <card type='columns' />
+          </strip>
+          <strip size='2147483647'>
+            <card type='rows' />
+          </strip>
+          <strip size='31'>
+            <card type='title' />
+          </strip>
+        </edge>
+        <edge name='right'>
+          <strip size='160'>
+            <card pane-specification-id='0' param='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[none:country:nk]' type='color' />
+          </strip>
+        </edge>
+      </cards>
+      <simple-id uuid='{2199FF06-8925-42F7-BDD9-D9C060993B19}' />
+    </window>
+    <window class='worksheet' name='Continet Customer Count'>
+      <cards>
+        <edge name='left'>
+          <strip size='160'>
+            <card type='pages' />
+            <card type='filters' />
+            <card type='marks' />
+          </strip>
+        </edge>
+        <edge name='top'>
+          <strip size='2147483647'>
+            <card type='columns' />
+          </strip>
+          <strip size='2147483647'>
+            <card type='rows' />
+          </strip>
+          <strip size='31'>
+            <card type='title' />
+          </strip>
+        </edge>
+        <edge name='right'>
+          <strip size='160'>
+            <card pane-specification-id='0' param='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[none:continent:nk]' type='color' />
+          </strip>
+        </edge>
+      </cards>
+      <simple-id uuid='{75B30C15-11CA-408B-B1D6-EF5BE419588E}' />
+    </window>
+    <window class='worksheet' name='Sheet 6'>
+      <cards>
+        <edge name='left'>
+          <strip size='160'>
+            <card type='pages' />
+            <card type='filters' />
+            <card type='marks' />
+          </strip>
+        </edge>
+        <edge name='top'>
+          <strip size='2147483647'>
+            <card type='columns' />
+          </strip>
+          <strip size='2147483647'>
+            <card type='rows' />
+          </strip>
+          <strip size='31'>
+            <card type='title' />
+          </strip>
+        </edge>
+        <edge name='right'>
+          <strip size='160'>
+            <card pane-specification-id='0' param='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[none:gender:nk]' type='color' />
+          </strip>
+        </edge>
+      </cards>
+      <simple-id uuid='{4C3B449F-6CBC-472B-B099-2050D96B31EF}' />
+    </window>
+    <window class='worksheet' name='Total Revenu'>
+      <cards>
+        <edge name='left'>
+          <strip size='208'>
+            <card type='pages' />
+            <card type='filters' />
+            <card type='marks' />
+          </strip>
+        </edge>
+        <edge name='top'>
+          <strip size='2147483647'>
+            <card type='columns' />
+          </strip>
+          <strip size='2147483647'>
+            <card type='rows' />
+          </strip>
+          <strip size='31'>
+            <card type='title' />
+          </strip>
+        </edge>
+        <edge name='right'>
+          <strip size='160'>
+            <card param='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[none:continent:nk]' type='filter' />
+          </strip>
+        </edge>
+      </cards>
+      <simple-id uuid='{D1BE9D7F-0B15-48D5-882A-CE9B064A549C}' />
+    </window>
+    <window class='dashboard' name='Sales Dashboard'>
+      <viewpoints>
+        <viewpoint name='Area Chart'>
+          <zoom type='entire-view' />
+        </viewpoint>
+        <viewpoint name='Product Performance'>
+          <zoom type='entire-view' />
+        </viewpoint>
+        <viewpoint name='Sales  Transaction' />
+      </viewpoints>
+      <active id='33' />
+      <simple-id uuid='{98AF0E44-4A3B-4F0F-BBCB-643401EDA65D}' />
+    </window>
+    <window class='dashboard' name='Company Dashboard'>
+      <viewpoints>
+        <viewpoint name='Continet Customer Count' />
+        <viewpoint name='Product Performance CrossTab' />
+        <viewpoint name='Sheet 6'>
+          <zoom type='entire-view' />
+        </viewpoint>
+        <viewpoint name='Total Revenu' />
+      </viewpoints>
+      <active id='6' />
+      <simple-id uuid='{2A1DA4F9-2D52-412D-A130-5EA6F55F47A7}' />
+    </window>
+    <window class='worksheet' name='Sheet 8'>
+      <cards>
+        <edge name='left'>
+          <strip size='160'>
+            <card type='pages' />
+            <card type='filters' />
+            <card type='marks' />
+          </strip>
+        </edge>
+        <edge name='top'>
+          <strip size='2147483647'>
+            <card type='columns' />
+          </strip>
+          <strip size='2147483647'>
+            <card type='rows' />
+          </strip>
+          <strip size='31'>
+            <card type='title' />
+          </strip>
+        </edge>
+      </cards>
+      <simple-id uuid='{B8177D06-FD3C-4448-987B-4A3A955E85F7}' />
+    </window>
+  </windows>
+</workbook>
