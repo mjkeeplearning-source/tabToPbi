@@ -1,0 +1,2 @@
+database 'dbs_csql'
+	compatibilityLevel: 1600

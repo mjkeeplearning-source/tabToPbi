@@ -1,37 +1,37 @@
 workbooks:
-- stem: simple_join_sorted_dropdown_crosstab_dashboard_dropdown
-  path: input\simple_join_sorted_dropdown_crosstab_dashboard_dropdown.twb
-  data_dir: data
-  expected_visual_count: 7
-  expected_calc_field_count: 2
-  snapshot_path: tests\snapshots\simple_join_sorted_dropdown_crosstab_dashboard_dropdown
 - stem: simple_join
   path: input\simple_join.twb
   data_dir: data
   expected_visual_count: 6
   expected_calc_field_count: 2
   snapshot_path: tests\snapshots\simple_join
-- stem: daatabricks_dual_bar
-  path: input\daatabricks_dual_bar.twb
-  data_dir: data
-  expected_visual_count: 1
-  expected_calc_field_count: 0
-  snapshot_path: tests\snapshots\daatabricks_dual_bar
 - stem: daatabricks
   path: input\daatabricks.twb
   data_dir: data
   expected_visual_count: 7
   expected_calc_field_count: 0
   snapshot_path: tests\snapshots\daatabricks
-- stem: simple_join_sorted_dropdown_crosstab_dashboard_simple_filter
-  path: input\simple_join_sorted_dropdown_crosstab_dashboard_simple_filter.twb
-  data_dir: data
-  expected_visual_count: 6
-  expected_calc_field_count: 2
-  snapshot_path: tests\snapshots\simple_join_sorted_dropdown_crosstab_dashboard_simple_filter
-- stem: daatabricks_custom_Sql_two_table
-  path: input\daatabricks_custom_Sql_two_table.twb
+- stem: dbs_csql
+  path: input\dbs_csql.twb
   data_dir: data
   expected_visual_count: 1
   expected_calc_field_count: 0
-  snapshot_path: tests\snapshots\daatabricks_custom_Sql_two_table
+  snapshot_path: tests\snapshots\dbs_csql
+- stem: dbs_dbars
+  path: input\dbs_dbars.twb
+  data_dir: data
+  expected_visual_count: 1
+  expected_calc_field_count: 0
+  snapshot_path: tests\snapshots\dbs_dbars
+- stem: s1
+  path: input\s1.twb
+  data_dir: data
+  expected_visual_count: 6
+  expected_calc_field_count: 2
+  snapshot_path: tests\snapshots\s1
+- stem: s2
+  path: input\s2.twb
+  data_dir: data
+  expected_visual_count: 7
+  expected_calc_field_count: 2
+  snapshot_path: tests\snapshots\s2
