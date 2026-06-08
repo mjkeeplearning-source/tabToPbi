@@ -12,6 +12,7 @@ This MVP is intentionally constrained. The goal is to produce a valid PBIR outpu
 - Be simple. Approach tasks in a simple, incremental way.
 - Work incrementally ALWAYS. Small, simple steps. Validate and check each increment before moving on.
 - Use LATEST apis as of NOW.
+- **NEVER refresh or update regression snapshots unless the user explicitly asks.** When a regression test fails, investigate and explain the root cause. Do not run any snapshot update/register script without explicit instruction.
 
 ## MANDATORY Code Style
 
@@ -32,6 +33,19 @@ This MVP is intentionally constrained. The goal is to produce a valid PBIR outpu
 - PROVE THE PROBLEM FIRST - don't guess.
 - Try one test at a time. Be methodical.
 - Don't jump to conclusions. Don't apply workarounds
+
+---
+
+## Implementation Tracking
+
+When starting a new implementation, pick the next ACTIVE plan from this table and use `superpowers:executing-plans` to execute it task by task.
+
+| Plan | Title | Status | Spec |
+|------|-------|--------|------|
+| 1 | Dashboard Migration | ✅ DONE | `docs/superpowers/plans/2026-05-08-dashboard-migration.md` |
+| 2 | Visual Mapping Agent | 🔄 ACTIVE | `docs/superpowers/plans/2026-05-13-visual-mapping-agent.md` |
+
+**Statuses:** 🔄 ACTIVE — in progress · ✅ DONE — complete · ⏸ PAUSED — blocked/deferred
 
 ---
 

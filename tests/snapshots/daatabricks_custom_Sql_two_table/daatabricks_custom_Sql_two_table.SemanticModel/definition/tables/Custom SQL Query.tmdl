@@ -1,0 +1,122 @@
+table 'Custom SQL Query'
+
+	column address
+		dataType: string
+		sourceColumn: address
+
+	column city
+		dataType: string
+		sourceColumn: city
+
+	column continent
+		dataType: string
+		sourceColumn: continent
+
+	column country
+		dataType: string
+		sourceColumn: country
+
+	column customerID
+		dataType: int64
+		sourceColumn: customerID
+
+	column email_address
+		dataType: string
+		sourceColumn: email_address
+
+	column first_name
+		dataType: string
+		sourceColumn: first_name
+
+	column gender
+		dataType: string
+		sourceColumn: gender
+
+	column last_name
+		dataType: string
+		sourceColumn: last_name
+
+	column phone_number
+		dataType: string
+		sourceColumn: phone_number
+
+	column postal_zip_code
+		dataType: int64
+		sourceColumn: postal_zip_code
+
+	column state
+		dataType: string
+		sourceColumn: state
+
+	column cardNumber
+		dataType: int64
+		sourceColumn: cardNumber
+
+	column dateTime
+		dataType: dateTime
+		sourceColumn: dateTime
+
+	column franchiseID
+		dataType: int64
+		sourceColumn: franchiseID
+
+	column paymentMethod
+		dataType: string
+		sourceColumn: paymentMethod
+
+	column product
+		dataType: string
+		sourceColumn: product
+
+	column quantity
+		dataType: int64
+		sourceColumn: quantity
+
+	column totalPrice
+		dataType: int64
+		sourceColumn: totalPrice
+
+	column transactionID
+		dataType: int64
+		sourceColumn: transactionID
+
+	column unitPrice
+		dataType: int64
+		sourceColumn: unitPrice
+
+	measure 'Sum customerID' = SUM('Custom SQL Query'[customerID])
+
+	partition 'Custom SQL Query' = m
+		mode: directQuery
+		source = ```
+			let
+			    Source = DatabricksMultiCloud.Catalogs("dbc-b0e64326-49ff.cloud.databricks.com", "/sql/1.0/warehouses/7691ee00ee3de572", [Catalog=null, Database=null, QueryTags=null, EnableAutomaticProxyDiscovery=null, Implementation="2.0"]),
+			    samples_Database = Source{[Name="samples",Kind="Database"]}[Data],
+			    nav = Value.NativeQuery(samples_Database, "SELECT
+    c.address,
+    c.city,
+    c.continent,
+    c.country,
+    c.customerID,
+    c.email_address,
+    c.first_name,
+    c.gender,
+    c.last_name,
+    c.phone_number,
+    c.postal_zip_code,
+    c.state,
+    t.cardNumber,
+    t.dateTime,
+    t.franchiseID,
+    t.paymentMethod,
+    t.product,
+    t.quantity,
+    t.totalPrice,
+    t.transactionID,
+    t.unitPrice
+  FROM `samples`.`bakehouse`.`sales_customers` c
+  JOIN `samples`.`bakehouse`.`sales_transactions` t
+    ON c.customerID = t.customerID", null, [EnableFolding=true])
+			in
+			    nav
+			```

@@ -1,0 +1,58 @@
+table sales_transactions
+
+	column transactionID
+		dataType: int64
+		sourceColumn: transactionID
+
+	column customerID
+		dataType: int64
+		sourceColumn: customerID
+
+	column franchiseID
+		dataType: int64
+		sourceColumn: franchiseID
+
+	column dateTime
+		dataType: dateTime
+		sourceColumn: dateTime
+
+	column product
+		dataType: string
+		sourceColumn: product
+
+	column quantity
+		dataType: int64
+		sourceColumn: quantity
+
+	column unitPrice
+		dataType: int64
+		sourceColumn: unitPrice
+
+	column totalPrice
+		dataType: int64
+		sourceColumn: totalPrice
+
+	column paymentMethod
+		dataType: string
+		sourceColumn: paymentMethod
+
+	column cardNumber
+		dataType: int64
+		sourceColumn: cardNumber
+
+	measure 'Sum quantity' = SUM(sales_transactions[quantity])
+
+	measure 'Sum totalPrice' = SUM(sales_transactions[totalPrice])
+
+	measure 'Count sales_transactions' = COUNTROWS(sales_transactions)
+
+	partition sales_transactions = m
+		mode: directQuery
+		source =
+			let
+			    Source = DatabricksMultiCloud.Catalogs("dbc-b0e64326-49ff.cloud.databricks.com", "/sql/1.0/warehouses/7691ee00ee3de572", [Catalog=null, Database=null, QueryTags=null, EnableAutomaticProxyDiscovery=null, Implementation="2.0"]),
+			    samples_Database = Source{[Name="samples",Kind="Database"]}[Data],
+			    bakehouse_Schema = samples_Database{[Name="bakehouse",Kind="Schema"]}[Data],
+			    sales_transactions_Table = bakehouse_Schema{[Name="sales_transactions",Kind="Table"]}[Data]
+			in
+			    sales_transactions_Table

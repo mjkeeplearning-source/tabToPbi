@@ -1,8 +1,51 @@
 """Transform parsed workbook dict into PBIR-ready structure."""
 
 import re
+from tab_to_pbi.dashboard import _SLICER_MODE_MAP, _SINGLE_SELECT_MODES
 
-_SQL_CONN_TYPES = {"postgres", "sqlserver", "mysql", "bigquery", "redshift", "snowflake", "oracle", "teradata"}
+_SQL_CONN_TYPES = {"postgres", "sqlserver", "mysql", "bigquery", "redshift", "snowflake", "oracle", "teradata", "databricks"}
+
+_RESOLVABLE_TOKENS = {
+    "sheet_name": lambda ctx: ctx["sheet_name"],
+    "workbook_name": lambda ctx: ctx["workbook_name"],
+    "data_connection_name": lambda ctx: ctx["datasource_name"],
+    "default_caption": lambda ctx: ctx["sheet_name"],
+}
+
+
+def _resolve_title(title_info: dict | None, sheet_name: str, workbook_name: str, datasource_name: str = "") -> dict | None:
+    """Resolve parsed title runs to a flat title dict suitable for the generator.
+
+    Named tokens (sheet_name, workbook_name, data_connection_name) are resolved
+    to their values.  Unresolvable tokens and field-ref tokens cause a fallback
+    to the sheet name so the visual always shows a meaningful title.
+    Returns None when title_info is None (no title element in the source).
+    """
+    if title_info is None:
+        return {"text": sheet_name}
+
+    ctx = {"sheet_name": sheet_name, "workbook_name": workbook_name, "datasource_name": datasource_name}
+    parts: list[str] = []
+    has_unresolvable = False
+
+    for run in title_info.get("runs", []):
+        kind = run["kind"]
+        if kind == "text":
+            parts.append(run["value"])
+        elif kind == "token":
+            resolver = _RESOLVABLE_TOKENS.get(run["token"])
+            if resolver:
+                parts.append(resolver(ctx))
+            else:
+                has_unresolvable = True
+        else:  # field_ref
+            has_unresolvable = True
+
+    text = "".join(parts).strip()
+    if has_unresolvable or not text:
+        text = sheet_name
+
+    return {"text": text, **title_info.get("formatting", {})}
 
 DATATYPE_MAP = {
     "string": "string",
@@ -58,7 +101,7 @@ def _apply_storage_mode(conn: dict) -> dict:
     return {**conn, "storage_mode": "import"}
 
 
-def transform(workbook: dict) -> dict:
+def transform(workbook: dict, workbook_name: str = "") -> dict:
     """Return transformed dict with tables, measures, visuals, relationships, and report."""
     tables = []
     relationships = []
@@ -95,8 +138,20 @@ def transform(workbook: dict) -> dict:
     # Build display_name → table map so visual field refs stay in sync with TMDL host table
     calc_table_map: dict[str, str] = {cf["name"]: cf["table"] for cf in pending_calc_fields}
 
+    # physical_lookup: ds_name → {logical_name: physical_name} for disambiguated columns
+    # (e.g. "region (orders)" → "region"). PBI columns use physical names; Tableau uses
+    # logical display names when the same column name exists in multiple tables.
+    physical_lookup: dict[str, dict[str, str]] = {}
+    for ds in workbook.get("datasources", []):
+        pmap = {}
+        for col in ds.get("columns", []):
+            physical = col.get("remote_name", col["name"])
+            if physical != col["name"]:
+                pmap[col["name"]] = physical
+        physical_lookup[ds["name"]] = pmap
+
     measures: dict[tuple, dict] = {}
-    visuals, visual_warnings = _process_sheets(workbook, tables, field_lookup, calc_name_lookup, measures, calc_table_map, object_id_lookup)
+    visuals, visual_warnings = _process_sheets(workbook, tables, field_lookup, calc_name_lookup, measures, calc_table_map, object_id_lookup, physical_lookup, workbook_name=workbook_name)
 
     sheet_filters = [
         {"sheet": s["name"], "filters": s.get("filters", [])}
@@ -107,7 +162,7 @@ def transform(workbook: dict) -> dict:
         (
             f"Relationship {r['from_table']}.{r['from_column']} -> "
             f"{r['to_table']}.{r['to_column']} "
-            f"({r['from_cardinality']}:{r['to_cardinality']}, method={r['cardinality_method']}): "
+            f"({r['from_cardinality']}:{r['to_cardinality']}, method={r.get('cardinality_method', 'unique_key')}): "
             "cardinality inferred — verify in PBI Desktop Model View after opening"
         )
         for r in relationships
@@ -207,15 +262,36 @@ def _infer_cardinality(
 def _map_relationship(r: dict) -> dict:
     """Convert a parsed relationship to a PBI relationship dict with cardinality.
 
-    Logical relationships (no join_type) get no explicit cardinality — PBI defaults (many:one) apply.
-    Physical joins get cardinality inferred from join type + naming signals.
+    Logical relationships use unique-key endpoints to determine ONE side.
+    Physical joins use join type + naming signals via _infer_cardinality.
     """
     if "join_type" not in r:
+        first_one = r.get("first_unique_key", False)
+        second_one = r.get("second_unique_key", False)
+        if first_one and second_one:
+            # 1:1 — both sides unique; PBI mandates bothDirections for 1:1
+            return {
+                "from_table": r["from_table"], "from_column": r["from_column"],
+                "to_table": r["to_table"], "to_column": r["to_column"],
+                "from_cardinality": "one", "to_cardinality": "one",
+            }
+        if first_one:
+            # first side is ONE → swap so toColumn = first (ONE side)
+            return {
+                "from_table": r["to_table"], "from_column": r["to_column"],
+                "to_table": r["from_table"], "to_column": r["from_column"],
+            }
+        if second_one:
+            # second side is ONE → from=first(MANY), to=second(ONE): already correct
+            return {
+                "from_table": r["from_table"], "from_column": r["from_column"],
+                "to_table": r["to_table"], "to_column": r["to_column"],
+            }
+        # No unique-key → Tableau M:M default; bothDirections per official docs
         return {
-            "from_table": r["from_table"],
-            "from_column": r["from_column"],
-            "to_table": r["to_table"],
-            "to_column": r["to_column"],
+            "from_table": r["from_table"], "from_column": r["from_column"],
+            "to_table": r["to_table"], "to_column": r["to_column"],
+            "from_cardinality": "many", "to_cardinality": "many",
         }
     from_card, to_card, method = _infer_cardinality(
         r["join_type"], r["from_table"], r["from_column"], r["to_table"], r["to_column"]
@@ -312,7 +388,7 @@ def _map_multi_table_sql(
 _SUPPORTED_MARK_TYPES = {
     "Bar", "Column", "Line", "Area", "Pie",
     "Circle", "Shape", "Polygon", "Multipolygon", "PolyLine",
-    "Text", "Automatic",
+    "Text", "Automatic", "CrossTab", "KPI", "Slicer",
 }
 
 
@@ -324,12 +400,16 @@ def _process_sheets(
     measures: dict,
     calc_table_map: dict[str, str] | None = None,
     object_id_lookup: dict[str, dict[str, str]] | None = None,
+    physical_lookup: dict[str, dict[str, str]] | None = None,
+    workbook_name: str = "",
 ) -> tuple[list[dict], list[str]]:
     """Map sheets to visual descriptors. Returns (visuals, unsupported_warnings)."""
     ds_list = workbook.get("datasources", [])
     ds_default_table = {ds["name"]: tables[i]["name"] for i, ds in enumerate(ds_list) if i < len(tables)}
     # column_formats: ds_name → {col_name: format_string}
     ds_col_formats = {ds["name"]: ds.get("column_formats", {}) for ds in ds_list}
+    # color_palettes: ds_name → {field_name: {value: hex}}
+    ds_color_palettes = {ds["name"]: ds.get("color_palettes", {}) for ds in ds_list}
 
     # Accumulate date-part derived columns per table across all sheets and filters
     date_part_columns: dict[str, list] = {}
@@ -341,6 +421,7 @@ def _process_sheets(
         fmap = field_lookup.get(ds_name, {})
         cmap = calc_name_lookup.get(ds_name, {})
         oid_map = (object_id_lookup or {}).get(ds_name, {})
+        pmap = (physical_lookup or {}).get(ds_name, {})
         col_formats = ds_col_formats.get(ds_name, {})
         default_table = ds_default_table.get(ds_name, "")
 
@@ -357,26 +438,59 @@ def _process_sheets(
                 f"Sheet '{sheet['name']}': mark type '{mark_type}' not supported — rendered as table"
             )
 
-        row_fields = [r for f in rows for r in [_resolve_field(f, fmap, cmap, default_table, measures, calc_table_map, oid_map, date_part_columns)] if r]
-        col_fields = [r for f in cols for r in [_resolve_field(f, fmap, cmap, default_table, measures, calc_table_map, oid_map, date_part_columns)] if r]
+        row_fields = [r for f in rows for r in [_resolve_field(f, fmap, cmap, default_table, measures, calc_table_map, oid_map, date_part_columns, pmap)] if r]
+        col_fields = [r for f in cols for r in [_resolve_field(f, fmap, cmap, default_table, measures, calc_table_map, oid_map, date_part_columns, pmap)] if r]
+
+        # CrossTab: resolve measures from :Measure Names filter and attach as crosstab_measures
+        crosstab_measures: list[dict] = []
+        if mark_type == "CrossTab":
+            for f in sheet.get("crosstab_measures", []):
+                r = _resolve_field(f, fmap, cmap, default_table, measures, calc_table_map, oid_map, date_part_columns, pmap)
+                if r:
+                    crosstab_measures.append(r)
 
         # Bar mark with measure on rows shelf = vertical bars → columnChart in PBI
         if mark_type == "Bar" and any(f.get("is_measure") for f in row_fields):
             mark_type = "Column"
 
-        # Resolve color encoding fields (heatmap intensity) and append to col_fields as measures only
+        # Resolve color encoding fields: dimensions → Series role (multiple lines/bars);
+        # measures → col_fields (heatmap intensity / size encoding).
+        # Only include dimension fields that are known datasource columns (in fmap);
+        # calc fields, parameters, and Tableau-generated fields are excluded.
         enc_raw = sheet.get("encoding_fields", [])
-        enc_resolved = [
-            r for f in enc_raw
-            for r in [_resolve_field(f, fmap, cmap, default_table, measures, calc_table_map, oid_map, date_part_columns)]
-            if r and r.get("is_measure")
-        ]
-        if enc_resolved:
+        enc_dims: list[dict] = []
+        enc_measures: list[dict] = []
+        for f in enc_raw:
+            field_name = f["name"] if isinstance(f, dict) else f
+            r = _resolve_field(f, fmap, cmap, default_table, measures, calc_table_map, oid_map, date_part_columns, pmap)
+            if not r:
+                continue
+            if r.get("is_measure"):
+                enc_measures.append(r)
+            elif field_name in fmap:
+                enc_dims.append(r)
+        if enc_measures:
             if mark_type == "Automatic":
                 unsupported_warnings.append(
                     f"Sheet '{sheet['name']}': heatmap color encoding has no PBI equivalent — color measure added as table column"
                 )
-            col_fields = col_fields + enc_resolved
+            col_fields = col_fields + enc_measures
+        color_fields = enc_dims  # dimension on color shelf → PBI Series role
+
+        # Resolve color palette: look up datasource palette by the Tableau color dimension field.
+        # color_dimension is the logical field name (e.g. "region (orders)", "category").
+        # Physical name (for PBI Property) comes from the physical_name_map.
+        color_dim_name = sheet.get("color_dimension")
+        pmap = (physical_lookup or {}).get(ds_name, {})
+        color_palette: dict = {}
+        color_field_entity = ""
+        color_field_property = ""
+        if color_dim_name:
+            palette_map = ds_color_palettes.get(ds_name, {}).get(color_dim_name, {})
+            if palette_map:
+                color_palette = palette_map
+                color_field_entity = fmap.get(color_dim_name, default_table)
+                color_field_property = pmap.get(color_dim_name, color_dim_name)
 
         col_measures = [f for f in col_fields if f and f.get("is_measure")]
         col_dims = [f for f in col_fields if f and not f.get("is_measure")]
@@ -406,8 +520,29 @@ def _process_sheets(
                 f"Sheet '{sheet['name']}': Tableau style-rule element '{elem}' has no PBI equivalent — skipped"
             )
 
+        # Apply per-pane mark colors to row-shelf measures.
+        # Parser stores pane_mark_colors as {field_key: hex} e.g. "sum:quantity:qk".
+        # Resolved fields use base_name (e.g. "quantity") — match on the middle segment.
+        pane_mark_colors = visual_fmt.get("plot_area", {}).get("pane_mark_colors", {})
+        if pane_mark_colors:
+            by_base: dict[str, str] = {}
+            for key, color in pane_mark_colors.items():
+                parts = key.split(":")
+                if len(parts) >= 2:
+                    by_base[parts[1]] = color  # "sum:quantity:qk" → base "quantity"
+            for f in row_fields:
+                if f and f.get("is_measure"):
+                    base = f.get("base_name") or f.get("name", "")
+                    if base in by_base:
+                        f["mark_color"] = by_base[base]
+
         show_data_labels = sheet.get("show_data_labels", False)
-        sheet_title = sheet.get("title")
+        sheet_title = _resolve_title(
+            sheet.get("title"),
+            sheet_name=sheet["name"],
+            workbook_name=workbook_name,
+            datasource_name=sheet.get("datasource", ""),
+        )
         if len(col_measures) > 1:
             # Multiple measures on cols shelf → one visual per measure on the same page
             for m in col_measures:
@@ -419,6 +554,10 @@ def _process_sheets(
                     "field_table_map": fmap,
                     "row_fields": row_fields,
                     "col_fields": col_dims + [m],
+                    "color_fields": color_fields,
+                    "color_palette": color_palette,
+                    "color_field_entity": color_field_entity,
+                    "color_field_property": color_field_property,
                     "mark_type": mark_type,
                     "show_data_labels": show_data_labels,
                     "filters": enriched_filters,
@@ -427,7 +566,7 @@ def _process_sheets(
                     "col_formats": col_formats,
                 })
         else:
-            visuals.append({
+            v: dict = {
                 "name": sheet["name"],
                 "page_name": sheet["name"],
                 "title": sheet_title,
@@ -435,12 +574,54 @@ def _process_sheets(
                 "field_table_map": fmap,
                 "row_fields": row_fields,
                 "col_fields": col_fields,
+                "color_fields": color_fields,
+                "color_palette": color_palette,
+                "color_field_entity": color_field_entity,
+                "color_field_property": color_field_property,
                 "mark_type": mark_type,
                 "show_data_labels": show_data_labels,
                 "filters": enriched_filters,
                 "sorts": enriched_sorts,
                 "visual_format": visual_fmt,
                 "col_formats": col_formats,
+            }
+            if crosstab_measures:
+                v["crosstab_measures"] = crosstab_measures
+            visuals.append(v)
+
+        # Generate slicer visuals for <windows> filter cards on this sheet
+        for i, card in enumerate(workbook.get("window_filter_cards", {}).get(sheet["name"], [])):
+            field = card["field"]
+            physical = pmap.get(field, field)
+            entity = fmap.get(field, fmap.get(physical, default_table))
+            if not entity:
+                unsupported_warnings.append(
+                    f"Sheet '{sheet['name']}': slicer field '{field}' not found in field map — skipped"
+                )
+                continue
+            mode_raw = card["mode"]
+            if mode_raw in _SLICER_MODE_MAP:
+                slicer_mode = _SLICER_MODE_MAP[mode_raw]
+            elif any(
+                f.get("class") == "quantitative" and f.get("included_values") == "in-range"
+                and (f.get("field") == field or f.get("field") == physical)
+                for f in sheet.get("filters", [])
+            ):
+                slicer_mode = "Between"
+            else:
+                slicer_mode = "Basic"
+            visuals.append({
+                "mark_type": "Slicer",
+                "page_name": sheet["name"],
+                "name": f"slicer_{sheet['name']}_{physical}",
+                "field_entity": entity,
+                "field_property": physical,
+                "slicer_mode": slicer_mode,
+                "multi_select": mode_raw not in _SINGLE_SELECT_MODES,
+                "x": 920,
+                "y": 20 + 60 * i,
+                "width": 340,
+                "height": 60,
             })
     for table in tables:
         table["date_part_columns"] = date_part_columns.get(table["name"], [])
@@ -522,6 +703,7 @@ def _resolve_field(
     calc_table_map: dict[str, str] | None = None,
     object_id_map: dict[str, str] | None = None,
     date_part_columns: dict | None = None,
+    physical_name_map: dict[str, str] | None = None,
 ) -> dict | None:
     """Return {name, is_measure, table} ref, or None if field is a pending calc field."""
     ctmap = calc_table_map or {}
@@ -540,12 +722,15 @@ def _resolve_field(
             measures[key] = {"name": measure_name, "table": pbi_table, "dax": f"COUNTROWS({tname_q})"}
         return {"name": measure_name, "is_measure": True, "table": pbi_table}
 
+    pnmap = physical_name_map or {}
+
     if not isinstance(field, dict):
         if field in calc_name_map:
             display_name = calc_name_map[field]
             return {"name": display_name, "is_measure": True, "table": ctmap.get(display_name, default_table)}
         tname = field_table_map.get(field, default_table)
-        return {"name": field, "is_measure": False, "table": tname}
+        physical = pnmap.get(field, field)
+        return {"name": physical, "is_measure": False, "table": tname}
 
     agg = field.get("aggregation")
     name = field["name"]
@@ -555,43 +740,47 @@ def _resolve_field(
         return {"name": display_name, "is_measure": True, "table": ctmap.get(display_name, default_table)}
 
     tname = field_table_map.get(name, default_table)
+    physical = pnmap.get(name, name)
 
     if field.get("date_part"):
         part = field["date_part"]
-        derived = f"{name} {part.capitalize()}"
+        derived = f"{physical} {part.capitalize()}"
         if date_part_columns is not None:
             tkey = tname or default_table
             bucket = date_part_columns.setdefault(tkey, [])
-            entry = {"base_col": name, "part": part, "derived": derived}
+            entry = {"base_col": physical, "part": part, "derived": derived}
             if entry not in bucket:
                 bucket.append(entry)
         return {"name": derived, "is_measure": False, "table": tname or default_table}
 
     if not agg or not tname:
-        return {"name": name, "is_measure": False, "table": tname or default_table}
+        return {"name": physical, "is_measure": False, "table": tname or default_table}
 
     label = _AGG_LABEL.get(agg, agg)
-    measure_name = f"{label} {name}"
+    measure_name = f"{label} {physical}"
     key = (tname, measure_name)
     if key not in measures:
         tname_q = f"'{tname}'" if any(c in tname for c in " ()/-.,") else tname
         measures[key] = {
             "name": measure_name,
             "table": tname,
-            "dax": f"{agg}({tname_q}[{name}])",
+            "dax": f"{agg}({tname_q}[{physical}])",
         }
-    return {"name": measure_name, "is_measure": True, "table": tname}
+    return {"name": measure_name, "is_measure": True, "table": tname, "base_name": physical}
 
 
 def _infer_mark_type(rows: list, cols: list) -> str:
     """Infer chart type from shelf layout when Tableau mark is Automatic."""
     rows_cont = any(f.get("continuous") for f in rows if isinstance(f, dict))
     cols_cont = any(f.get("continuous") for f in cols if isinstance(f, dict))
+    cols_has_date = any(f.get("date_part") for f in cols if isinstance(f, dict))
+
+    rows_has_measure = any(f.get("aggregation") or f.get("continuous") for f in rows if isinstance(f, dict))
 
     if cols_cont and not rows_cont:
         return "Bar"
-    if rows_cont and not cols_cont:
-        return "Column"
-    if cols_cont and rows_cont:
+    if (cols_cont or cols_has_date) and rows_cont:
         return "Line"
+    if rows_cont and rows_has_measure and not cols_cont and not cols_has_date:
+        return "Column"
     return "Automatic"

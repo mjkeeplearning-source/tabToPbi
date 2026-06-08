@@ -1,0 +1,8 @@
+{
+  "version": "4.0",
+  "datasetReference": {
+    "byPath": {
+      "path": "../simple_join_sorted_dropdown_crosstab_dashboard_dropdown.SemanticModel"
+    }
+  }
+}

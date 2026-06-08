@@ -98,6 +98,8 @@ def test_calc_field_refs_skipped_from_projections():
     transformed = transform(workbook)
     # Both sheets use a calc field on one shelf — verify no Calculation_xxx in projections
     for visual in transformed["visuals"]:
+        if visual.get("mark_type") == "Slicer":
+            continue
         all_fields = visual["row_fields"] + visual["col_fields"]
         names = [f["name"] for f in all_fields]
         assert not any(n.startswith("Calculation_") for n in names), (

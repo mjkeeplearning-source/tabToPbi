@@ -17,6 +17,8 @@ MARK_TO_VISUAL = {
     "Multipolygon": "filledMap",
     "PolyLine": "map",
     "Text": "tableEx",
+    "CrossTab": "pivotTable",
+    "KPI": "cardVisual",
 }
 
 _SCHEMA_BASE = "https://developer.microsoft.com/json-schemas/fabric/item/report"
@@ -241,7 +243,7 @@ def _build_filter_entry(f: dict, idx: int) -> dict | None:
         condition = {
             "In": {
                 "Expressions": [col_expr],
-                "Values": [[{"Literal": {"Value": f"'{v}'"}}] for v in values],
+                "Values": [[{"Literal": {"Value": _format_literal(v)}}] for v in values],
             }
         }
         filter_type = "Categorical"
@@ -250,7 +252,7 @@ def _build_filter_entry(f: dict, idx: int) -> dict | None:
         agg_prefix = f.get("agg_prefix")
         min_val = f.get("min", "")
         max_val = f.get("max", "")
-        if agg_prefix and agg_prefix in _PBI_AGG_FUNC:
+        if agg_prefix and agg_prefix in _PBI_AGG_FUNC and f.get("included_values") != "in-range":
             # Post-aggregation filter: use Aggregation expression + Advanced type
             agg_func = _PBI_AGG_FUNC[agg_prefix]
             agg_expr = {
@@ -411,7 +413,7 @@ def _write_tmdl_model(model_dir: Path, transformed: dict, data_dir: Path) -> Non
             if (from_card, to_card) != ("many", "one"):
                 lines.append(f"\tfromCardinality: {from_card}")
                 lines.append(f"\ttoCardinality: {to_card}")
-            if (from_card, to_card) == ("one", "one"):
+            if (from_card, to_card) in (("one", "one"), ("many", "many")):
                 lines.append("\tcrossFilteringBehavior: bothDirections")
             lines.append("")
             rel_lines += lines
@@ -622,13 +624,13 @@ def _build_m_expression(
         lines, _ = _chain_add_columns(base_lines, last_step, dpc)
         return lines, False
 
-    # SQL-based connections share the same structure; only the M connector function differs
+    # SQL-based connections share the same structure; only the M connector function differs.
+    # Snowflake and Databricks use hierarchical navigation and have their own branches below.
     _SQL_CONNECTOR = {
         "postgres":  "PostgreSQL.Database",
         "sqlserver": "Sql.Database",
         "mysql":     "MySQL.Database",
         "redshift":  "AmazonRedshift.Database",
-        "snowflake": "Snowflake.Databases",
         "oracle":    "Oracle.Database",
         "bigquery":  "GoogleBigQuery.Database",
         "teradata":  "Teradata.Database",
@@ -730,6 +732,129 @@ def _build_m_expression(
         if dpc and storage_mode != "directQuery":
             base_lines, _ = _chain_add_columns(base_lines, "nav", dpc)
         return base_lines, False
+
+    if conn_type == "snowflake":
+        server    = conn.get("server", "")
+        warehouse = conn.get("warehouse", "")
+        dbname    = conn.get("dbname", "")
+        schema    = conn.get("schema", "")
+        table     = conn.get("table", "")
+        custom_sql = conn.get("custom_sql", "")
+        storage_mode = conn.get("storage_mode", "import")
+        # Warehouse is the 2nd positional arg; Implementation="2.0" selects the ADBC driver
+        # (default for new connections since March 2025 per Microsoft docs).
+        opts = f'"{warehouse}", [Implementation="2.0"]' if warehouse else '[Implementation="2.0"]'
+        source_line = f'    Source = Snowflake.Databases("{server}", {opts}),'
+        # Snowflake.Databases() returns a navigation table, not a connection.
+        # Value.NativeQuery requires the database-level object — navigate first.
+        db_var = f"{dbname}_Database"
+        db_nav_line = f'    {db_var} = Source{{[Name="{dbname}",Kind="Database"]}}[Data],'
+
+        if custom_sql:
+            if dpc and storage_mode == "directQuery":
+                dialect = _DATE_PART_SQL.get("snowflake", {})
+                select_parts = []
+                for dp in dpc:
+                    if dp["part"] not in dialect:
+                        continue
+                    sql_fn = dialect[dp["part"]].format(col=f't0.{dp["base_col"]}')
+                    alias = _m_sql_alias("snowflake", dp["derived"])
+                    select_parts.append(f"{sql_fn} AS {alias}")
+                if select_parts:
+                    wrapped = f'SELECT t0.*, {", ".join(select_parts)} FROM ({custom_sql}) t0'
+                    escaped = wrapped.replace('"', '""')
+                    return [
+                        "let",
+                        source_line,
+                        db_nav_line,
+                        f'    nav = Value.NativeQuery({db_var}, "{escaped}", null, [EnableFolding=true])',
+                        "in",
+                        "    nav",
+                    ], True
+            escaped_sql = custom_sql.replace('"', '""')
+            base_lines = [
+                "let",
+                source_line,
+                db_nav_line,
+                f'    nav = Value.NativeQuery({db_var}, "{escaped_sql}", null, [EnableFolding=true])',
+                "in",
+                "    nav",
+            ]
+            if dpc and storage_mode != "directQuery":
+                base_lines, _ = _chain_add_columns(base_lines, "nav", dpc)
+            return base_lines, True
+
+        if dpc and storage_mode == "directQuery":
+            dialect = _DATE_PART_SQL.get("snowflake", {})
+            select_parts = []
+            for dp in dpc:
+                sql_expr = dialect.get(dp["part"], "").format(col=dp["base_col"])
+                if not sql_expr:
+                    continue
+                alias = _m_sql_alias("snowflake", dp["derived"])
+                select_parts.append(f"{sql_expr} AS {alias}")
+            if select_parts:
+                qual = _m_sql_table("snowflake", schema, table)
+                sql = f"SELECT *, {', '.join(select_parts)} FROM {qual}"
+                return [
+                    "let",
+                    source_line,
+                    db_nav_line,
+                    f'    nav = Value.NativeQuery({db_var}, "{sql}", null, [EnableFolding=true])',
+                    "in",
+                    "    nav",
+                ], False
+
+        # Standard table navigation: Source → Database → Schema → Table
+        db_var  = f"{dbname}_Database"
+        sch_var = f"{schema}_Schema"
+        tbl_var = f"{table}_Table"
+        base_lines = [
+            "let",
+            source_line,
+            f'    {db_var} = Source{{[Name="{dbname}",Kind="Database"]}}[Data],',
+            f'    {sch_var} = {db_var}{{[Name="{schema}",Kind="Schema"]}}[Data],',
+            f'    {tbl_var} = {sch_var}{{[Name="{table}",Kind="Table"]}}[Data]',
+            "in",
+            f"    {tbl_var}",
+        ]
+        if dpc and storage_mode != "directQuery":
+            base_lines, _ = _chain_add_columns(base_lines, tbl_var, dpc)
+        return base_lines, False
+
+    if conn_type == "databricks":
+        server = conn.get("server", "")
+        http_path = conn.get("http_path", "")
+        catalog = conn.get("dbname", "")
+        schema = conn.get("schema", "")
+        table = conn.get("table", "")
+        custom_sql = conn.get("custom_sql", "")
+        cat_var = f"{catalog}_Database"
+        source_line = f'    Source = DatabricksMultiCloud.Catalogs("{server}", "{http_path}", [Catalog=null, Database=null, QueryTags=null, EnableAutomaticProxyDiscovery=null, Implementation="2.0"]),'
+        cat_line = f'    {cat_var} = Source{{[Name="{catalog}",Kind="Database"]}}[Data],'
+
+        if custom_sql:
+            escaped_sql = custom_sql.replace('"', '""')
+            return [
+                "let",
+                source_line,
+                cat_line,
+                f'    nav = Value.NativeQuery({cat_var}, "{escaped_sql}", null, [EnableFolding=true])',
+                "in",
+                "    nav",
+            ], True
+
+        sch_var = f"{schema}_Schema"
+        tbl_var = f"{table}_Table"
+        return [
+            "let",
+            source_line,
+            cat_line,
+            f'    {sch_var} = {cat_var}{{[Name="{schema}",Kind="Schema"]}}[Data],',
+            f'    {tbl_var} = {sch_var}{{[Name="{table}",Kind="Table"]}}[Data]',
+            "in",
+            f"    {tbl_var}",
+        ], False
 
     return [f'error "Unsupported connection type: {conn_type}"'], False
 
@@ -841,26 +966,43 @@ def _write_page(page_dir: Path, page_visuals: list[dict], base_visual_idx: int) 
         "height": 720,
         "width": 1280,
     }
+    sheet_filters = page_visuals[0].get("filters", [])
+    filter_config = _build_filter_config(sheet_filters)
+    if filter_config:
+        page["filterConfig"] = filter_config
     (page_dir / "page.json").write_text(json.dumps(page, indent=2))
+
+    has_slicers = any(v.get("mark_type") == "Slicer" for v in page_visuals)
+    chart_width = 900 if has_slicers else 560
 
     slot = 0
     for j, visual_info in enumerate(page_visuals):
-        if visual_info.get("row_fields") or visual_info.get("col_fields"):
+        if visual_info.get("mark_type") == "Slicer":
             visuals_dir = page_dir / "visuals"
             visuals_dir.mkdir(exist_ok=True)
             visual_dir = visuals_dir / f"visual_{base_visual_idx + j + 1}"
             visual_dir.mkdir(exist_ok=True)
-            _write_visual(visual_dir, visual_info, x_offset=20 + slot * 620)
+            _write_slicer_visual(visual_dir, visual_info)
+        elif visual_info.get("row_fields") or visual_info.get("col_fields"):
+            visuals_dir = page_dir / "visuals"
+            visuals_dir.mkdir(exist_ok=True)
+            visual_dir = visuals_dir / f"visual_{base_visual_idx + j + 1}"
+            visual_dir.mkdir(exist_ok=True)
+            _write_visual(visual_dir, visual_info, x_offset=20 + slot * 620, width=chart_width)
             slot += 1
 
+
+# Visual types that support a Series role (dimension → multiple lines/grouped bars)
+_SERIES_VISUAL_TYPES = {"lineChart", "areaChart", "stackedAreaChart", "columnChart", "barChart"}
 
 # Maps visual type to (role1, role2, shelf_for_role1, shelf_for_role2)
 # shelf values: "row" or "col" — which Tableau shelf feeds each PBI role
 _VISUAL_ROLES = {
-    "barChart":    ("Category", "Y",        "row", "col"),
-    "columnChart": ("Category", "Y",        "col", "row"),
-    "lineChart":   ("Category", "Y",        "col", "row"),
-    "areaChart":   ("Category", "Y",        "col", "row"),
+    "barChart":        ("Category", "Y",    "row", "col"),
+    "columnChart":     ("Category", "Y",    "col", "row"),
+    "lineChart":       ("Category", "Y",    "col", "row"),
+    "areaChart":       ("Category", "Y",    "col", "row"),
+    "stackedAreaChart":("Category", "Y",    "col", "row"),
     "pieChart":    ("Category", "Y",        "row", "col"),
     "scatterChart":("X",        "Y",        "col", "row"),
     "map":         ("Location", "Size",     "row", "col"),
@@ -899,6 +1041,78 @@ def _make_projection(default_table: str, field: dict | str, col_formats: dict | 
     return proj
 
 
+def _make_series_projection(default_table: str, field: dict | str) -> dict:
+    """Build a Series role projection (dimension on Color shelf → multiple lines/bars).
+
+    Includes nativeQueryRef (field name without table prefix) which PBI Desktop writes
+    for series fields to enable visual calculations referencing.
+    """
+    if isinstance(field, dict):
+        name = field["name"]
+        field_type = "Measure" if field.get("is_measure") else "Column"
+        table_name = field.get("table") or default_table
+    else:
+        name = field
+        field_type = "Column"
+        table_name = default_table
+    return {
+        "field": {
+            field_type: {
+                "Expression": {"SourceRef": {"Entity": table_name}},
+                "Property": name,
+            }
+        },
+        "queryRef": f"{table_name}.{name}",
+        "nativeQueryRef": name,
+    }
+
+
+def _make_pivot_dim_projection(default_table: str, field: dict | str) -> dict:
+    """Build a pivotTable Rows/Columns projection: active=true + nativeQueryRef."""
+    if isinstance(field, dict):
+        name = field["name"]
+        table_name = field.get("table") or default_table
+    else:
+        name = field
+        table_name = default_table
+    return {
+        "field": {
+            "Column": {
+                "Expression": {"SourceRef": {"Entity": table_name}},
+                "Property": name,
+            }
+        },
+        "queryRef": f"{table_name}.{name}",
+        "nativeQueryRef": name,
+        "active": True,
+    }
+
+
+def _make_pivot_measure_projection(default_table: str, field: dict | str) -> dict:
+    """Build a pivotTable Values projection: nativeQueryRef only, no active flag."""
+    if isinstance(field, dict):
+        name = field["name"]
+        table_name = field.get("table") or default_table
+        field_type = "Measure" if field.get("is_measure") else "Column"
+        base = field.get("base_name", name)
+    else:
+        name = field
+        table_name = default_table
+        field_type = "Column"
+        base = name
+    return {
+        "field": {
+            field_type: {
+                "Expression": {"SourceRef": {"Entity": table_name}},
+                "Property": name,
+            }
+        },
+        "queryRef": f"{table_name}.{name}",
+        "nativeQueryRef": base,
+        "displayName": base,
+    }
+
+
 def _build_sort_definition(sorts: list[dict]) -> dict | None:
     """Build PBI sortDefinition from enriched sort list. Returns None if no sorts."""
     if not sorts:
@@ -918,15 +1132,85 @@ def _build_sort_definition(sorts: list[dict]) -> dict | None:
     return {"sort": items, "isDefaultSort": False}
 
 
-def _write_visual(visual_dir: Path, visual_info: dict, x_offset: int = 20) -> None:
+def resolve_visual_type(mark_type: str, color_fields: list) -> str:
+    """Return the PBI visualType string for a given Tableau mark type and color encoding.
+
+    Area mark with a dimension on the Color shelf stacks in Tableau — PBI equivalent
+    is stackedAreaChart.  All other mark types map directly via MARK_TO_VISUAL.
+    """
+    vtype = MARK_TO_VISUAL.get(mark_type, "tableEx")
+    if vtype == "areaChart" and color_fields:
+        return "stackedAreaChart"
+    return vtype
+
+
+def _write_slicer_visual(visual_dir: Path, visual: dict) -> None:
+    """Write visual.json for a PBI slicer visual (inlined — avoids circular import with dashboard.py)."""
+    projection = {
+        "field": {
+            "Column": {
+                "Expression": {"SourceRef": {"Entity": visual["field_entity"]}},
+                "Property": visual["field_property"],
+            }
+        },
+        "queryRef": f"{visual['field_entity']}.{visual['field_property']}",
+        "active": True,
+    }
+    objects: dict = {
+        "data": [{"properties": {
+            "mode": {"expr": {"Literal": {"Value": f"'{visual['slicer_mode']}'"}}},
+        }}],
+    }
+    if visual["slicer_mode"] != "Between" and visual.get("multi_select", False):
+        objects["selection"] = [{"properties": {
+            "singleSelect": {"expr": {"Literal": {"Value": "false"}}},
+            "strictSingleSelect": {"expr": {"Literal": {"Value": "false"}}},
+            "selectAllCheckboxEnabled": {"expr": {"Literal": {"Value": "true"}}},
+        }}]
+    container = {
+        "$schema": f"{_SCHEMA_BASE}/definition/visualContainer/1.0.0/schema.json",
+        "name": visual_dir.name,
+        "position": {
+            "x": visual["x"], "y": visual["y"], "z": 0,
+            "width": visual["width"], "height": visual["height"], "tabOrder": 0,
+        },
+        "visual": {
+            "visualType": "slicer",
+            "query": {"queryState": {"Values": {"projections": [projection]}}},
+            "objects": objects,
+            "drillFilterOtherVisuals": True,
+        },
+    }
+    (visual_dir / "visual.json").write_text(json.dumps(container, indent=2))
+
+
+def _write_visual(visual_dir: Path, visual_info: dict, x_offset: int = 20, width: int = 560) -> None:
     """Write visual.json with role-based field projections per visual type."""
-    visual_type = MARK_TO_VISUAL.get(visual_info["mark_type"], "tableEx")
+    visual_type = resolve_visual_type(
+        visual_info["mark_type"], visual_info.get("color_fields", [])
+    )
     table_name = visual_info["table"]
     row_fields = visual_info.get("row_fields", [])
     col_fields = visual_info.get("col_fields", [])
+    color_fields = visual_info.get("color_fields", [])
 
     col_formats = visual_info.get("col_formats") or {}
-    if visual_type in _VISUAL_ROLES:
+    crosstab_measures = visual_info.get("crosstab_measures", [])
+    if visual_type == "pivotTable":
+        # CrossTab: row dimensions → Rows, col dimensions → Columns, measures → Values.
+        # Projection structure confirmed from PBI Desktop ground truth (db_crosstab.Report).
+        col_dims = [f for f in col_fields if not (f if isinstance(f, dict) else {}).get("is_measure")]
+        query_state = {
+            "Columns": {"projections": [_make_pivot_dim_projection(table_name, f) for f in col_dims]},
+            "Rows":    {"projections": [_make_pivot_dim_projection(table_name, f) for f in row_fields]},
+            "Values":  {"projections": [_make_pivot_measure_projection(table_name, f) for f in crosstab_measures]},
+        }
+    elif visual_type == "cardVisual":
+        # Single-measure KPI card: measure comes from col_fields (text encoding), role is "Data"
+        query_state = {
+            "Data": {"projections": [_make_projection(table_name, f, col_formats) for f in col_fields]}
+        }
+    elif visual_type in _VISUAL_ROLES:
         cat_role, val_role, cat_shelf, val_shelf = _VISUAL_ROLES[visual_type]
         cat_fields = row_fields if cat_shelf == "row" else col_fields
         val_fields = col_fields if val_shelf == "col" else row_fields
@@ -934,6 +1218,10 @@ def _write_visual(visual_dir: Path, visual_info: dict, x_offset: int = 20) -> No
             cat_role: {"projections": [_make_projection(table_name, f, col_formats) for f in cat_fields]},
             val_role: {"projections": [_make_projection(table_name, f, col_formats) for f in val_fields]},
         }
+        if color_fields and visual_type in _SERIES_VISUAL_TYPES:
+            query_state["Series"] = {
+                "projections": [_make_series_projection(table_name, f) for f in color_fields]
+            }
     else:
         # tableEx and fallback: all fields under Values
         all_fields = row_fields + [f for f in col_fields if f not in row_fields]
@@ -956,30 +1244,98 @@ def _write_visual(visual_dir: Path, visual_info: dict, x_offset: int = 20) -> No
     container: dict = {
         "$schema": f"{_SCHEMA_BASE}/definition/visualContainer/1.0.0/schema.json",
         "name": visual_dir.name,
-        "position": {"x": x_offset, "y": 20, "z": 0, "height": 360, "width": 560, "tabOrder": 0},
+        "position": {"x": x_offset, "y": 20, "z": 0, "height": 360, "width": width, "tabOrder": 0},
         "visual": visual_obj,
     }
-
-    filter_config = _build_filter_config(visual_info.get("filters", []))
-    if filter_config:
-        container["filterConfig"] = filter_config
 
     (visual_dir / "visual.json").write_text(json.dumps(container, indent=2))
 
 
 # Visual types that support axis formatting
-_AXIS_VISUAL_TYPES = {"barChart", "columnChart", "lineChart", "areaChart", "pieChart", "scatterChart"}
+_AXIS_VISUAL_TYPES = {"barChart", "columnChart", "lineChart", "areaChart", "stackedAreaChart", "pieChart", "scatterChart"}
 
 
 def _build_objects(visual_info: dict, visual_type: str) -> dict:
-    """Build the visual.objects dict from data-labels flag and visual_format."""
+    """Build the visual.objects dict from data-labels flag, color palette, and visual_format."""
     def lit(v: str) -> dict:
         return {"expr": {"Literal": {"Value": v}}}
 
     objects: dict = {}
 
-    if visual_info.get("show_data_labels") and visual_type != "tableEx":
+    if visual_info.get("show_data_labels") and visual_type not in ("tableEx", "pivotTable"):
         objects["labels"] = [{"properties": {"show": lit("true")}}]
+
+    color_palette = visual_info.get("color_palette", {})
+    color_entity = visual_info.get("color_field_entity", "")
+    color_prop = visual_info.get("color_field_property", "")
+    if color_palette and color_entity and color_prop:
+        dp = []
+        for value, hex_color in color_palette.items():
+            dp.append({
+                "properties": {
+                    "fill": {
+                        "solid": {
+                            "color": {"expr": {"Literal": {"Value": f"'{hex_color}'"}}}
+                        }
+                    }
+                },
+                "selector": {
+                    "data": [
+                        {
+                            "scopeId": {
+                                "Comparison": {
+                                    "ComparisonKind": 0,
+                                    "Left": {
+                                        "Column": {
+                                            "Expression": {"SourceRef": {"Entity": color_entity}},
+                                            "Property": color_prop,
+                                        }
+                                    },
+                                    "Right": {"Literal": {"Value": f"'{value}'"}},
+                                }
+                            }
+                        }
+                    ]
+                },
+            })
+        objects["dataPoint"] = dp
+
+    mark_color = (visual_info.get("visual_format") or {}).get("plot_area", {}).get("mark_color")
+    if mark_color and not color_palette and visual_type not in ("tableEx", "pivotTable"):
+        table_name = visual_info.get("table", "")
+        row_fields = visual_info.get("row_fields", [])
+        col_fields = visual_info.get("col_fields", [])
+        y_measures: list[dict] = []
+        if visual_type in _VISUAL_ROLES:
+            _, _, _, val_shelf = _VISUAL_ROLES[visual_type]
+            val_fields = col_fields if val_shelf == "col" else row_fields
+            y_measures = [f for f in val_fields if isinstance(f, dict) and f.get("is_measure")]
+        if len(y_measures) > 1:
+            dp = []
+            for f in y_measures:
+                f_table = f.get("table") or table_name
+                query_ref = f"{f_table}.{f['name']}"
+                field_color = f.get("mark_color") or mark_color
+                dp.append({
+                    "properties": {"fill": {"solid": {"color": lit(f"'{field_color}'")}}},
+                    "selector": {"metadata": query_ref},
+                })
+            objects["dataPoint"] = dp
+        else:
+            dp_entry: dict = {"properties": {"fill": {"solid": {"color": lit(f"'{mark_color}'")}}}}
+            # Line/area charts require selector.metadata to apply series color
+            if visual_type in ("lineChart", "areaChart") and y_measures:
+                f = y_measures[0]
+                f_table = f.get("table") or table_name
+                dp_entry["selector"] = {"metadata": f"{f_table}.{f['name']}"}
+            objects["dataPoint"] = [dp_entry]
+
+    if visual_type == "pivotTable" and visual_info.get("crosstab_measures") and not visual_info.get("row_fields"):
+        objects["values"] = [{"properties": {"valuesOnRow": lit("true")}}]
+        objects["subTotals"] = [{"properties": {
+            "rowSubtotals": lit("false"),
+            "columnSubtotals": lit("false"),
+        }}]
 
     fmt = visual_info.get("visual_format", {})
     if not fmt or visual_type not in _AXIS_VISUAL_TYPES:
@@ -1024,6 +1380,8 @@ def _build_axis_props(axis_fmt: dict, title_fmt: dict, lit) -> dict:
         props["titleFontSize"] = lit(str(title_fmt["font_size"]))
     if title_fmt.get("bold"):
         props["titleBold"] = lit("true")
+    if axis_fmt.get("title_text"):
+        props["titleText"] = lit(f"'{axis_fmt['title_text']}'")
     return props
 
 
