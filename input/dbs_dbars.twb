@@ -1,0 +1,933 @@
+<?xml version='1.0' encoding='utf-8' ?>
+
+<!-- build 20261.26.0226.1626                               -->
+<workbook original-version='18.1' source-build='2026.1.0 (20261.26.0226.1626)' source-platform='win' version='18.1' xmlns:user='http://www.tableausoftware.com/xml/user'>
+  <document-format-change-manifest>
+    <AnimationOnByDefault />
+    <DatabricksCatalog />
+    <MarkAnimation />
+    <ObjectModelEncapsulateLegacy />
+    <ObjectModelTableType />
+    <SchemaViewerObjectModel />
+    <SheetIdentifierTracking />
+    <WindowsPersistSimpleIdentifiers />
+  </document-format-change-manifest>
+  <preferences>
+    <preference name='ui.encoding.shelf.height' value='24' />
+    <preference name='ui.shelf.height' value='26' />
+  </preferences>
+  <datasources>
+    <datasource caption='sales_customers (samples.bakehouse.sales_customers)+ (bakehouse)' inline='true' name='federated.0rbe41t0pgjxjs1bpbl111t07ecc' version='18.1'>
+      <connection class='federated'>
+        <named-connections>
+          <named-connection caption='dbc-b0e64326-49ff.cloud.databricks.com' name='databricks.0h6ichl1ym51a6141q6ty1c1rmkx'>
+            <connection authentication='oauth' authentication-type='' class='databricks' dbname='samples' instanceurl='https://dbc-b0e64326-49ff.cloud.databricks.com/oidc' oauth-config-id='default' odbc-connect-string-extras='' one-time-sql='' schema='bakehouse' server='dbc-b0e64326-49ff.cloud.databricks.com' server-oauth='' username='mjkeeplearning@gmail.com' v-http-path='/sql/1.0/warehouses/7691ee00ee3de572' v-query-tags=''>
+              <connection-customization class='databricks' enabled='false' version='18.1'>
+                <vendor name='databricks' />
+                <driver name='databricks' />
+                <customizations>
+                  <customization name='CAP_AUTH_DB_IMPERSONATE' value='no' />
+                  <customization name='CAP_AUTH_KERBEROS_IMPERSONATE' value='yes' />
+                  <customization name='CAP_COLLECT_TABLE_STATISTICS' value='no' />
+                  <customization name='CAP_CONNECT_STORED_PROCEDURE' value='no' />
+                  <customization name='CAP_CREATE_TEMP_TABLES' value='no' />
+                  <customization name='CAP_DATASERVER_MAGIC_NUMBER' value='no' />
+                  <customization name='CAP_DEFERS_CONNECTION_VERIFICATION' value='no' />
+                  <customization name='CAP_DISABLE_EXTRACT_TABLE_INDEXING' value='no' />
+                  <customization name='CAP_EQUALITY_JOINS_ONLY' value='no' />
+                  <customization name='CAP_EQUIJOINS_ONLY' value='no' />
+                  <customization name='CAP_FAST_METADATA' value='no' />
+                  <customization name='CAP_FORCE_COUNT_FOR_NUMBEROFRECORDS' value='no' />
+                  <customization name='CAP_GREENPLUM_TRUST_METADATA_CONTAINSNULL' value='no' />
+                  <customization name='CAP_HIVE_FIX_METADATA_NAMES' value='no' />
+                  <customization name='CAP_INCLUDE_OTHER_CATALOG_NAME' value='no' />
+                  <customization name='CAP_INDEX_TEMP_TABLES' value='no' />
+                  <customization name='CAP_INSERT_TEMP_EXEC_STORED_PROCEDURE' value='no' />
+                  <customization name='CAP_JDBC_QUERY_USE_PREPARE_PARAMETER_MARKER' value='no' />
+                  <customization name='CAP_LOCAL_ALIASES_CASE_INSENSITIVE' value='no' />
+                  <customization name='CAP_METADATA_SHOW_OTHER_CATALOGS' value='no' />
+                  <customization name='CAP_OAUTH_FEDERATE_ACCCESS_TOKEN' value='no' />
+                  <customization name='CAP_OAUTH_FEDERATE_ID_TOKEN' value='no' />
+                  <customization name='CAP_OAUTH_VALIDATE_ALWAYS' value='no' />
+                  <customization name='CAP_ODBC_ALWAYS_THROW_CONNECT_ERRORS' value='no' />
+                  <customization name='CAP_ODBC_BIND_FORCE_DATETIME_AS_CHAR' value='no' />
+                  <customization name='CAP_ODBC_BIND_FORCE_DATE_AS_CHAR' value='no' />
+                  <customization name='CAP_ODBC_BIND_FORCE_MAX_STRING_BUFFERS' value='no' />
+                  <customization name='CAP_ODBC_BIND_FORCE_MEDIUM_STRING_BUFFERS' value='no' />
+                  <customization name='CAP_ODBC_BIND_FORCE_SIGNED' value='no' />
+                  <customization name='CAP_ODBC_BIND_FORCE_SMALL_STRING_BUFFERS' value='no' />
+                  <customization name='CAP_ODBC_BIND_SUPPRESS_INT64' value='no' />
+                  <customization name='CAP_ODBC_BIND_SUPPRESS_PREFERRED_TYPES' value='no' />
+                  <customization name='CAP_ODBC_BIND_SUPPRESS_WIDE_CHAR' value='no' />
+                  <customization name='CAP_ODBC_CURSOR_DYNAMIC' value='no' />
+                  <customization name='CAP_ODBC_CURSOR_FORWARD_ONLY' value='yes' />
+                  <customization name='CAP_ODBC_CURSOR_KEYSET_DRIVEN' value='no' />
+                  <customization name='CAP_ODBC_CURSOR_STATIC' value='no' />
+                  <customization name='CAP_ODBC_DRIVER_HIVE_ASSUME_LATEST' value='no' />
+                  <customization name='CAP_ODBC_ERROR_IGNORE_FALSE_ALARM' value='no' />
+                  <customization name='CAP_ODBC_FETCH_BUFFERS_RESIZABLE' value='no' />
+                  <customization name='CAP_ODBC_FETCH_BUFFERS_SIZE_MASSIVE' value='no' />
+                  <customization name='CAP_ODBC_FETCH_CONTINUE_ON_ERROR' value='no' />
+                  <customization name='CAP_ODBC_FETCH_FORCE_VERIFY_TRUNCATE_BY_CELLSTATUS' value='no' />
+                  <customization name='CAP_ODBC_FETCH_INT_TRUNCATION_AS_ERROR' value='yes' />
+                  <customization name='CAP_ODBC_FORCE_SINGLE_ROW_BINDING' value='no' />
+                  <customization name='CAP_ODBC_IMPORT_GETDATA_BUFFER_LARGE' value='no' />
+                  <customization name='CAP_ODBC_METADATA_STRING_LENGTH_UNKNOWN' value='no' />
+                  <customization name='CAP_ODBC_METADATA_SUPPRESS_SQLCOLUMNS_API' value='no' />
+                  <customization name='CAP_ODBC_METADATA_SUPPRESS_SQLFOREIGNKEYS_API' value='no' />
+                  <customization name='CAP_ODBC_METADATA_SUPPRESS_SQLPRIMARYKEYS_API' value='no' />
+                  <customization name='CAP_ODBC_METADATA_SUPPRESS_SQLSTATISTICS_API' value='yes' />
+                  <customization name='CAP_ODBC_QUERY_USE_PREPARE_PARAMETER_MARKER' value='no' />
+                  <customization name='CAP_ODBC_REBIND_SKIP_UNBIND' value='no' />
+                  <customization name='CAP_ODBC_SCHEMAS_OPTIONAL' value='no' />
+                  <customization name='CAP_ODBC_TRIM_VARCHAR_PADDING' value='no' />
+                  <customization name='CAP_ODBC_UNBIND_AUTO' value='no' />
+                  <customization name='CAP_ODBC_UNBIND_BATCH' value='no' />
+                  <customization name='CAP_ODBC_UNBIND_EACH' value='yes' />
+                  <customization name='CAP_ODBC_USE_NATIVE_PROTOCOL' value='yes' />
+                  <customization name='CAP_PADDED_SEMANTICS_NCHAR_NVARCHAR' value='no' />
+                  <customization name='CAP_PERSIST_SQL_RELATION_ON_LEAF_CONNECTION' value='no' />
+                  <customization name='CAP_QUERY_ALLOW_JOIN_REORDER' value='yes' />
+                  <customization name='CAP_QUERY_ALLOW_PARTIAL_AGGREGATION' value='yes' />
+                  <customization name='CAP_QUERY_ALWAYS_USE_AQ_CACHE' value='no' />
+                  <customization name='CAP_QUERY_AVOID_EXPRESSION_INLINING' value='no' />
+                  <customization name='CAP_QUERY_BLENDING_ALWAYS_USE_LOCAL_MAPPING_TABLES' value='no' />
+                  <customization name='CAP_QUERY_BLENDING_PREFER_LOCAL_MAPPING_TABLES' value='yes' />
+                  <customization name='CAP_QUERY_BLENDING_REMOTE_MAPPING_TABLES' value='yes' />
+                  <customization name='CAP_QUERY_BOOLEXPR_TO_INTEXPR' value='no' />
+                  <customization name='CAP_QUERY_BOOL_IDENTIFIER_TO_LOGICAL' value='no' />
+                  <customization name='CAP_QUERY_CAST_MONEY_AS_NUMERIC' value='no' />
+                  <customization name='CAP_QUERY_CONVERT_DATETIMES_TO_DATES' value='no' />
+                  <customization name='CAP_QUERY_EMPTY_DOMAIN_TOP' value='no' />
+                  <customization name='CAP_QUERY_FORCE_AGGREGATE_MEASURES' value='no' />
+                  <customization name='CAP_QUERY_GROUP_BY_ALIAS' value='yes' />
+                  <customization name='CAP_QUERY_GROUP_BY_DEGREE' value='yes' />
+                  <customization name='CAP_QUERY_HAVING_REQUIRES_GROUP_BY' value='yes' />
+                  <customization name='CAP_QUERY_HAVING_UNSUPPORTED' value='no' />
+                  <customization name='CAP_QUERY_IGNORE_HINT_CHECK_NOT_NULL' value='no' />
+                  <customization name='CAP_QUERY_IGNORE_HINT_MAKE_DOMAIN_PREDICATE' value='no' />
+                  <customization name='CAP_QUERY_INLINE_COMPLEX_GROUPBYS_IN_SELECTS' value='yes' />
+                  <customization name='CAP_QUERY_JOIN_ACROSS_SCHEMAS' value='yes' />
+                  <customization name='CAP_QUERY_JOIN_ASSUME_CONSTRAINED' value='no' />
+                  <customization name='CAP_QUERY_JOIN_PUSH_DOWN_CONDITION_EXPRESSIONS' value='no' />
+                  <customization name='CAP_QUERY_JOIN_REQUIRES_SCOPE' value='no' />
+                  <customization name='CAP_QUERY_JOIN_REQUIRES_SUBQUERY' value='no' />
+                  <customization name='CAP_QUERY_MINMAX_FORCE_GROUPBYS' value='no' />
+                  <customization name='CAP_QUERY_NULL_REQUIRES_CAST' value='yes' />
+                  <customization name='CAP_QUERY_OUTER_JOIN_CONDITION_NO_TRIVIAL' value='no' />
+                  <customization name='CAP_QUERY_RECOMPILE_FAILED_QUERY' value='no' />
+                  <customization name='CAP_QUERY_SELECT_ALIASES_SORTED' value='no' />
+                  <customization name='CAP_QUERY_SORT_BY' value='yes' />
+                  <customization name='CAP_QUERY_SORT_BY_DEGREE' value='no' />
+                  <customization name='CAP_QUERY_SUBQUERIES' value='yes' />
+                  <customization name='CAP_QUERY_SUBQUERIES_WITH_TOP' value='yes' />
+                  <customization name='CAP_QUERY_SUBQUERIES_WITH_TOP_ALTERNATIVE' value='no' />
+                  <customization name='CAP_QUERY_SUBQUERY_QUERY_CONTEXT' value='yes' />
+                  <customization name='CAP_QUERY_SUPPORTS_LODJOINS' value='yes' />
+                  <customization name='CAP_QUERY_SUPPORT_ANALYTIC_FUNCTIONS' value='yes' />
+                  <customization name='CAP_QUERY_SUPPORT_EMPTY_GROUPBY' value='no' />
+                  <customization name='CAP_QUERY_SUPPRESS_CHECK_DOMAIN_LITERALS_THRESHOLD' value='no' />
+                  <customization name='CAP_QUERY_SUPPRESS_NULL_CHECK_QUERIES' value='no' />
+                  <customization name='CAP_QUERY_TAGS_IN_SQL_TEXT' value='no' />
+                  <customization name='CAP_QUERY_TIME_REQUIRES_CAST' value='no' />
+                  <customization name='CAP_QUERY_TOPSTYLE_LIMIT' value='no' />
+                  <customization name='CAP_QUERY_TOPSTYLE_ROWNUM' value='no' />
+                  <customization name='CAP_QUERY_TOPSTYLE_TOP' value='no' />
+                  <customization name='CAP_QUERY_TOP_0_METADATA' value='yes' />
+                  <customization name='CAP_QUERY_TOP_N' value='yes' />
+                  <customization name='CAP_QUERY_USE_DOMAIN_EXCEPT_OPTIMIZATION' value='no' />
+                  <customization name='CAP_QUERY_USE_DOMAIN_RANGES_OPTIMIZATION' value='yes' />
+                  <customization name='CAP_QUERY_USE_DOMAIN_RANGES_OPTIMIZATION_STRINGS' value='no' />
+                  <customization name='CAP_QUERY_USE_QUERY_FUSION' value='yes' />
+                  <customization name='CAP_QUERY_USE_STRCMP_WITH_WHERE_EXISTS' value='no' />
+                  <customization name='CAP_QUERY_WHERE_FALSE_METADATA' value='no' />
+                  <customization name='CAP_RELDATEFILT_CASTTODATE' value='no' />
+                  <customization name='CAP_RENAME_TABLE_USE_LEAF_CONNECTION_DIALECT' value='no' />
+                  <customization name='CAP_SDK_SUPPORTS_PREP_WRITE_TO_DB' value='no' />
+                  <customization name='CAP_SELECT_INTO' value='no' />
+                  <customization name='CAP_SELECT_TOP_INTO' value='no' />
+                  <customization name='CAP_STORED_PROCEDURE_PREFER_TEMP_TABLE' value='no' />
+                  <customization name='CAP_STORED_PROCEDURE_REPAIR_TEMP_TABLE_STRINGS' value='no' />
+                  <customization name='CAP_STORED_PROCEDURE_TEMP_TABLE_FROM_BUFFER' value='no' />
+                  <customization name='CAP_STORED_PROCEDURE_TEMP_TABLE_FROM_NEW_PROTOCOL' value='no' />
+                  <customization name='CAP_SUPPRESS_CONNECTION_POOLING' value='yes' />
+                  <customization name='CAP_SUPPRESS_DISCOVERY_QUERIES' value='no' />
+                  <customization name='CAP_SUPPRESS_ENUMERATE_SCHEMAS_VIA_SQL' value='yes' />
+                  <customization name='CAP_SUPPRESS_ENUMERATE_TABLES_VIA_SQL' value='yes' />
+                  <customization name='CAP_SUPPRESS_GET_SERVER_TIME' value='yes' />
+                  <customization name='CAP_SUPPRESS_QUICK_FILTER_ACCELERATION_VIEWS' value='no' />
+                  <customization name='CAP_SUPPRESS_TEMP_TABLE_CHECKS' value='no' />
+                </customizations>
+              </connection-customization>
+            </connection>
+          </named-connection>
+        </named-connections>
+        <relation type='collection'>
+          <relation connection='databricks.0h6ichl1ym51a6141q6ty1c1rmkx' name='sales_customers' table='[samples].[bakehouse].[sales_customers]' type='table' />
+          <relation connection='databricks.0h6ichl1ym51a6141q6ty1c1rmkx' name='sales_transactions' table='[samples].[bakehouse].[sales_transactions]' type='table' />
+        </relation>
+        <cols>
+          <map key='[address]' value='[sales_customers].[address]' />
+          <map key='[cardNumber]' value='[sales_transactions].[cardNumber]' />
+          <map key='[city]' value='[sales_customers].[city]' />
+          <map key='[continent]' value='[sales_customers].[continent]' />
+          <map key='[country]' value='[sales_customers].[country]' />
+          <map key='[customerID (sales_transactions)]' value='[sales_transactions].[customerID]' />
+          <map key='[customerID]' value='[sales_customers].[customerID]' />
+          <map key='[dateTime]' value='[sales_transactions].[dateTime]' />
+          <map key='[email_address]' value='[sales_customers].[email_address]' />
+          <map key='[first_name]' value='[sales_customers].[first_name]' />
+          <map key='[franchiseID]' value='[sales_transactions].[franchiseID]' />
+          <map key='[gender]' value='[sales_customers].[gender]' />
+          <map key='[last_name]' value='[sales_customers].[last_name]' />
+          <map key='[paymentMethod]' value='[sales_transactions].[paymentMethod]' />
+          <map key='[phone_number]' value='[sales_customers].[phone_number]' />
+          <map key='[postal_zip_code]' value='[sales_customers].[postal_zip_code]' />
+          <map key='[product]' value='[sales_transactions].[product]' />
+          <map key='[quantity]' value='[sales_transactions].[quantity]' />
+          <map key='[state]' value='[sales_customers].[state]' />
+          <map key='[totalPrice]' value='[sales_transactions].[totalPrice]' />
+          <map key='[transactionID]' value='[sales_transactions].[transactionID]' />
+          <map key='[unitPrice]' value='[sales_transactions].[unitPrice]' />
+        </cols>
+        <metadata-records>
+          <metadata-record class='column'>
+            <remote-name>customerID</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[customerID]</local-name>
+            <parent-name>[sales_customers]</parent-name>
+            <remote-alias>customerID</remote-alias>
+            <ordinal>1</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <precision>19</precision>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_BIGINT&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_SBIGINT&quot;</attribute>
+            </attributes>
+            <object-id>[sales_customers (samples.bakehouse.sales_customers)_2920AECF67184046BFFF16B5287FA767]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>first_name</remote-name>
+            <remote-type>129</remote-type>
+            <local-name>[first_name]</local-name>
+            <parent-name>[sales_customers]</parent-name>
+            <remote-alias>first_name</remote-alias>
+            <ordinal>2</ordinal>
+            <local-type>string</local-type>
+            <aggregation>Count</aggregation>
+            <width>255</width>
+            <contains-null>true</contains-null>
+            <collation flag='0' name='binary' />
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+              <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+            </attributes>
+            <object-id>[sales_customers (samples.bakehouse.sales_customers)_2920AECF67184046BFFF16B5287FA767]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>last_name</remote-name>
+            <remote-type>129</remote-type>
+            <local-name>[last_name]</local-name>
+            <parent-name>[sales_customers]</parent-name>
+            <remote-alias>last_name</remote-alias>
+            <ordinal>3</ordinal>
+            <local-type>string</local-type>
+            <aggregation>Count</aggregation>
+            <width>255</width>
+            <contains-null>true</contains-null>
+            <collation flag='0' name='binary' />
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+              <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+            </attributes>
+            <object-id>[sales_customers (samples.bakehouse.sales_customers)_2920AECF67184046BFFF16B5287FA767]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>email_address</remote-name>
+            <remote-type>129</remote-type>
+            <local-name>[email_address]</local-name>
+            <parent-name>[sales_customers]</parent-name>
+            <remote-alias>email_address</remote-alias>
+            <ordinal>4</ordinal>
+            <local-type>string</local-type>
+            <aggregation>Count</aggregation>
+            <width>255</width>
+            <contains-null>true</contains-null>
+            <collation flag='0' name='binary' />
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+              <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+            </attributes>
+            <object-id>[sales_customers (samples.bakehouse.sales_customers)_2920AECF67184046BFFF16B5287FA767]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>phone_number</remote-name>
+            <remote-type>129</remote-type>
+            <local-name>[phone_number]</local-name>
+            <parent-name>[sales_customers]</parent-name>
+            <remote-alias>phone_number</remote-alias>
+            <ordinal>5</ordinal>
+            <local-type>string</local-type>
+            <aggregation>Count</aggregation>
+            <width>255</width>
+            <contains-null>true</contains-null>
+            <collation flag='0' name='binary' />
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+              <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+            </attributes>
+            <object-id>[sales_customers (samples.bakehouse.sales_customers)_2920AECF67184046BFFF16B5287FA767]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>address</remote-name>
+            <remote-type>129</remote-type>
+            <local-name>[address]</local-name>
+            <parent-name>[sales_customers]</parent-name>
+            <remote-alias>address</remote-alias>
+            <ordinal>6</ordinal>
+            <local-type>string</local-type>
+            <aggregation>Count</aggregation>
+            <width>255</width>
+            <contains-null>true</contains-null>
+            <collation flag='0' name='binary' />
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+              <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+            </attributes>
+            <object-id>[sales_customers (samples.bakehouse.sales_customers)_2920AECF67184046BFFF16B5287FA767]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>city</remote-name>
+            <remote-type>129</remote-type>
+            <local-name>[city]</local-name>
+            <parent-name>[sales_customers]</parent-name>
+            <remote-alias>city</remote-alias>
+            <ordinal>7</ordinal>
+            <local-type>string</local-type>
+            <aggregation>Count</aggregation>
+            <width>255</width>
+            <contains-null>true</contains-null>
+            <collation flag='0' name='binary' />
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+              <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+            </attributes>
+            <object-id>[sales_customers (samples.bakehouse.sales_customers)_2920AECF67184046BFFF16B5287FA767]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>state</remote-name>
+            <remote-type>129</remote-type>
+            <local-name>[state]</local-name>
+            <parent-name>[sales_customers]</parent-name>
+            <remote-alias>state</remote-alias>
+            <ordinal>8</ordinal>
+            <local-type>string</local-type>
+            <aggregation>Count</aggregation>
+            <width>255</width>
+            <contains-null>true</contains-null>
+            <collation flag='0' name='binary' />
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+              <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+            </attributes>
+            <object-id>[sales_customers (samples.bakehouse.sales_customers)_2920AECF67184046BFFF16B5287FA767]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>country</remote-name>
+            <remote-type>129</remote-type>
+            <local-name>[country]</local-name>
+            <parent-name>[sales_customers]</parent-name>
+            <remote-alias>country</remote-alias>
+            <ordinal>9</ordinal>
+            <local-type>string</local-type>
+            <aggregation>Count</aggregation>
+            <width>255</width>
+            <contains-null>true</contains-null>
+            <collation flag='0' name='binary' />
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+              <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+            </attributes>
+            <object-id>[sales_customers (samples.bakehouse.sales_customers)_2920AECF67184046BFFF16B5287FA767]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>continent</remote-name>
+            <remote-type>129</remote-type>
+            <local-name>[continent]</local-name>
+            <parent-name>[sales_customers]</parent-name>
+            <remote-alias>continent</remote-alias>
+            <ordinal>10</ordinal>
+            <local-type>string</local-type>
+            <aggregation>Count</aggregation>
+            <width>255</width>
+            <contains-null>true</contains-null>
+            <collation flag='0' name='binary' />
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+              <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+            </attributes>
+            <object-id>[sales_customers (samples.bakehouse.sales_customers)_2920AECF67184046BFFF16B5287FA767]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>postal_zip_code</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[postal_zip_code]</local-name>
+            <parent-name>[sales_customers]</parent-name>
+            <remote-alias>postal_zip_code</remote-alias>
+            <ordinal>11</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <precision>19</precision>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_BIGINT&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_SBIGINT&quot;</attribute>
+            </attributes>
+            <object-id>[sales_customers (samples.bakehouse.sales_customers)_2920AECF67184046BFFF16B5287FA767]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>gender</remote-name>
+            <remote-type>129</remote-type>
+            <local-name>[gender]</local-name>
+            <parent-name>[sales_customers]</parent-name>
+            <remote-alias>gender</remote-alias>
+            <ordinal>12</ordinal>
+            <local-type>string</local-type>
+            <aggregation>Count</aggregation>
+            <width>255</width>
+            <contains-null>true</contains-null>
+            <collation flag='0' name='binary' />
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+              <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+            </attributes>
+            <object-id>[sales_customers (samples.bakehouse.sales_customers)_2920AECF67184046BFFF16B5287FA767]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>transactionID</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[transactionID]</local-name>
+            <parent-name>[sales_transactions]</parent-name>
+            <remote-alias>transactionID</remote-alias>
+            <ordinal>14</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <precision>19</precision>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_BIGINT&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_SBIGINT&quot;</attribute>
+            </attributes>
+            <object-id>[sales_transactions (samples.bakehouse.sales_transactions)_EF9B11F1A89942AA9A5CECF6669FA740]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>customerID</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[customerID (sales_transactions)]</local-name>
+            <parent-name>[sales_transactions]</parent-name>
+            <remote-alias>customerID</remote-alias>
+            <ordinal>15</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <precision>19</precision>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_BIGINT&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_SBIGINT&quot;</attribute>
+            </attributes>
+            <object-id>[sales_transactions (samples.bakehouse.sales_transactions)_EF9B11F1A89942AA9A5CECF6669FA740]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>franchiseID</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[franchiseID]</local-name>
+            <parent-name>[sales_transactions]</parent-name>
+            <remote-alias>franchiseID</remote-alias>
+            <ordinal>16</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <precision>19</precision>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_BIGINT&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_SBIGINT&quot;</attribute>
+            </attributes>
+            <object-id>[sales_transactions (samples.bakehouse.sales_transactions)_EF9B11F1A89942AA9A5CECF6669FA740]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>dateTime</remote-name>
+            <remote-type>7</remote-type>
+            <local-name>[dateTime]</local-name>
+            <parent-name>[sales_transactions]</parent-name>
+            <remote-alias>dateTime</remote-alias>
+            <ordinal>17</ordinal>
+            <local-type>datetime</local-type>
+            <aggregation>Year</aggregation>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_TYPE_TIMESTAMP&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_TYPE_TIMESTAMP&quot;</attribute>
+            </attributes>
+            <object-id>[sales_transactions (samples.bakehouse.sales_transactions)_EF9B11F1A89942AA9A5CECF6669FA740]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>product</remote-name>
+            <remote-type>129</remote-type>
+            <local-name>[product]</local-name>
+            <parent-name>[sales_transactions]</parent-name>
+            <remote-alias>product</remote-alias>
+            <ordinal>18</ordinal>
+            <local-type>string</local-type>
+            <aggregation>Count</aggregation>
+            <width>255</width>
+            <contains-null>true</contains-null>
+            <collation flag='0' name='binary' />
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+              <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+            </attributes>
+            <object-id>[sales_transactions (samples.bakehouse.sales_transactions)_EF9B11F1A89942AA9A5CECF6669FA740]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>quantity</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[quantity]</local-name>
+            <parent-name>[sales_transactions]</parent-name>
+            <remote-alias>quantity</remote-alias>
+            <ordinal>19</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <precision>19</precision>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_BIGINT&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_SBIGINT&quot;</attribute>
+            </attributes>
+            <object-id>[sales_transactions (samples.bakehouse.sales_transactions)_EF9B11F1A89942AA9A5CECF6669FA740]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>unitPrice</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[unitPrice]</local-name>
+            <parent-name>[sales_transactions]</parent-name>
+            <remote-alias>unitPrice</remote-alias>
+            <ordinal>20</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <precision>19</precision>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_BIGINT&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_SBIGINT&quot;</attribute>
+            </attributes>
+            <object-id>[sales_transactions (samples.bakehouse.sales_transactions)_EF9B11F1A89942AA9A5CECF6669FA740]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>totalPrice</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[totalPrice]</local-name>
+            <parent-name>[sales_transactions]</parent-name>
+            <remote-alias>totalPrice</remote-alias>
+            <ordinal>21</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <precision>19</precision>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_BIGINT&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_SBIGINT&quot;</attribute>
+            </attributes>
+            <object-id>[sales_transactions (samples.bakehouse.sales_transactions)_EF9B11F1A89942AA9A5CECF6669FA740]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>paymentMethod</remote-name>
+            <remote-type>129</remote-type>
+            <local-name>[paymentMethod]</local-name>
+            <parent-name>[sales_transactions]</parent-name>
+            <remote-alias>paymentMethod</remote-alias>
+            <ordinal>22</ordinal>
+            <local-type>string</local-type>
+            <aggregation>Count</aggregation>
+            <width>255</width>
+            <contains-null>true</contains-null>
+            <collation flag='0' name='binary' />
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+              <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+            </attributes>
+            <object-id>[sales_transactions (samples.bakehouse.sales_transactions)_EF9B11F1A89942AA9A5CECF6669FA740]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>cardNumber</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[cardNumber]</local-name>
+            <parent-name>[sales_transactions]</parent-name>
+            <remote-alias>cardNumber</remote-alias>
+            <ordinal>23</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <precision>19</precision>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_BIGINT&quot;</attribute>
+              <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_SBIGINT&quot;</attribute>
+            </attributes>
+            <object-id>[sales_transactions (samples.bakehouse.sales_transactions)_EF9B11F1A89942AA9A5CECF6669FA740]</object-id>
+          </metadata-record>
+        </metadata-records>
+      </connection>
+      <aliases enabled='yes' />
+      <column caption='sales_customers' datatype='table' name='[__tableau_internal_object_id__].[sales_customers (samples.bakehouse.sales_customers)_2920AECF67184046BFFF16B5287FA767]' role='measure' type='quantitative' />
+      <column caption='sales_transactions' datatype='table' name='[__tableau_internal_object_id__].[sales_transactions (samples.bakehouse.sales_transactions)_EF9B11F1A89942AA9A5CECF6669FA740]' role='measure' type='quantitative' />
+      <column caption='Address' datatype='string' name='[address]' role='dimension' type='nominal' />
+      <column caption='Card Number' datatype='integer' name='[cardNumber]' role='dimension' type='ordinal' />
+      <column caption='City' datatype='string' name='[city]' role='dimension' semantic-role='[City].[Name]' type='nominal' />
+      <column caption='Continent' datatype='string' name='[continent]' role='dimension' type='nominal' />
+      <column caption='Country' datatype='string' name='[country]' role='dimension' semantic-role='[Country].[ISO3166_2]' type='nominal' />
+      <column caption='customerID (sales transactions)' datatype='integer' name='[customerID (sales_transactions)]' role='dimension' type='ordinal' />
+      <column caption='Customer ID' datatype='integer' name='[customerID]' role='dimension' type='ordinal' />
+      <column caption='Date Time' datatype='datetime' name='[dateTime]' role='dimension' type='ordinal' />
+      <column caption='Email Address' datatype='string' name='[email_address]' role='dimension' type='nominal' />
+      <column caption='First Name' datatype='string' name='[first_name]' role='dimension' type='nominal' />
+      <column caption='Franchise ID' datatype='integer' name='[franchiseID]' role='dimension' type='ordinal' />
+      <column caption='Gender' datatype='string' name='[gender]' role='dimension' type='nominal' />
+      <column caption='Last Name' datatype='string' name='[last_name]' role='dimension' type='nominal' />
+      <column caption='Payment Method' datatype='string' name='[paymentMethod]' role='dimension' type='nominal' />
+      <column caption='Phone Number' datatype='string' name='[phone_number]' role='dimension' type='nominal' />
+      <column aggregation='Sum' caption='Postal Zip Code' datatype='integer' default-format='*00000' name='[postal_zip_code]' role='dimension' semantic-role='[ZipCode].[Name]' type='ordinal' />
+      <column caption='Product' datatype='string' name='[product]' role='dimension' type='nominal' />
+      <column caption='Quantity' datatype='integer' name='[quantity]' role='measure' type='quantitative' />
+      <column caption='State' datatype='string' name='[state]' role='dimension' semantic-role='[State].[Name]' type='nominal' />
+      <column caption='Total Price' datatype='integer' name='[totalPrice]' role='measure' type='quantitative' />
+      <column caption='Transaction ID' datatype='integer' name='[transactionID]' role='dimension' type='ordinal' />
+      <column caption='Unit Price' datatype='integer' name='[unitPrice]' role='measure' type='quantitative' />
+      <column-instance column='[country]' derivation='None' name='[none:country:nk]' pivot='key' type='nominal' />
+      <layout dim-ordering='alphabetic' measure-ordering='alphabetic' show-structure='true' />
+      <style>
+        <style-rule element='mark'>
+          <encoding attr='color' field='[none:country:nk]' type='palette'>
+            <map to='#2a5783'>
+              <bucket>&quot;Australia&quot;</bucket>
+            </map>
+            <map to='#6a9bc3'>
+              <bucket>&quot;Japan&quot;</bucket>
+            </map>
+            <map to='#afd6ed'>
+              <bucket>&quot;USA&quot;</bucket>
+            </map>
+          </encoding>
+        </style-rule>
+      </style>
+      <semantic-values>
+        <semantic-value key='[Country].[Name]' value='&quot;United States&quot;' />
+      </semantic-values>
+      <object-graph>
+        <objects>
+          <object caption='sales_customers' id='sales_customers (samples.bakehouse.sales_customers)_2920AECF67184046BFFF16B5287FA767'>
+            <properties context=''>
+              <relation connection='databricks.0h6ichl1ym51a6141q6ty1c1rmkx' name='sales_customers' table='[samples].[bakehouse].[sales_customers]' type='table' />
+            </properties>
+          </object>
+          <object caption='sales_transactions' id='sales_transactions (samples.bakehouse.sales_transactions)_EF9B11F1A89942AA9A5CECF6669FA740'>
+            <properties context=''>
+              <relation connection='databricks.0h6ichl1ym51a6141q6ty1c1rmkx' name='sales_transactions' table='[samples].[bakehouse].[sales_transactions]' type='table' />
+            </properties>
+          </object>
+        </objects>
+        <relationships>
+          <relationship>
+            <expression op='='>
+              <expression op='[customerID]' />
+              <expression op='[customerID (sales_transactions)]' />
+            </expression>
+            <first-end-point object-id='sales_customers (samples.bakehouse.sales_customers)_2920AECF67184046BFFF16B5287FA767' />
+            <second-end-point object-id='sales_transactions (samples.bakehouse.sales_transactions)_EF9B11F1A89942AA9A5CECF6669FA740' />
+          </relationship>
+        </relationships>
+      </object-graph>
+    </datasource>
+  </datasources>
+  <worksheets>
+    <worksheet name='Product Performance'>
+      <layout-options>
+        <title>
+          <formatted-text>
+            <run>&lt;Sheet Name&gt;</run>
+          </formatted-text>
+        </title>
+      </layout-options>
+      <table>
+        <view>
+          <datasources>
+            <datasource caption='sales_customers (samples.bakehouse.sales_customers)+ (bakehouse)' name='federated.0rbe41t0pgjxjs1bpbl111t07ecc' />
+          </datasources>
+          <datasource-dependencies datasource='federated.0rbe41t0pgjxjs1bpbl111t07ecc'>
+            <column-instance column='[dateTime]' derivation='Attribute' name='[attr:dateTime:ok]' pivot='key' type='ordinal' />
+            <column caption='Date Time' datatype='datetime' name='[dateTime]' role='dimension' type='ordinal' />
+            <column-instance column='[product]' derivation='None' name='[none:product:nk]' pivot='key' type='nominal' />
+            <column caption='Product' datatype='string' name='[product]' role='dimension' type='nominal' />
+            <column caption='Quantity' datatype='integer' name='[quantity]' role='measure' type='quantitative' />
+            <column-instance column='[quantity]' derivation='Sum' name='[sum:quantity:qk]' pivot='key' type='quantitative' />
+            <column-instance column='[totalPrice]' derivation='Sum' name='[sum:totalPrice:qk]' pivot='key' type='quantitative' />
+            <column caption='Total Price' datatype='integer' name='[totalPrice]' role='measure' type='quantitative' />
+          </datasource-dependencies>
+          <aggregation value='true' />
+        </view>
+        <style>
+          <style-rule element='axis'>
+            <format attr='title' class='0' field='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[sum:quantity:qk]' scope='rows' value='# Quantity' />
+            <format attr='title' class='0' field='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[sum:totalPrice:qk]' scope='rows' value='# Price' />
+          </style-rule>
+        </style>
+        <panes>
+          <pane selection-relaxation-option='selection-relaxation-allow'>
+            <view>
+              <breakdown value='auto' />
+            </view>
+            <mark class='Automatic' />
+            <encodings>
+              <text column='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[sum:quantity:qk]' />
+              <tooltip column='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[attr:dateTime:ok]' />
+            </encodings>
+            <style>
+              <style-rule element='mark'>
+                <format attr='mark-labels-show' value='true' />
+                <format attr='mark-labels-cull' value='true' />
+                <format attr='mark-color' value='#f28e2b' />
+              </style-rule>
+            </style>
+          </pane>
+          <pane id='1' selection-relaxation-option='selection-relaxation-allow' y-axis-name='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[sum:quantity:qk]'>
+            <view>
+              <breakdown value='auto' />
+            </view>
+            <mark class='Automatic' />
+            <encodings>
+              <text column='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[sum:quantity:qk]' />
+              <tooltip column='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[attr:dateTime:ok]' />
+            </encodings>
+            <style>
+              <style-rule element='mark'>
+                <format attr='mark-labels-show' value='true' />
+                <format attr='mark-labels-cull' value='true' />
+                <format attr='mark-color' value='#f28e2b' />
+              </style-rule>
+            </style>
+          </pane>
+          <pane id='2' selection-relaxation-option='selection-relaxation-allow' y-axis-name='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[sum:totalPrice:qk]'>
+            <view>
+              <breakdown value='auto' />
+            </view>
+            <mark class='Automatic' />
+            <encodings>
+              <text column='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[sum:quantity:qk]' />
+              <tooltip column='[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[attr:dateTime:ok]' />
+            </encodings>
+            <style>
+              <style-rule element='mark'>
+                <format attr='mark-labels-show' value='true' />
+                <format attr='mark-labels-cull' value='true' />
+                <format attr='mark-color' value='#55aa7f' />
+              </style-rule>
+            </style>
+          </pane>
+        </panes>
+        <rows>([federated.0rbe41t0pgjxjs1bpbl111t07ecc].[sum:quantity:qk] + [federated.0rbe41t0pgjxjs1bpbl111t07ecc].[sum:totalPrice:qk])</rows>
+        <cols>[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[none:product:nk]</cols>
+      </table>
+      <simple-id uuid='{C479D5DB-B227-40E3-B875-F45F0D92DFC1}' />
+    </worksheet>
+  </worksheets>
+  <windows source-height='30'>
+    <window class='worksheet' maximized='true' name='Product Performance'>
+      <cards>
+        <edge name='left'>
+          <strip size='160'>
+            <card type='pages' />
+            <card type='filters' />
+            <card type='marks' />
+          </strip>
+        </edge>
+        <edge name='top'>
+          <strip size='2147483647'>
+            <card type='columns' />
+          </strip>
+          <strip size='2147483647'>
+            <card type='rows' />
+          </strip>
+          <strip size='31'>
+            <card type='title' />
+          </strip>
+        </edge>
+      </cards>
+      <viewpoint>
+        <highlight>
+          <color-one-way>
+            <field>[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[none:product:nk]</field>
+            <field>[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[qr:dateTime:ok]</field>
+            <field>[federated.0rbe41t0pgjxjs1bpbl111t07ecc].[yr:dateTime:ok]</field>
+          </color-one-way>
+        </highlight>
+      </viewpoint>
+      <simple-id uuid='{C4F7DFD6-A7A1-404E-9027-EBBCFF60097D}' />
+    </window>
+  </windows>
+  <thumbnails>
+    <thumbnail height='192' name='Product Performance' width='192'>
+      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
+    </thumbnail>
+  </thumbnails>
+</workbook>

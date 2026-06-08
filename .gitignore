@@ -4,7 +4,5 @@ __pycache__/
 *.egg-info/
 .python-version
 output/
-.pbir_schema_cache/
 data/
-input/
 output/
