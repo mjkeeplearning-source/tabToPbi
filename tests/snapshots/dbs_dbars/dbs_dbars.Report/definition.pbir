@@ -2,7 +2,7 @@
   "version": "4.0",
   "datasetReference": {
     "byPath": {
-      "path": "../daatabricks_custom_Sql_two_table.SemanticModel"
+      "path": "../dbs_dbars.SemanticModel"
     }
   }
 }
